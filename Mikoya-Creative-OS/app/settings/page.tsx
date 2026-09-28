@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Settings } from "lucide-react";
-import { RENDERERS } from "@/lib/pipeline/renderers";
+import { RENDERERS } from "@/lib/prompts/renderer-instructions";
 import { PlaceholderPage } from "@/components/layout/placeholder-page";
 import { Badge } from "@/components/ui/badge";
 

@@ -1,45 +1,47 @@
 import type { Metadata } from "next";
 import { Palette } from "lucide-react";
-import { DEFAULT_BRAND_CONTEXT } from "@/lib/constants";
+import { PROJECTS } from "@/lib/projects";
+import { buildStrategySnapshot } from "@/lib/strategy";
 import { PlaceholderPage } from "@/components/layout/placeholder-page";
+import { CreativeStrategyPanel } from "@/components/strategy/creative-strategy-panel";
 
 export const metadata: Metadata = { title: "Brand" };
 
 export default function BrandPage() {
-  const { colors, toneOfVoice, customerDesires } = DEFAULT_BRAND_CONTEXT;
   return (
     <PlaceholderPage
       title="Brand"
-      description="The global brand context injected into every generation: colors, voice, desires and guardrails."
+      description="Brand workspaces. Each brand's strategy, facts and hypotheses are data — the creative engine itself is brand-agnostic."
       icon={Palette}
       roadmap={[
-        { title: "Brand kit", description: "Logos, fonts, colors and photography references in one place." },
-        { title: "Voice & guardrails", description: "Words we use, words we avoid and compliance rules." },
-        { title: "Multiple brands", description: "Switch brand context per workspace or product line." },
+        { title: "Edit brand strategy", description: "Positioning, audience, tone, priorities and guardrails per brand." },
+        { title: "Review AI hypotheses", description: "Accept or dismiss inferred strategy once, reuse it in every batch." },
+        { title: "Add a brand", description: "Create a new workspace — no application code changes needed." },
       ]}
     >
-      <div className="grid gap-4 md:grid-cols-3">
-        {Object.entries(colors).map(([key, value]) => (
-          <div key={key} className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-paper">
-            <div className="h-24" style={{ background: value }} />
-            <div className="px-4 py-3">
-              <p className="text-[13px] font-medium capitalize">{key === "dark" ? "Dark brand color" : key === "accent" ? "Accent (placeholder blue)" : "Primary background"}</p>
-              <p className="font-mono text-xs text-muted">{value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        {[{ label: "Default tone of voice", items: toneOfVoice }, { label: "Default customer desires", items: customerDesires }].map((g) => (
-          <div key={g.label} className="rounded-[var(--radius-card)] border border-line bg-paper p-5">
-            <p className="text-[13px] font-medium">{g.label}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {g.items.map((t) => (
-                <span key={t} className="rounded-full border border-line-strong px-3 py-1 text-xs text-ink-soft">{t}</span>
-              ))}
-            </div>
-          </div>
-        ))}
+      <div className="flex flex-col gap-6">
+        {PROJECTS.map((project) => {
+          const snapshot = buildStrategySnapshot({ project, product: project.exampleProduct, brand: project.brandContext });
+          const { colors } = project.brandContext;
+          return (
+            <section key={project.id} className="rounded-[var(--radius-card)] border border-line bg-paper p-6 sm:p-8">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-serif text-3xl leading-none">{project.name}</h2>
+                  <p className="mt-1.5 text-[13px] text-muted">{project.description}</p>
+                </div>
+                <div className="flex -space-x-1.5" aria-label="Brand colors">
+                  {[colors.background, colors.dark, colors.accent].map((c) => (
+                    <span key={c} title={c} className="size-7 rounded-full ring-2 ring-paper" style={{ background: c, boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.08)" }} />
+                  ))}
+                </div>
+              </div>
+              <div className="mt-6">
+                <CreativeStrategyPanel snapshot={snapshot} />
+              </div>
+            </section>
+          );
+        })}
       </div>
     </PlaceholderPage>
   );

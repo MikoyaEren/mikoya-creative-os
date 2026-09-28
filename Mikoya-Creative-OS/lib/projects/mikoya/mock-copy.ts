@@ -1,13 +1,16 @@
 import type { MechanismId } from "@/lib/types";
+import type { CopyLine, MockCopyBank } from "@/lib/mock/concept-templates";
 
 /**
- * Hand-written mock copy so the gallery feels real before the concept-writer
- * model exists. `p` = product name, `b` = brand name.
+ * MIKOYA PROJECT DATA — hand-written mock concept copy.
+ *
+ * Simulates what the concept writer would return for Mikoya. It is project
+ * data, not application logic: other projects use the generic templates in
+ * lib/mock/concept-templates.ts. `p` = product name, `b` = brand name.
  */
-type CopyLine = { hook: string; sub: string };
 type CopyFn = (p: string, b: string) => CopyLine[];
 
-export const COPY_BANK: Record<MechanismId, CopyFn> = {
+const COPY: Record<MechanismId, CopyFn> = {
   x_post: (p) => [
     { hook: "switched my 3pm coffee for matcha and suddenly i'm the calm one in the group chat", sub: `${p} — the calm kind of energy.` },
     { hook: "nobody talks about how matcha people just have their life together", sub: "Join them. It starts with one whisk." },
@@ -130,24 +133,13 @@ export const COPY_BANK: Record<MechanismId, CopyFn> = {
   ],
 };
 
-export const ANGLES = [
-  "Community / Identity",
-  "Better routine",
-  "Better coffee alternative",
-  "Prestige / Quality",
-  "Self care",
-  "Aesthetic lifestyle",
-  "Social proof",
-  "Objection handling",
-  "Price / Value",
-  "Playful / Humour",
-];
+export const MIKOYA_MOCK_COPY: MockCopyBank = Object.fromEntries(
+  Object.entries(COPY).map(([id, fn]) => [id, (c: { product: string; brand: string }) => fn(c.product, c.brand)]),
+);
 
-export const CTAS = [
+export const MIKOYA_MOCK_CTAS = [
   "Start your ritual",
   "Shop the ritual",
   "Try it for 30 days",
-  "15% off your first tin",
-  "Join the club",
   "Find your matcha",
 ];

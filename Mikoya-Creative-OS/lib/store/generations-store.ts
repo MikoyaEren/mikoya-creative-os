@@ -11,7 +11,7 @@ import { createSeedBatches } from "@/lib/mock/batches";
  * localStorage (best effort). Replace with a real API / database later — the
  * hooks below are the only thing components depend on.
  */
-const STORAGE_KEY = "mikoya-creative-os:batches:v2";
+const STORAGE_KEY = "creative-os:batches:v3";
 
 type Listener = () => void;
 

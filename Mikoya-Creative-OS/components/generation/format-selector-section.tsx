@@ -23,7 +23,7 @@ export function FormatSelectorSection({ value, onChange, error }: FormatSelector
   return (
     <SectionCard
       id="section-formats"
-      step="D"
+      step="E"
       title="Creative mechanisms"
       description={`Pick the ad mechanisms to draw concepts from. ${value.length} of ${MECHANISMS.length} selected. 1:1 and 9:16 are always generated for every concept.`}
       actions={

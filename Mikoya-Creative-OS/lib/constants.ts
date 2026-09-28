@@ -1,39 +1,14 @@
 import type { BrandContext, CreativeBatch, CreativeConcept, CreativeType, OutputMix, OutputPreset, RendererType } from "@/lib/types";
 import { OUTPUTS_PER_CONCEPT } from "@/lib/pipeline/formats";
 
-export const DEFAULT_BRAND_CONTEXT: BrandContext = {
-  brandName: "Mikoya",
-  colors: {
-    background: "#F8F6F0",
-    dark: "#255C33",
-    // Placeholder — replace with the final Mikoya brand blue.
-    accent: "#2F5AA8",
-  },
-  toneOfVoice: ["Friend-to-friend", "Premium", "Social-first"],
-  customerDesires: ["Better routine", "Better coffee alternative", "Aesthetic lifestyle"],
+/** Neutral starting point; real defaults come from the active project. */
+export const EMPTY_BRAND_CONTEXT: BrandContext = {
+  brandName: "",
+  colors: { background: "#F8F6F0", dark: "#141413", accent: "#2F5AA8" },
+  toneOfVoice: [],
+  customerDesires: [],
   notes: "",
 };
-
-export const TONE_OPTIONS = [
-  "Friend-to-friend",
-  "Premium",
-  "Bold",
-  "Playful",
-  "Slightly provocative",
-  "Social-first",
-  "Clean Girl",
-  "Soft Luxury",
-];
-
-export const DESIRE_OPTIONS = [
-  "Belonging",
-  "Prestige",
-  "Better routine",
-  "Self care",
-  "Aesthetic lifestyle",
-  "Community",
-  "Better coffee alternative",
-];
 
 export const OUTPUT_PRESETS: OutputPreset[] = [
   {

@@ -6,26 +6,36 @@ import type {
   CreativeVariant,
   GenerationRequest,
   MechanismId,
+  StrategySnapshot,
   VariantStatus,
 } from "@/lib/types";
 import { CREATIVE_TYPE_ORDER } from "@/lib/constants";
+import { getProject } from "@/lib/projects";
 import { getMechanism, getRecipeForMechanism } from "@/lib/recipes";
 import { OUTPUT_FORMATS } from "@/lib/pipeline/formats";
-import { composeVariantPrompt, resolveLayout } from "@/lib/pipeline/prompt-builder";
-import { RENDERERS } from "@/lib/pipeline/renderers";
-import { buildTruthPackStub } from "@/lib/pipeline/truth-pack";
+import { buildVariantPrompt, resolveLayout } from "@/lib/prompts/prompt-builder";
+import { RENDERERS } from "@/lib/prompts/renderer-instructions";
+import { buildStrategySnapshot } from "@/lib/strategy";
 import { createId, createRandom, pad } from "@/lib/utils";
-import { ANGLES, COPY_BANK, CTAS } from "./copy-bank";
+import { GENERIC_CTAS, GENERIC_TEMPLATES, copyContextFrom } from "./concept-templates";
+
+/**
+ * MOCK GENERATION PIPELINE
+ *
+ * Mirrors the future real pipeline step by step, with mocks in place of AI:
+ *   1. buildStrategySnapshot()   truth pack + brand strategy + hypotheses → dynamic strategy
+ *   2. planSlots()               distribute concepts across selected mechanisms
+ *   3. write concept drafts      (mock: templates / project copy — later: LLM via buildConceptPrompt)
+ *   4. expand into 1:1 + 9:16    one CreativeVariant per mandatory format
+ *   5. buildVariantPrompt()      per-variant render prompt
+ * Contains no brand knowledge; everything brand-specific comes from the project.
+ */
 
 interface MockOptions {
   id?: string;
   createdAt?: string;
   /** Force a handful of variants into non-complete states for realism. */
   withPendingStates?: boolean;
-}
-
-function pick<T>(items: T[], rand: () => number): T {
-  return items[Math.floor(rand() * items.length)];
 }
 
 /**
@@ -46,17 +56,20 @@ export function planSlots(request: Pick<GenerationRequest, "outputMix" | "mechan
   return slots;
 }
 
-function describeVisual(mechanism: MechanismId, productName: string) {
+/** Generic visual idea, driven by the renderer type and the batch's visual direction. */
+function describeVisual(mechanism: MechanismId, productName: string, snapshot: StrategySnapshot) {
   const m = getMechanism(mechanism);
+  const direction = snapshot.dynamicStrategy.visualDirection[0]?.statement;
+  const look = direction ? ` Visual direction: ${direction}.` : "";
   switch (m.defaultRenderer) {
     case "image":
-      return `Photographic scene featuring ${productName} from the reference image, soft morning light, cream and deep green palette, generous negative space for type.`;
+      return `Photographic scene featuring ${productName} exactly as in the reference image, natural light, generous negative space for type.${look}`;
     case "video":
-      return `Handmade clay set, warm key light, visible fingerprints. ${productName} modeled from reference packaging, appears in the final beat.`;
+      return `Handmade clay set with visible texture. ${productName} modeled from the reference packaging, revealed in the final beat.${look}`;
     case "ugc_video":
-      return `Creator in her early 30s, natural window light, kitchen counter. Holds ${productName} to camera; captions burned in.`;
+      return `Creator talking to camera in natural light, holding ${productName}; captions burned in.${look}`;
     default:
-      return `Native ${m.name} UI rendered in HTML on brand background. No stock imagery; typography carries the idea.`;
+      return `Native ${m.name} UI rendered in HTML on the brand background. Typography carries the idea.${look}`;
   }
 }
 
@@ -64,9 +77,20 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
   const batchId = options.id ?? createId("batch");
   const createdAt = options.createdAt ?? new Date().toISOString();
   const rand = createRandom(batchId);
-  const truthPack = buildTruthPackStub(request.product);
-  const productName = request.product.name || "Your product";
-  const brandName = request.brand.brandName || "Mikoya";
+  const project = getProject(request.projectId);
+
+  // 1. Strategy layers — same function the New Generation preview uses.
+  const snapshot = buildStrategySnapshot({
+    project,
+    product: request.product,
+    brand: request.brand,
+    direction: request.direction,
+    decisions: request.hypothesisDecisions,
+  });
+  const { truthPack, dynamicStrategy } = snapshot;
+  const productName = truthPack.productName.value;
+  const angles = [...dynamicStrategy.primaryAngles, ...dynamicStrategy.primaryAngles, ...dynamicStrategy.secondaryAngles].map((a) => a.statement);
+  const ctas = [...truthPack.offers.map((o) => `Get ${o.value}`), ...(project.mockCtas ?? GENERIC_CTAS)];
   const usage = new Map<MechanismId, number>();
 
   const concepts: CreativeConcept[] = planSlots(request).map((slot, i) => {
@@ -75,23 +99,22 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
     const used = usage.get(slot.mechanism) ?? 0;
     usage.set(slot.mechanism, used + 1);
 
-    const lines = COPY_BANK[slot.mechanism](productName, brandName);
+    // 3. Concept draft (mock concept writer). Later: LLM with buildConceptPrompt().
+    const template = project.mockCopy?.[slot.mechanism] ?? GENERIC_TEMPLATES[slot.mechanism];
+    const lines = template(copyContextFrom(truthPack, dynamicStrategy, request.brand.brandName, i + used));
     const copy = lines[used % lines.length];
-    const angle = recipe.recommendedAngles.length && rand() > 0.4
-      ? pick(recipe.recommendedAngles, rand)
-      : pick(ANGLES, rand);
 
-    // Shared idea — written once, identical in every format.
     const draft: CreativeConceptDraft = {
       recipeId: recipe.id,
       mechanism: slot.mechanism,
-      angle,
+      angle: angles.length ? angles[i % angles.length] : "Core benefit",
       hook: copy.hook,
       subheadline: copy.sub,
-      visualDescription: describeVisual(slot.mechanism, productName),
-      cta: pick(CTAS, rand),
+      visualDescription: describeVisual(slot.mechanism, productName, snapshot),
+      cta: ctas[Math.floor(rand() * ctas.length)],
     };
 
+    // 4–5. Expand into the mandatory formats, each with its own render prompt.
     const conceptId = `${batchId}_c${pad(i + 1)}`;
     const variants: CreativeVariant[] = OUTPUT_FORMATS.map((format) => {
       let status: VariantStatus = "complete";
@@ -106,13 +129,15 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
         conceptId,
         aspectRatio: format,
         layoutDescription,
-        generationPrompt: composeVariantPrompt({
-          brand: request.brand,
-          truthPack,
-          recipe,
+        generationPrompt: buildVariantPrompt({
           concept: draft,
-          format,
-          layoutDescription,
+          variant: { aspectRatio: format, layoutDescription },
+          rendererInstructions: RENDERERS[recipe.renderer],
+          visualContext: {
+            brandColors: request.brand.colors,
+            packagingDescription: truthPack.packagingDescription?.value,
+            referenceAssetIds: truthPack.availableAssets.map((a) => a.assetId),
+          },
         }),
         // No renderer connected yet — previews are drawn client-side.
         previewUrl: null,
@@ -136,6 +161,8 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
 
   return {
     id: batchId,
+    projectId: project.id,
+    strategy: snapshot,
     product: request.product,
     brand: request.brand,
     outputMix: request.outputMix,

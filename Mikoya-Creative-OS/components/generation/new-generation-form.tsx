@@ -3,16 +3,21 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
-import type { BrandContext, CreativeType, GenerationRequest, MechanismId, OutputMix, OutputPresetId, ProductInput } from "@/lib/types";
-import { CREATIVE_TYPE_ORDER, DEFAULT_BRAND_CONTEXT, DEFAULT_PRESET, outputsFor, plural } from "@/lib/constants";
+import type { BrandContext, CreativeType, GenerationRequest, HypothesisDecision, MechanismId, OutputMix, OutputPresetId, ProductInput } from "@/lib/types";
+import { CREATIVE_TYPE_ORDER, DEFAULT_PRESET, outputsFor, plural } from "@/lib/constants";
+import { DEFAULT_PROJECT_ID, PROJECTS, getProject } from "@/lib/projects";
+import { buildStrategySnapshot } from "@/lib/strategy";
 import { ALL_MECHANISM_IDS, getMechanism } from "@/lib/recipes";
 import { planSlots } from "@/lib/mock/generate-batch";
-import { MIKOYA_EXAMPLE_PRODUCT } from "@/lib/mock/reference-assets";
 import { generationProvider } from "@/lib/pipeline/provider";
 import { addBatch } from "@/lib/store/generations-store";
 import { toast } from "@/lib/store/toast-store";
 import { isValidUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Segmented } from "@/components/ui/segmented";
+import { SourceBadge } from "@/components/strategy/source-badge";
+import { CreativeStrategyPanel } from "@/components/strategy/creative-strategy-panel";
+import { CollapsibleSection } from "@/components/strategy/creative-strategy-section";
 import { BrandContextSection } from "@/components/product/brand-context-section";
 import { ProductSection, type ProductErrors } from "@/components/product/product-section";
 import { FormatSelectorSection } from "./format-selector-section";
@@ -32,8 +37,11 @@ function validate(product: ProductInput): ProductErrors {
 
 export function NewGenerationForm() {
   const router = useRouter();
+  const [projectId, setProjectId] = useState(DEFAULT_PROJECT_ID);
+  const project = getProject(projectId);
   const [product, setProduct] = useState<ProductInput>(EMPTY_PRODUCT);
-  const [brand, setBrand] = useState<BrandContext>(DEFAULT_BRAND_CONTEXT);
+  const [brand, setBrand] = useState<BrandContext>(project.brandContext);
+  const [decisions, setDecisions] = useState<Record<string, HypothesisDecision>>({});
   const [mix, setMix] = useState<OutputMix>(DEFAULT_PRESET.mix);
   const [presetId, setPresetId] = useState<OutputPresetId>(DEFAULT_PRESET.id);
   const [mechanismIds, setMechanismIds] = useState<MechanismId[]>(ALL_MECHANISM_IDS);
@@ -46,6 +54,22 @@ export function NewGenerationForm() {
     () => CREATIVE_TYPE_ORDER.filter((t) => mix[t] > 0 && !mechanismIds.some((id) => getMechanism(id).type === t)),
     [mix, mechanismIds],
   );
+  // Same resolution the pipeline uses — what you see is what the concept writer gets.
+  const snapshot = useMemo(
+    () => buildStrategySnapshot({ project, product, brand, direction: project.defaultDirection, decisions }),
+    [project, product, brand, decisions],
+  );
+  const inferredInUse = snapshot.hypotheses.filter((h) => h.decision !== "rejected" && h.decision !== "accepted").length;
+
+  function switchProject(id: string) {
+    const next = getProject(id);
+    setProjectId(next.id);
+    setBrand(next.brandContext);
+    setProduct(EMPTY_PRODUCT);
+    setDecisions({});
+    setSubmitted(false);
+  }
+
   const formatError = submitted && mechanismIds.length === 0 ? "Select at least one creative mechanism." : undefined;
 
   async function handleGenerate() {
@@ -61,6 +85,9 @@ export function NewGenerationForm() {
     }
 
     const request: GenerationRequest = {
+      projectId: project.id,
+      direction: project.defaultDirection,
+      hypothesisDecisions: decisions,
       product: { ...product, name: product.name.trim(), url: product.url.trim() },
       brand,
       outputMix: mix,
@@ -83,8 +110,46 @@ export function NewGenerationForm() {
 
   return (
     <div className="mt-12 flex flex-col gap-5">
-      <ProductSection value={product} onChange={setProduct} errors={errors} onLoadExample={() => setProduct(MIKOYA_EXAMPLE_PRODUCT)} />
-      <BrandContextSection value={brand} onChange={setBrand} />
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-line bg-paper px-6 py-4 sm:px-8">
+        <div>
+          <p className="text-[13px] font-medium">Brand workspace</p>
+          <p className="text-xs text-muted">Brand strategy, facts and hypotheses come from the selected workspace.</p>
+        </div>
+        <Segmented
+          ariaLabel="Brand workspace"
+          value={projectId}
+          onChange={switchProject}
+          options={PROJECTS.map((p) => ({ value: p.id, label: p.name }))}
+        />
+      </div>
+      <ProductSection
+        value={product}
+        onChange={setProduct}
+        errors={errors}
+        onLoadExample={() => setProduct(project.exampleProduct)}
+        exampleLabel={`Load ${project.name} example`}
+        placeholders={{ name: project.exampleProduct.name, url: project.exampleProduct.url }}
+      />
+      <BrandContextSection value={brand} onChange={setBrand} toneOptions={project.toneOptions} desireOptions={project.desireOptions} />
+      <CollapsibleSection
+        id="section-strategy"
+        step="C"
+        title="Creative strategy"
+        summary={`${snapshot.dynamicStrategy.leadWith.length ? `Leads with ${snapshot.dynamicStrategy.leadWith.map((s) => s.statement.toLowerCase()).join(", ")}. ` : ""}Review facts, brand strategy, AI inferences and direction.`}
+        openDescription="What this batch should communicate — resolved from facts, brand strategy and AI inferences."
+        aside={
+          <div className="hidden items-center gap-1.5 md:flex">
+            <SourceBadge source="user_input" />
+            <SourceBadge source="source_fact" />
+            {inferredInUse > 0 && <SourceBadge source="ai_inference" />}
+          </div>
+        }
+      >
+        <CreativeStrategyPanel
+          snapshot={snapshot}
+          onDecision={(id, decision) => setDecisions((d) => ({ ...d, [id]: decision }))}
+        />
+      </CollapsibleSection>
       <OutputMixSection
         mix={mix}
         presetId={presetId}

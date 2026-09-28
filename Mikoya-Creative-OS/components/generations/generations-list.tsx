@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowUpRight, History, Search } from "lucide-react";
 import { OUTPUT_PRESETS, batchOutputStats } from "@/lib/constants";
+import { getProject } from "@/lib/projects";
 import { useBatches } from "@/lib/store/generations-store";
 import { formatDateTime, formatRelativeDate } from "@/lib/utils";
 import { buttonClasses } from "@/components/ui/button";
@@ -84,7 +85,9 @@ export function GenerationsList() {
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-[14px] font-medium">{b.product.name}</p>
-                        <p className="truncate text-xs text-muted">{b.product.url.replace(/^https?:\/\//, "")}</p>
+                        <p className="truncate text-xs text-muted">
+                          <span className="font-medium text-ink-soft">{getProject(b.projectId).name}</span> · {b.product.url.replace(/^https?:\/\//, "")}
+                        </p>
                       </div>
                     </div>
                     <span className="hidden text-[13px] text-ink-soft md:block" title={formatDateTime(b.createdAt)} suppressHydrationWarning>

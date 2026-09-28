@@ -12,6 +12,8 @@ interface CreativePreviewProps {
   productImage?: string | null;
   /** Optional lifestyle photo used by scene-based mechanisms. */
   lifestyleImage?: string | null;
+  /** Used for native UI chrome (avatars, receipts, notifications). */
+  brandName: string;
   colors: BrandColors;
   className?: string;
 }
@@ -41,8 +43,10 @@ export function CreativePreview({ className, format, colors, ...rest }: Creative
   );
 }
 
-function PreviewBody({ concept, format, productName, productImage, lifestyleImage, colors }: CreativePreviewProps) {
+function PreviewBody({ concept, format, productName, productImage, lifestyleImage, brandName, colors }: CreativePreviewProps) {
   const { hook, subheadline: sub, cta } = concept;
+  const brandLabel = (brandName || "Brand").toUpperCase();
+  const initial = (brandName || "B").charAt(0).toLowerCase();
   const sq = format === "1:1";
   const product = (cls: string) => <ProductVisual src={productImage} name={productName} className={cls} />;
   const ctaPill = (cls?: string) => (
@@ -57,7 +61,7 @@ function PreviewBody({ concept, format, productName, productImage, lifestyleImag
         <div className={cn("flex h-full flex-col items-center p-[7cqw]", sq ? "justify-center" : "justify-between pt-[22cqw] pb-[26cqw]")}>
           <div className="w-full rounded-[3cqw] bg-white p-[5cqw] shadow-[0_2cqw_6cqw_-2cqw_rgba(0,0,0,0.18)]">
             <div className="flex items-center gap-[2.5cqw]">
-              <span className="flex size-[9cqw] items-center justify-center rounded-full font-serif text-[5cqw] text-white" style={{ background: colors.dark }}>m</span>
+              <span className="flex size-[9cqw] items-center justify-center rounded-full font-serif text-[5cqw] text-white" style={{ background: colors.dark }}>{initial}</span>
               <div className="leading-tight">
                 <p className="flex items-center gap-[1cqw] text-[3.6cqw] font-semibold text-black">
                   sophie <BadgeCheck className="size-[3.6cqw] text-[#1d9bf0]" />
@@ -159,7 +163,7 @@ function PreviewBody({ concept, format, productName, productImage, lifestyleImag
           <p className={cn("leading-none font-light tracking-tight", sq ? "text-[15cqw]" : "text-[22cqw]")}>8:02</p>
           <div className={cn("w-full rounded-[4cqw] bg-white/20 p-[3.5cqw] backdrop-blur", sq ? "mt-[4cqw]" : "mt-[10cqw]")}>
             <div className="flex items-center gap-[2cqw] text-[3cqw] opacity-80">
-              <span className="size-[4.5cqw] rounded-[1.2cqw] bg-[#f8f6f0]" /> MIKOYA · now
+              <span className="size-[4.5cqw] rounded-[1.2cqw] bg-[#f8f6f0]" /> {brandLabel} · now
             </div>
             <p className="mt-[1.5cqw] text-[3.8cqw] font-semibold">{hook}</p>
             <p className="text-[3.4cqw] opacity-85">{sub}</p>
@@ -172,7 +176,7 @@ function PreviewBody({ concept, format, productName, productImage, lifestyleImag
       return (
         <div className={cn("flex h-full p-[7cqw]", sq ? "flex-row items-center gap-[3cqw]" : "relative flex-col items-center pt-0")}>
           <div className={cn("bg-white px-[5cqw] py-[6cqw] font-mono text-black shadow-[0_2cqw_5cqw_rgba(0,0,0,0.15)]", sq ? "w-[58%] -rotate-3" : "w-[80%] rotate-1 pt-[24cqw]")}>
-            <p className="text-center text-[4cqw] font-bold tracking-widest">MIKOYA</p>
+            <p className="text-center text-[4cqw] font-bold tracking-widest">{brandLabel}</p>
             <p className="text-center text-[2.6cqw] text-neutral-500">ORDER #0042 · 08:00</p>
             <div className="my-[3cqw] border-t border-dashed border-neutral-400" />
             {sub.split("\n").map((line) => (
@@ -309,7 +313,7 @@ function PreviewBody({ concept, format, productName, productImage, lifestyleImag
           <div className={cn("grid grid-cols-7 gap-[1.5cqw]", sq ? "mt-[4cqw] w-[78%]" : "mt-[6cqw]")}>
             {Array.from({ length: 28 }, (_, i) => (
               <div key={i} className="flex aspect-square items-center justify-center rounded-[1.5cqw] text-[2.6cqw]" style={i < 19 ? { background: colors.dark, color: "#f8f6f0" } : { background: "rgba(0,0,0,0.05)", color: "#74716a" }}>
-                {i < 19 ? "🍵" : i + 1}
+                {i < 19 ? "✓" : i + 1}
               </div>
             ))}
           </div>
@@ -401,7 +405,7 @@ function PreviewBody({ concept, format, productName, productImage, lifestyleImag
 
     case "claymation":
     case "ai_ugc":
-      return <MotionPreview concept={concept} format={format} productName={productName} productImage={productImage} lifestyleImage={lifestyleImage} colors={colors} />;
+      return <MotionPreview concept={concept} format={format} productName={productName} productImage={productImage} lifestyleImage={lifestyleImage} brandName={brandName} colors={colors} />;
 
     default: {
       // Typography-led statements: don't buy this, hot take, confession, unpopular opinion, etc.

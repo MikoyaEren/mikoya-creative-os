@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, CircleAlert, Download, FileQuestion, Plus, RefreshCw } from "lucide-react";
 import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, OUTPUT_PRESETS, batchOutputStats, plural } from "@/lib/constants";
+import { getProject } from "@/lib/projects";
 import { useBatch, useHydrated } from "@/lib/store/generations-store";
 import { toast } from "@/lib/store/toast-store";
 import { formatDateTime, formatRelativeDate } from "@/lib/utils";
@@ -14,6 +15,9 @@ import { CreativeCardSkeleton } from "./creative-card";
 import { CreativeGallery } from "./creative-gallery";
 import { ProductVisual } from "./product-visual";
 import { StatusPill } from "./status-pill";
+import { SourceBadge } from "@/components/strategy/source-badge";
+import { CreativeStrategyPanel } from "@/components/strategy/creative-strategy-panel";
+import { CollapsibleSection } from "@/components/strategy/creative-strategy-section";
 
 export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) {
   const hydrated = useHydrated();
@@ -103,6 +107,30 @@ export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) 
           </a>
         </div>
       )}
+
+      <div className="mt-6">
+        <CollapsibleSection
+          title="Batch strategy"
+          summary={
+            <>
+              {getProject(batch.projectId).name} workspace ·{" "}
+              {batch.strategy.dynamicStrategy.leadWith.length
+                ? `led with ${batch.strategy.dynamicStrategy.leadWith.map((s) => s.statement.toLowerCase()).join(", ")}`
+                : "no explicit lead"}
+            </>
+          }
+          openDescription={batch.strategy.dynamicStrategy.rationale}
+          aside={
+            <div className="hidden items-center gap-1.5 md:flex">
+              <SourceBadge source="user_input" />
+              <SourceBadge source="source_fact" />
+              <SourceBadge source="ai_inference" />
+            </div>
+          }
+        >
+          <CreativeStrategyPanel snapshot={batch.strategy} />
+        </CollapsibleSection>
+      </div>
 
       <div className="mt-8">
         {batch.status === "failed" ? (

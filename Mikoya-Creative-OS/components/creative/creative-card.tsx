@@ -14,6 +14,7 @@ interface CreativeCardProps {
   productName: string;
   productImage?: string | null;
   lifestyleImage?: string | null;
+  brandName: string;
   colors: BrandColors;
   onOpen: (format?: OutputFormat) => void;
 }
@@ -47,7 +48,7 @@ function VariantStatusOverlay({ variant }: { variant: CreativeVariant }) {
 }
 
 /** One concept = one card, showing its mandatory 1:1 and 9:16 variants side by side. */
-export function CreativeCard({ concept, productName, productImage, lifestyleImage, colors, onOpen }: CreativeCardProps) {
+export function CreativeCard({ concept, productName, productImage, lifestyleImage, brandName, colors, onOpen }: CreativeCardProps) {
   const mechanism = getMechanism(concept.mechanism);
   const ready = readyOutputs(concept);
   const total = concept.variants.length;
@@ -71,6 +72,7 @@ export function CreativeCard({ concept, productName, productImage, lifestyleImag
                 productName={productName}
                 productImage={productImage}
                 lifestyleImage={lifestyleImage}
+                brandName={brandName}
                 colors={colors}
                 className="w-full"
               />

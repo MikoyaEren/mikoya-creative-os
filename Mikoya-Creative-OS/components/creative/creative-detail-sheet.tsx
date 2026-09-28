@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Check, Copy, Download, PenLine, RefreshCw, Sparkles } from "lucide-react";
-import type { BrandColors, CreativeConcept, OutputFormat } from "@/lib/types";
+import type { BrandColors, CreativeConcept, OutputFormat, StrategySnapshot } from "@/lib/types";
+import { GLOBAL_CREATIVE_CONSTITUTION } from "@/lib/prompts/global-creative-constitution";
+import { buildConceptPrompt } from "@/lib/prompts/prompt-builder";
 import { CREATIVE_TYPE_LABELS, RENDERER_LABELS, readyOutputs } from "@/lib/constants";
 import { FORMAT_SPECS, OUTPUT_FORMATS } from "@/lib/pipeline/formats";
 import { getMechanism, getRecipeForMechanism } from "@/lib/recipes";
@@ -22,6 +24,9 @@ interface CreativeDetailSheetProps {
   productName: string;
   productImage?: string | null;
   lifestyleImage?: string | null;
+  brandName: string;
+  /** Strategy layers the batch was written from (for the shared concept prompt). */
+  strategy: StrategySnapshot;
   colors: BrandColors;
   onClose: () => void;
 }
@@ -44,12 +49,12 @@ function SectionLabel({ children, aside }: { children: ReactNode; aside?: ReactN
   );
 }
 
-function PromptBlock({ prompt, format }: { prompt: string; format: OutputFormat }) {
+function PromptBlock({ prompt, title, dark = true }: { prompt: string; title: string; dark?: boolean }) {
   const [copied, setCopied] = useState(false);
   return (
-    <div className="mt-2 overflow-hidden rounded-xl border border-line bg-ink">
+    <div className={dark ? "mt-2 overflow-hidden rounded-xl border border-line bg-ink" : "mt-2 overflow-hidden rounded-xl border border-line bg-[#23231f]"}>
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-2">
-        <span className="text-[11px] font-medium tracking-[0.12em] text-cream/60 uppercase">Generation prompt · {format}</span>
+        <span className="text-[11px] font-medium tracking-[0.12em] text-cream/60 uppercase">{title}</span>
         <button
           type="button"
           onClick={async () => {
@@ -79,10 +84,26 @@ export function CreativeDetailSheet({
   productName,
   productImage,
   lifestyleImage,
+  brandName,
+  strategy,
   colors,
   onClose,
 }: CreativeDetailSheetProps) {
   const variant = concept?.variants.find((v) => v.aspectRatio === format) ?? concept?.variants[0];
+  const conceptPrompt = useMemo(
+    () =>
+      concept
+        ? buildConceptPrompt({
+            productTruthPack: strategy.truthPack,
+            brandStrategyProfile: strategy.brandStrategy,
+            strategyHypotheses: strategy.hypotheses,
+            dynamicCreativeStrategy: strategy.dynamicStrategy,
+            globalCreativeConstitution: GLOBAL_CREATIVE_CONSTITUTION,
+            recipe: getRecipeForMechanism(concept.mechanism),
+          })
+        : "",
+    [concept, strategy],
+  );
 
   return (
     <Sheet open={Boolean(concept)} onClose={onClose} title={concept ? `${concept.name} details` : "Concept details"}>
@@ -103,6 +124,7 @@ export function CreativeDetailSheet({
                 productName={productName}
                 productImage={productImage}
                 lifestyleImage={lifestyleImage}
+                brandName={brandName}
                 colors={colors}
                 className={variant.aspectRatio === "9:16" ? "h-[min(64vh,560px)] rounded-lg shadow-xl" : "w-[min(100%,360px)] rounded-lg shadow-xl sm:w-[360px]"}
               />
@@ -143,6 +165,12 @@ export function CreativeDetailSheet({
                 <Row label="CTA / Offer">{concept.cta}</Row>
                 <Row label="Renderer"><span className="font-mono text-xs">{RENDERER_LABELS[concept.renderer]}</span></Row>
               </dl>
+              <details className="group mt-2">
+                <summary className="cursor-pointer py-2 text-xs font-medium text-ink-soft hover:text-ink">
+                  Concept prompt · shared by 1:1 and 9:16 <span className="text-muted">(constitution + facts + brand + hypotheses + direction + recipe)</span>
+                </summary>
+                <PromptBlock prompt={conceptPrompt} title="Concept prompt · shared" dark={false} />
+              </details>
 
               <SectionLabel aside={<StatusPill status={variant.status} />}>Format · {variant.aspectRatio}</SectionLabel>
               <dl>
@@ -156,7 +184,7 @@ export function CreativeDetailSheet({
                   )}
                 </Row>
               </dl>
-              <PromptBlock key={variant.id} prompt={variant.generationPrompt} format={variant.aspectRatio} />
+              <PromptBlock key={variant.id} prompt={variant.generationPrompt} title={`Variant prompt · ${variant.aspectRatio}`} />
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-line bg-paper px-6 py-4 sm:px-8">

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import type { BrandContext } from "@/lib/types";
-import { DESIRE_OPTIONS, TONE_OPTIONS } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { Field } from "@/components/ui/field";
 import { Input, Textarea } from "@/components/ui/input";
@@ -13,9 +12,12 @@ import { TagSelector } from "./tag-selector";
 interface BrandContextSectionProps {
   value: BrandContext;
   onChange: (value: BrandContext) => void;
+  /** Suggestions from the active project's brand data. */
+  toneOptions: string[];
+  desireOptions: string[];
 }
 
-export function BrandContextSection({ value, onChange }: BrandContextSectionProps) {
+export function BrandContextSection({ value, onChange, toneOptions, desireOptions }: BrandContextSectionProps) {
   const [open, setOpen] = useState(false);
   const set = <K extends keyof BrandContext>(key: K, v: BrandContext[K]) => onChange({ ...value, [key]: v });
   const setColor = (key: keyof BrandContext["colors"], v: string) => set("colors", { ...value.colors, [key]: v });
@@ -34,7 +36,7 @@ export function BrandContextSection({ value, onChange }: BrandContextSectionProp
           <div>
             <h2 className="text-[15px] font-semibold tracking-tight">Brand context</h2>
             <p className="mt-1 text-[13px] text-muted">
-              {open ? "Global context shared by every creative in the batch." : "Using saved Mikoya defaults. Expand to adjust for this batch."}
+              {open ? "Global context shared by every creative in the batch." : `Using saved ${value.brandName || "brand"} defaults. Expand to adjust for this batch — your changes count as user input.`}
             </p>
           </div>
         </div>
@@ -52,22 +54,22 @@ export function BrandContextSection({ value, onChange }: BrandContextSectionProp
         <div id="brand-context-body" className="border-t border-line px-6 py-7 sm:px-8">
           <div className="grid gap-6 md:grid-cols-2">
             <Field label="Brand name" htmlFor="brand-name">
-              <Input id="brand-name" value={value.brandName} onChange={(e) => set("brandName", e.target.value)} placeholder="Mikoya" />
+              <Input id="brand-name" value={value.brandName} onChange={(e) => set("brandName", e.target.value)} placeholder="Brand name" />
             </Field>
           </div>
 
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             <ColorField label="Primary background" value={value.colors.background} onChange={(v) => setColor("background", v)} />
             <ColorField label="Dark brand color" value={value.colors.dark} onChange={(v) => setColor("dark", v)} />
-            <ColorField label="Accent color" value={value.colors.accent} onChange={(v) => setColor("accent", v)} hint="Placeholder — set the final Mikoya blue." />
+            <ColorField label="Accent color" value={value.colors.accent} onChange={(v) => setColor("accent", v)} hint="Secondary brand accent." />
           </div>
 
           <Field label="Tone of voice" className="mt-8" hint={`${value.toneOfVoice.length} selected`}>
-            <TagSelector label="Tone of voice" options={TONE_OPTIONS} value={value.toneOfVoice} onChange={(v) => set("toneOfVoice", v)} />
+            <TagSelector label="Tone of voice" options={toneOptions} value={value.toneOfVoice} onChange={(v) => set("toneOfVoice", v)} />
           </Field>
 
           <Field label="Customer desires" className="mt-7" hint="Press Enter to add">
-            <TagSelector label="Customer desires" options={DESIRE_OPTIONS} value={value.customerDesires} onChange={(v) => set("customerDesires", v)} editable />
+            <TagSelector label="Customer desires" options={desireOptions} value={value.customerDesires} onChange={(v) => set("customerDesires", v)} editable />
           </Field>
 
           <Field label="Brand notes" optional htmlFor="brand-notes" className="mt-7">

@@ -5,7 +5,7 @@ import { SearchX } from "lucide-react";
 import type { CreativeBatch, CreativeType, MechanismId, OutputFormat } from "@/lib/types";
 import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER } from "@/lib/constants";
 import { getMechanism } from "@/lib/recipes";
-import { lifestyleImageOf } from "@/lib/mock/reference-assets";
+import { lifestyleImageOf } from "@/lib/assets";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Segmented } from "@/components/ui/segmented";
@@ -95,6 +95,7 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
               productName={batch.product.name}
               productImage={productImage}
               lifestyleImage={lifestyleImage}
+              brandName={batch.brand.brandName}
               colors={batch.brand.colors}
               onOpen={(format) => {
                 setOpenFormat(format ?? "1:1");
@@ -126,6 +127,8 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
         productName={batch.product.name}
         productImage={productImage}
         lifestyleImage={lifestyleImage}
+        brandName={batch.brand.brandName}
+        strategy={batch.strategy}
         colors={batch.brand.colors}
         onClose={() => setOpenId(null)}
       />

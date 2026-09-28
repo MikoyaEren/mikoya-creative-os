@@ -5,12 +5,14 @@ import { createMockBatch } from "@/lib/mock/generate-batch";
  * Contract for the generation backend. The UI only talks to this interface,
  * so swapping the mock for real AI providers does not touch components.
  *
- * Future real implementation:
- *   1. analyzeProduct(request)      → ProductTruthPack
- *   2. planConcepts(truthPack, …)   → CreativeConceptDraft[] (LLM, JSON, shared idea)
- *   3. expand each draft into 1:1 + 9:16 CreativeVariants
- *   4. composeVariantPrompt(…)      → one final prompt per variant
- *   5. renderVariant(variant)       → outputUrl via html / image / video / ugc renderer
+ * Future real implementation (AI calls marked ★):
+ *   1. ★ analyzeProduct(product)        → ProductTruthPack (scrape + vision; facts only)
+ *   2.   load BrandStrategyProfile       (project data, user input)
+ *   3. ★ inferStrategy(truthPack, brand) → StrategyHypothesis[] (ai_inference + confidence)
+ *   4.   deriveDynamicCreativeStrategy()  (priority merge: user > fact > inference)
+ *   5. ★ writeConcepts(buildConceptPrompt(…)) → CreativeConceptDraft[] (JSON, per recipe)
+ *   6.   expand each draft into 1:1 + 9:16 CreativeVariants
+ *   7. ★ renderVariant(buildVariantPrompt(…)) → previewUrl / outputUrl per variant
  */
 export interface GenerationProvider {
   createBatch(request: GenerationRequest): Promise<CreativeBatch>;

@@ -28,7 +28,12 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Post card left-aligned at 80% width, avatar row on top, engagement row visible; product absent or small bottom-right.",
       "9:16": "Post card centred in the upper-middle, larger text; product shot below the card in the lower third; CTA pill above the bottom safe zone.",
     },
-    recommendedAngles: ["Community / Identity", "Hot take", "Better routine"],
+    principles: [
+      "Reads like a short organic thought, not an ad",
+      "Native post structure: avatar, handle, body, engagement",
+      "Minimal sales language; the product is implied, not pitched",
+      "Lots of whitespace around the post",
+    ],
   },
   {
     id: "imessage",
@@ -51,7 +56,11 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Condensed thread: 2 bubbles plus product attachment, header cropped to contact name.",
       "9:16": "Full thread with 3–6 bubbles, iOS header and keyboard hint; product attachment as the last bubble.",
     },
-    recommendedAngles: ["Friend recommendation", "Social proof", "Belonging"],
+    principles: [
+      "A believable two-person conversation between friends",
+      "Short message bubbles; the payoff lands in the last one",
+      "Friend-to-friend recommendation energy, never salesy",
+    ],
   },
   {
     id: "dont_buy_this",
@@ -74,7 +83,11 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Headline top-left over two lines, reasons below, product bottom-right at ~35% width.",
       "9:16": "Oversized headline across the upper third, reasons centred, product large in the lower half, CTA above safe zone.",
     },
-    recommendedAngles: ["Prestige / Quality", "Objection handling"],
+    principles: [
+      "Reverse psychology: tell the wrong buyer not to buy",
+      "One bold, short headline carries the ad",
+      "A strong conditional ('…unless you want X') flips it to a yes",
+    ],
   },
   {
     id: "notes_app",
@@ -97,7 +110,11 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Note title and list on the left two-thirds, product thumbnail bottom-right.",
       "9:16": "Full-height note with title, 4–7 lines and generous line spacing; product sticker near the bottom.",
     },
-    recommendedAngles: ["Better routine", "Self care"],
+    principles: [
+      "Written in first person, like a private note",
+      "Imperfect, lowercase-friendly, human phrasing",
+      "A list or confession where the product is one natural line",
+    ],
   },
   {
     id: "search_bar",
@@ -120,7 +137,11 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Search pill top, suggestions left, product answer card right.",
       "9:16": "Search pill in the upper third, suggestions stacked below, product answer card large at the bottom.",
     },
-    recommendedAngles: ["Better coffee alternative", "Problem / solution"],
+    principles: [
+      "The query is the real need, phrased how people actually search",
+      "Autocomplete suggestions escalate the tension",
+      "The product appears as the answer, not the query",
+    ],
   },
   {
     id: "receipt",
@@ -143,7 +164,11 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Receipt rotated slightly on the left half, product on the right half.",
       "9:16": "Tall receipt centred and cropped by the top edge, product overlapping the bottom corner.",
     },
-    recommendedAngles: ["Price / Value", "Better routine"],
+    principles: [
+      "Itemise the intangible outcome, not the product specs",
+      "The total line is the punchline",
+      "Keep the thermal-receipt look authentic",
+    ],
   },
   {
     id: "warning_label",
@@ -166,7 +191,11 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Horizontal label: hazard icon left, WARNING + effects right, product small.",
       "9:16": "Vertical label: large hazard icon on top, WARNING header, effects list, product below.",
     },
-    recommendedAngles: ["Playful", "Better routine"],
+    principles: [
+      "Frame positive outcomes as playful 'side effects'",
+      "Short, all-caps header; scannable list",
+      "Never imply medical or health claims",
+    ],
   },
   {
     id: "membership_card",
@@ -189,7 +218,11 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Card centred at 80% width, slight tilt, perks line below.",
       "9:16": "Card in the upper-middle, larger; perks list and CTA stacked below.",
     },
-    recommendedAngles: ["Belonging", "Prestige"],
+    principles: [
+      "Turn buying into belonging to a club",
+      "The card must look like a real, premium object",
+      "Perks are emotional or experiential, not discounts only",
+    ],
   },
   {
     id: "product_hero",
@@ -212,7 +245,11 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Product left-centre at ~55% height, headline right, CTA chip under headline.",
       "9:16": "Headline top, product centred filling ~50% height, CTA chip in the lower third.",
     },
-    recommendedAngles: ["Prestige / Quality", "Aesthetic lifestyle"],
+    principles: [
+      "The product is the hero — nothing competes with it",
+      "One short editorial headline",
+      "Packaging reproduced exactly from the reference image",
+    ],
   },
   {
     id: "ai_ugc",
@@ -235,7 +272,11 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Square crop of the creator frame, captions centred low, product visible in hand.",
       "9:16": "Full vertical selfie frame, captions in the middle third, product enters by second 4.",
     },
-    recommendedAngles: ["Friend recommendation", "Better routine", "Social proof"],
+    principles: [
+      "Hook in the first two seconds, spoken naturally",
+      "Creator voice: personal story before product mention",
+      "Product shown in hand, label legible, by second four",
+    ],
   },
   {
     id: "claymation",
@@ -258,7 +299,11 @@ export const RECIPES: CreativeRecipe[] = [
       "1:1": "Square set, camera slightly wider, product reveal centred.",
       "9:16": "Vertical set with more headroom, product reveal in the lower-middle, end card text top.",
     },
-    recommendedAngles: ["Playful", "Better routine"],
+    principles: [
+      "One visual metaphor told in two or three beats",
+      "Handmade texture is the pattern interrupt",
+      "End on a clean product reveal",
+    ],
   },
 ];
 
@@ -294,6 +339,6 @@ export function getRecipeForMechanism(mechanismId: MechanismId): CreativeRecipe 
       visualRules: [],
     },
     formatLayouts: DEFAULT_FORMAT_LAYOUTS,
-    recommendedAngles: [],
+    principles: ["Follow the mechanism description; recipe not authored yet."],
   };
 }

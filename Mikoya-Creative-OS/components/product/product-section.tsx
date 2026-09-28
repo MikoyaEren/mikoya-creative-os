@@ -15,11 +15,14 @@ interface ProductSectionProps {
   value: ProductInput;
   onChange: (value: ProductInput) => void;
   errors: ProductErrors;
-  /** Fills the section with the Mikoya reference product. */
+  /** Fills the section with the active project's example product. */
   onLoadExample?: () => void;
+  exampleLabel?: string;
+  /** Placeholders from the active project's example product. */
+  placeholders?: { name: string; url: string };
 }
 
-export function ProductSection({ value, onChange, errors, onLoadExample }: ProductSectionProps) {
+export function ProductSection({ value, onChange, errors, onLoadExample, exampleLabel = "Load example", placeholders }: ProductSectionProps) {
   const set = <K extends keyof ProductInput>(key: K, v: ProductInput[K]) => onChange({ ...value, [key]: v });
 
   return (
@@ -27,7 +30,7 @@ export function ProductSection({ value, onChange, errors, onLoadExample }: Produ
       actions={
         onLoadExample && (
           <Button size="sm" variant="outline" onClick={onLoadExample}>
-            <Wand2 /> Load Mikoya example
+            <Wand2 /> {exampleLabel}
           </Button>
         )
       }
@@ -36,7 +39,7 @@ export function ProductSection({ value, onChange, errors, onLoadExample }: Produ
         <Field label="Product name" htmlFor="product-name" error={errors.name}>
           <Input
             id="product-name"
-            placeholder="Mikoya Ceremonial Matcha"
+            placeholder={placeholders?.name ?? "Product name"}
             value={value.name}
             invalid={Boolean(errors.name)}
             onChange={(e) => set("name", e.target.value)}
@@ -48,7 +51,7 @@ export function ProductSection({ value, onChange, errors, onLoadExample }: Produ
             id="product-url"
             type="url"
             inputMode="url"
-            placeholder="https://mikoya.de/products/..."
+            placeholder={placeholders?.url ?? "https://…"}
             value={value.url}
             invalid={Boolean(errors.url)}
             onChange={(e) => set("url", e.target.value)}

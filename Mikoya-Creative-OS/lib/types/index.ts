@@ -1,5 +1,5 @@
 /**
- * Core domain model for Mikoya Creative OS.
+ * Core domain model for the Creative OS (product- and brand-agnostic).
  *
  * Everything the future AI pipeline produces or consumes is described here.
  *
@@ -8,6 +8,10 @@
  * Variants share the copy and idea; only layout/composition differs.
  * An LLM returns `CreativeConceptDraft` JSON (see lib/pipeline/concept-schema.ts).
  */
+
+import type { CreativeDirectionInput, HypothesisDecision, StrategySnapshot } from "./strategy";
+
+export * from "./strategy";
 
 // ---------------------------------------------------------------------------
 // Primitive unions
@@ -127,6 +131,12 @@ export interface OutputPreset {
 
 /** Everything the user submits from the New Generation screen. */
 export interface GenerationRequest {
+  /** Brand/project workspace whose strategy data is used. */
+  projectId: string;
+  /** Explicit batch direction from the user (highest priority). */
+  direction?: CreativeDirectionInput;
+  /** User decisions on AI hypotheses (accept → user_input, reject → dropped). */
+  hypothesisDecisions?: Record<string, HypothesisDecision>;
   product: ProductInput;
   brand: BrandContext;
   outputMix: OutputMix;
@@ -180,8 +190,11 @@ export interface CreativeRecipe {
    * copy stay identical; only composition, positioning, crop and scale change.
    */
   formatLayouts: Record<OutputFormat, string>;
-  /** Angles this recipe performs best with. */
-  recommendedAngles: string[];
+  /**
+   * Mechanism-specific craft rules ("how does this mechanism work?").
+   * Never brand positioning, product facts or global philosophy.
+   */
+  principles: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -247,6 +260,9 @@ export interface CreativeConceptDraft {
 
 export interface CreativeBatch {
   id: string;
+  projectId: string;
+  /** Frozen strategy layers the concepts were written from. */
+  strategy: StrategySnapshot;
   product: ProductInput;
   brand: BrandContext;
   outputMix: OutputMix;

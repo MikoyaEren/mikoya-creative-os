@@ -1,4 +1,4 @@
-import type { AssetRole, ProductAsset } from "@/lib/types";
+import type { AssetRole, ProductAsset, ProductInput } from "@/lib/types";
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from "@/lib/constants";
 import { createId } from "@/lib/utils";
 
@@ -66,4 +66,9 @@ export async function fileToAsset(file: File, role: AssetRole, maxSize = 1200): 
     previewUrl,
     uploadedAt: new Date().toISOString(),
   };
+}
+
+/** First lifestyle image of a product, used by scene-based previews. */
+export function lifestyleImageOf(product: ProductInput): string | null {
+  return product.additionalAssets.find((a) => a.role === "lifestyle")?.previewUrl ?? null;
 }

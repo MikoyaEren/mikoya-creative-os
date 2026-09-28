@@ -22,6 +22,14 @@ export function RecipeCard({ recipe }: { recipe: CreativeRecipe }) {
       </div>
       <h3 className="mt-4 text-[15px] font-semibold">{recipe.name}</h3>
       <p className="mt-1 text-[13px] leading-relaxed text-muted">{recipe.description}</p>
+      <ul className="mt-3 flex flex-col gap-1">
+        {recipe.principles.map((p) => (
+          <li key={p} className="flex gap-2 text-xs leading-relaxed text-ink-soft">
+            <span className="mt-[7px] size-1 shrink-0 rounded-full bg-forest" />
+            {p}
+          </li>
+        ))}
+      </ul>
 
       <dl className="mt-5 grid grid-cols-3 gap-3 border-t border-line pt-4 text-xs">
         <div>
