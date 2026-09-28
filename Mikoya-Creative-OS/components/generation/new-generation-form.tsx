@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
-import type { BrandContext, CreativeType, GenerationRequest, HypothesisDecision, MechanismId, OutputMix, OutputPresetId, ProductInput } from "@/lib/types";
+import type { BrandContext, CreativeType, GenerationRequest, ReviewStatus, MechanismId, OutputMix, OutputPresetId, ProductInput } from "@/lib/types";
 import { CREATIVE_TYPE_ORDER, DEFAULT_PRESET, outputsFor, plural } from "@/lib/constants";
 import { DEFAULT_PROJECT_ID, PROJECTS, getProject } from "@/lib/projects";
 import { buildStrategySnapshot } from "@/lib/strategy";
@@ -41,7 +41,7 @@ export function NewGenerationForm() {
   const project = getProject(projectId);
   const [product, setProduct] = useState<ProductInput>(EMPTY_PRODUCT);
   const [brand, setBrand] = useState<BrandContext>(project.brandContext);
-  const [decisions, setDecisions] = useState<Record<string, HypothesisDecision>>({});
+  const [reviews, setReviews] = useState<Record<string, ReviewStatus>>({});
   const [mix, setMix] = useState<OutputMix>(DEFAULT_PRESET.mix);
   const [presetId, setPresetId] = useState<OutputPresetId>(DEFAULT_PRESET.id);
   const [mechanismIds, setMechanismIds] = useState<MechanismId[]>(ALL_MECHANISM_IDS);
@@ -56,17 +56,17 @@ export function NewGenerationForm() {
   );
   // Same resolution the pipeline uses — what you see is what the concept writer gets.
   const snapshot = useMemo(
-    () => buildStrategySnapshot({ project, product, brand, direction: project.defaultDirection, decisions }),
-    [project, product, brand, decisions],
+    () => buildStrategySnapshot({ project, product, brand, direction: project.defaultDirection, reviews }),
+    [project, product, brand, reviews],
   );
-  const inferredInUse = snapshot.hypotheses.filter((h) => h.decision !== "rejected" && h.decision !== "accepted").length;
+  const inferredInUse = snapshot.hypotheses.filter((h) => h.reviewStatus !== "rejected").length;
 
   function switchProject(id: string) {
     const next = getProject(id);
     setProjectId(next.id);
     setBrand(next.brandContext);
     setProduct(EMPTY_PRODUCT);
-    setDecisions({});
+    setReviews({});
     setSubmitted(false);
   }
 
@@ -87,7 +87,7 @@ export function NewGenerationForm() {
     const request: GenerationRequest = {
       projectId: project.id,
       direction: project.defaultDirection,
-      hypothesisDecisions: decisions,
+      hypothesisReviews: reviews,
       product: { ...product, name: product.name.trim(), url: product.url.trim() },
       brand,
       outputMix: mix,
@@ -147,7 +147,7 @@ export function NewGenerationForm() {
       >
         <CreativeStrategyPanel
           snapshot={snapshot}
-          onDecision={(id, decision) => setDecisions((d) => ({ ...d, [id]: decision }))}
+          onReview={(id, reviewStatus) => setReviews((r) => ({ ...r, [id]: reviewStatus }))}
         />
       </CollapsibleSection>
       <OutputMixSection

@@ -119,7 +119,8 @@ export const MIKOYA_PROJECT: CreativeProject = {
       source: "ai_inference",
       confidence: 0.82,
       rationale: "Premium price point and lifestyle-heavy imagery suggest the buyer values how the ritual looks and feels.",
-      decision: "proposed",
+      reviewStatus: "unreviewed",
+      approvedByUser: false,
     },
     {
       id: "hyp_mikoya_crash",
@@ -128,7 +129,8 @@ export const MIKOYA_PROJECT: CreativeProject = {
       source: "ai_inference",
       confidence: 0.74,
       rationale: "Benefits mention calm, focused energy; coffee alternatives are a common comparison in the category.",
-      decision: "proposed",
+      reviewStatus: "unreviewed",
+      approvedByUser: false,
     },
     {
       id: "hyp_mikoya_prep",
@@ -137,7 +139,8 @@ export const MIKOYA_PROJECT: CreativeProject = {
       source: "ai_inference",
       confidence: 0.68,
       rationale: "Traditional tools (whisk, sieve) appear in product imagery and may signal effort.",
-      decision: "proposed",
+      reviewStatus: "unreviewed",
+      approvedByUser: false,
     },
     {
       id: "hyp_mikoya_gift",
@@ -146,7 +149,8 @@ export const MIKOYA_PROJECT: CreativeProject = {
       source: "ai_inference",
       confidence: 0.55,
       rationale: "Starter set packaging could work as a gift, but there is no gifting information on the product page.",
-      decision: "proposed",
+      reviewStatus: "unreviewed",
+      approvedByUser: false,
     },
     {
       id: "hyp_mikoya_green",
@@ -155,7 +159,8 @@ export const MIKOYA_PROJECT: CreativeProject = {
       source: "ai_inference",
       confidence: 0.79,
       rationale: "Lifestyle asset shows a saturated green drink that contrasts with neutral feeds.",
-      decision: "proposed",
+      reviewStatus: "unreviewed",
+      approvedByUser: false,
     },
     {
       id: "hyp_mikoya_ritual",
@@ -164,7 +169,8 @@ export const MIKOYA_PROJECT: CreativeProject = {
       source: "ai_inference",
       confidence: 0.71,
       rationale: "Routine is a stated customer desire; list and calendar mechanisms visualise habits well.",
-      decision: "proposed",
+      reviewStatus: "unreviewed",
+      approvedByUser: false,
     },
   ],
   defaultDirection: {

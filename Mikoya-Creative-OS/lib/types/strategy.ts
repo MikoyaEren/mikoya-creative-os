@@ -10,6 +10,11 @@
  *
  * Every strategic statement carries its provenance, so AI assumptions can
  * never silently become product facts.
+ *
+ * Provenance has three independent dimensions:
+ *   origin             `source`        where the idea came from — never rewritten
+ *   review             `reviewStatus`  what the user decided about it
+ *   effective priority derived         how much authority it has (lib/strategy/provenance.ts)
  */
 
 import type { AssetRole } from "./index";
@@ -19,11 +24,13 @@ import type { AssetRole } from "./index";
 // ---------------------------------------------------------------------------
 
 /**
- * Where a piece of information came from. Priority (highest first):
- *   user_input  >  source_fact  >  ai_inference
- * Explicit user input always overrides AI inference.
+ * ORIGIN — where a piece of information came from. Immutable: accepting an
+ * AI inference does not change its source to user_input.
  */
 export type InformationSource = "user_input" | "source_fact" | "ai_inference";
+
+/** User review of an item (relevant for AI inferences). */
+export type ReviewStatus = "unreviewed" | "accepted" | "rejected";
 
 /** Sources allowed for facts. AI inference is structurally excluded. */
 export type FactSource = Exclude<InformationSource, "ai_inference">;
@@ -36,6 +43,10 @@ export interface SourcedStatement {
   rationale?: string;
   /** Where it was found: URL, asset id, field name, hypothesis id… */
   sourceRef?: string;
+  /** User review. Only meaningful for ai_inference; defaults to "unreviewed". */
+  reviewStatus?: ReviewStatus;
+  /** True when the user explicitly approved this item (accepted). */
+  approvedByUser?: boolean;
 }
 
 /** A verified product fact. Can only come from the user or a source. */
@@ -169,9 +180,10 @@ export type HypothesisCategory =
   | "visual_opportunity"
   | "creative_opportunity";
 
-/** User review state. Accepted hypotheses are promoted to user_input. */
-export type HypothesisDecision = "proposed" | "accepted" | "rejected";
-
+/**
+ * An AI assumption. `source` stays "ai_inference" forever; accepting it only
+ * changes reviewStatus/approvedByUser, which raises its effective priority.
+ */
 export interface StrategyHypothesis {
   id: string;
   category: HypothesisCategory;
@@ -179,7 +191,8 @@ export interface StrategyHypothesis {
   source: "ai_inference";
   confidence: number;
   rationale: string;
-  decision: HypothesisDecision;
+  reviewStatus: ReviewStatus;
+  approvedByUser: boolean;
 }
 
 // ---------------------------------------------------------------------------

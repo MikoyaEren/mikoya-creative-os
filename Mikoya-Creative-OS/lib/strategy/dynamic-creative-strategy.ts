@@ -6,7 +6,7 @@ import type {
   SourcedStatement,
   StrategyHypothesis,
 } from "@/lib/types";
-import { excluding, factToStatement, mergeByPriority, userInput } from "./provenance";
+import { excluding, factToStatement, isApprovedInference, mergeByPriority, userInput } from "./provenance";
 import { hypothesisStatements } from "./strategy-hypotheses";
 
 /**
@@ -70,9 +70,9 @@ export function deriveDynamicCreativeStrategy({ truthPack, brandStrategy, hypoth
   const visualDirection = mergeByPriority(brandStrategy.visualDirection, hypothesisStatements(hypotheses, "visual_opportunity"));
   const creativeOpportunities = hypothesisStatements(hypotheses, "creative_opportunity");
 
-  const inferred = [...primaryCustomerDesires, ...primaryAngles, ...objectionsToAddress, ...visualDirection, ...creativeOpportunities].filter(
-    (s) => s.source === "ai_inference",
-  ).length;
+  const used = [...primaryCustomerDesires, ...primaryAngles, ...secondaryAngles, ...objectionsToAddress, ...visualDirection, ...creativeOpportunities];
+  const approved = used.filter(isApprovedInference).length;
+  const inferred = used.filter((s) => s.source === "ai_inference").length - approved;
 
   return {
     id: `strategy_${truthPack.id}`,
@@ -91,7 +91,8 @@ export function deriveDynamicCreativeStrategy({ truthPack, brandStrategy, hypoth
       leadWith.length ? `Lead with ${leadWith.map((s) => s.statement.toLowerCase()).join(", ")}.` : "No explicit lead set; angles come from brand priorities.",
       supportingProof.length ? `Back it up with ${supportingProof.length} verified proof point(s).` : "No verified proof available yet — avoid proof-led concepts.",
       avoidLeadingWith.length ? `Do not open with ${avoidLeadingWith.map((s) => s.statement.toLowerCase()).join(", ")}.` : "",
-      inferred ? `${inferred} element(s) rely on AI inference and should be validated.` : "No AI inference used.",
+      approved ? `${approved} user-approved AI inference(s) used as high-priority input.` : "",
+      inferred ? `${inferred} unreviewed AI inference(s) should be validated.` : "No unreviewed AI inference used.",
     ]
       .filter(Boolean)
       .join(" "),

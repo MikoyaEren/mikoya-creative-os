@@ -9,7 +9,7 @@
  * An LLM returns `CreativeConceptDraft` JSON (see lib/pipeline/concept-schema.ts).
  */
 
-import type { CreativeDirectionInput, HypothesisDecision, StrategySnapshot } from "./strategy";
+import type { CreativeDirectionInput, ReviewStatus, StrategySnapshot } from "./strategy";
 
 export * from "./strategy";
 
@@ -135,8 +135,8 @@ export interface GenerationRequest {
   projectId: string;
   /** Explicit batch direction from the user (highest priority). */
   direction?: CreativeDirectionInput;
-  /** User decisions on AI hypotheses (accept → user_input, reject → dropped). */
-  hypothesisDecisions?: Record<string, HypothesisDecision>;
+  /** User reviews of AI hypotheses (accepted → high priority, origin kept; rejected → dropped). */
+  hypothesisReviews?: Record<string, ReviewStatus>;
   product: ProductInput;
   brand: BrandContext;
   outputMix: OutputMix;

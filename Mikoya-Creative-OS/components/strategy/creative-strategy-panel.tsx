@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { Check, CircleDashed, X } from "lucide-react";
-import type { Fact, HypothesisDecision, SourcedStatement, StrategySnapshot } from "@/lib/types";
+import type { Fact, ReviewStatus, SourcedStatement, StrategySnapshot } from "@/lib/types";
 import { formatPrice } from "@/lib/strategy/product-truth-pack";
 import { HYPOTHESIS_CATEGORY_LABELS, MIN_HYPOTHESIS_CONFIDENCE, isUsable } from "@/lib/strategy/strategy-hypotheses";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ type Tab = "facts" | "brand" | "inferences" | "direction";
 interface CreativeStrategyPanelProps {
   snapshot: StrategySnapshot;
   /** When provided, AI hypotheses can be accepted or dismissed. */
-  onDecision?: (id: string, decision: HypothesisDecision) => void;
+  onReview?: (id: string, reviewStatus: ReviewStatus) => void;
 }
 
 function Block({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
@@ -37,7 +37,7 @@ function Statements({ items }: { items: SourcedStatement[] }) {
       {items.map((s) => (
         <li key={s.statement + s.source} className="flex items-start justify-between gap-3">
           <span className="text-[13.5px] leading-snug text-ink">{s.statement}</span>
-          <SourceBadge source={s.source} confidence={s.confidence} />
+          <SourceBadge source={s.source} confidence={s.confidence} reviewStatus={s.reviewStatus} />
         </li>
       ))}
     </ul>
@@ -107,14 +107,15 @@ function BrandTab({ snapshot }: { snapshot: StrategySnapshot }) {
   );
 }
 
-function InferencesTab({ snapshot, onDecision }: CreativeStrategyPanelProps) {
+function InferencesTab({ snapshot, onReview }: CreativeStrategyPanelProps) {
   const hs = snapshot.hypotheses;
   if (!hs.length) return <Empty>No AI hypotheses for this brand.</Empty>;
   return (
     <div>
       <p className="mb-3 text-xs text-muted">
-        Assumptions the AI makes where information is missing. They are the lowest-priority input, never become facts, and are ignored below{" "}
-        {Math.round(MIN_HYPOTHESIS_CONFIDENCE * 100)}% confidence unless you accept them. Accepting promotes a hypothesis to user input.
+        Assumptions the AI makes where information is missing. They never become facts. Unreviewed inferences have the lowest priority and are
+        ignored below {Math.round(MIN_HYPOTHESIS_CONFIDENCE * 100)}% confidence. Accepting one raises it above source facts — it stays marked as
+        AI inferred for the audit trail. Dismissed inferences are never used.
       </p>
       <div className="grid gap-3 md:grid-cols-2">
         {hs.map((h) => {
@@ -124,14 +125,14 @@ function InferencesTab({ snapshot, onDecision }: CreativeStrategyPanelProps) {
               key={h.id}
               className={cn(
                 "flex flex-col rounded-xl border p-4 transition-colors",
-                h.decision === "accepted" ? "border-forest/40 bg-forest-soft/30" : h.decision === "rejected" ? "border-line bg-sand/30 opacity-60" : "border-line bg-paper",
+                h.reviewStatus === "accepted" ? "border-forest/40 bg-forest-soft/30" : h.reviewStatus === "rejected" ? "border-line bg-sand/30 opacity-60" : "border-line bg-paper",
               )}
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-[11px] font-semibold tracking-[0.1em] text-muted uppercase">{HYPOTHESIS_CATEGORY_LABELS[h.category]}</span>
-                {h.decision === "accepted" ? <SourceBadge source="user_input" /> : <SourceBadge source="ai_inference" />}
+                <SourceBadge source={h.source} confidence={h.confidence} reviewStatus={h.reviewStatus} />
               </div>
-              <p className={cn("mt-2 text-[14px] leading-snug font-medium", h.decision === "rejected" && "line-through")}>{h.statement}</p>
+              <p className={cn("mt-2 text-[14px] leading-snug font-medium", h.reviewStatus === "rejected" && "line-through")}>{h.statement}</p>
               <div className="mt-3 flex items-center gap-2" aria-label={`Confidence ${Math.round(h.confidence * 100)}%`}>
                 <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-sand">
                   <div className={cn("h-full rounded-full", h.confidence >= MIN_HYPOTHESIS_CONFIDENCE ? "bg-[#6b3fa0]" : "bg-faint")} style={{ width: `${h.confidence * 100}%` }} />
@@ -141,23 +142,29 @@ function InferencesTab({ snapshot, onDecision }: CreativeStrategyPanelProps) {
               <p className="mt-2.5 text-xs leading-relaxed text-muted">{h.rationale}</p>
               <div className="mt-auto flex items-center justify-between gap-2 pt-3">
                 <span className="text-[11px] text-faint">
-                  {h.decision === "accepted" ? "Promoted to user input" : h.decision === "rejected" ? "Dismissed — not used" : used ? "Used as a hypothesis" : "Below threshold — not used"}
+                  {h.reviewStatus === "accepted"
+                    ? "Accepted by you · high priority"
+                    : h.reviewStatus === "rejected"
+                      ? "Dismissed — never used"
+                      : used
+                        ? "Unreviewed · lowest priority"
+                        : "Unreviewed · below threshold, not used"}
                 </span>
-                {onDecision && (
+                {onReview && (
                   <div className="flex gap-1">
                     <button
                       type="button"
-                      onClick={() => onDecision(h.id, h.decision === "accepted" ? "proposed" : "accepted")}
-                      aria-pressed={h.decision === "accepted"}
-                      className={cn("inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium", h.decision === "accepted" ? "bg-forest text-white" : "text-ink-soft hover:bg-sand")}
+                      onClick={() => onReview(h.id, h.reviewStatus === "accepted" ? "unreviewed" : "accepted")}
+                      aria-pressed={h.reviewStatus === "accepted"}
+                      className={cn("inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium", h.reviewStatus === "accepted" ? "bg-forest text-white" : "text-ink-soft hover:bg-sand")}
                     >
                       <Check className="size-3.5" /> Accept
                     </button>
                     <button
                       type="button"
-                      onClick={() => onDecision(h.id, h.decision === "rejected" ? "proposed" : "rejected")}
-                      aria-pressed={h.decision === "rejected"}
-                      className={cn("inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium", h.decision === "rejected" ? "bg-ink text-cream" : "text-ink-soft hover:bg-sand")}
+                      onClick={() => onReview(h.id, h.reviewStatus === "rejected" ? "unreviewed" : "rejected")}
+                      aria-pressed={h.reviewStatus === "rejected"}
+                      className={cn("inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs font-medium", h.reviewStatus === "rejected" ? "bg-ink text-cream" : "text-ink-soft hover:bg-sand")}
                     >
                       <X className="size-3.5" /> Dismiss
                     </button>
@@ -195,7 +202,7 @@ function DirectionTab({ snapshot }: { snapshot: StrategySnapshot }) {
 }
 
 /** The four strategy layers for one batch, with visible provenance. */
-export function CreativeStrategyPanel({ snapshot, onDecision }: CreativeStrategyPanelProps) {
+export function CreativeStrategyPanel({ snapshot, onReview }: CreativeStrategyPanelProps) {
   const [tab, setTab] = useState<Tab>("direction");
   const counts = {
     facts: snapshot.truthPack.benefits.length + snapshot.truthPack.features.length + snapshot.truthPack.offers.length + snapshot.truthPack.guarantees.length,
@@ -220,7 +227,7 @@ export function CreativeStrategyPanel({ snapshot, onDecision }: CreativeStrategy
       <div className="mt-5" role="tabpanel">
         {tab === "facts" && <FactsTab snapshot={snapshot} />}
         {tab === "brand" && <BrandTab snapshot={snapshot} />}
-        {tab === "inferences" && <InferencesTab snapshot={snapshot} onDecision={onDecision} />}
+        {tab === "inferences" && <InferencesTab snapshot={snapshot} onReview={onReview} />}
         {tab === "direction" && <DirectionTab snapshot={snapshot} />}
       </div>
     </div>

@@ -77,7 +77,8 @@ export const LUMEN_PROJECT: CreativeProject = {
       source: "ai_inference",
       confidence: 0.77,
       rationale: "Positioning emphasises fewer steps; audience is described as low-effort.",
-      decision: "proposed",
+      reviewStatus: "unreviewed",
+      approvedByUser: false,
     },
     {
       id: "hyp_lumen_sensitive",
@@ -86,7 +87,8 @@ export const LUMEN_PROJECT: CreativeProject = {
       source: "ai_inference",
       confidence: 0.7,
       rationale: "Fragrance-free and dermatologically tested are highlighted on the page.",
-      decision: "proposed",
+      reviewStatus: "unreviewed",
+      approvedByUser: false,
     },
     {
       id: "hyp_lumen_texture",
@@ -95,7 +97,8 @@ export const LUMEN_PROJECT: CreativeProject = {
       source: "ai_inference",
       confidence: 0.66,
       rationale: "Lightweight finish is a key benefit and is easy to show visually.",
-      decision: "proposed",
+      reviewStatus: "unreviewed",
+      approvedByUser: false,
     },
   ],
   defaultDirection: {

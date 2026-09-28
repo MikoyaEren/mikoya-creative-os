@@ -12,7 +12,7 @@ import type {
 } from "@/lib/types";
 import { FORMAT_SPECS } from "@/lib/pipeline/formats";
 import { formatPrice } from "@/lib/strategy/product-truth-pack";
-import { SOURCE_LABELS } from "@/lib/strategy/provenance";
+import { SOURCE_LABELS, isApprovedInference } from "@/lib/strategy/provenance";
 import { HYPOTHESIS_CATEGORY_LABELS, isUsable } from "@/lib/strategy/strategy-hypotheses";
 import type { RendererSpec } from "./renderer-instructions";
 
@@ -49,7 +49,7 @@ export function renderSections(sections: PromptSection[]) {
 }
 
 const tag = (s: SourcedStatement) =>
-  `[${SOURCE_LABELS[s.source]}${s.source === "ai_inference" && s.confidence !== undefined ? ` ${Math.round(s.confidence * 100)}%` : ""}]`;
+  `[${SOURCE_LABELS[s.source]}${s.source === "ai_inference" && s.confidence !== undefined ? ` ${Math.round(s.confidence * 100)}%` : ""}${isApprovedInference(s) ? " · accepted by user" : ""}]`;
 const list = (items: SourcedStatement[]) => (items.length ? items.map((s) => `${s.statement} ${tag(s)}`).join("; ") : "—");
 const factList = (items: { value: string }[]) => (items.length ? items.map((f) => f.value).join("; ") : "—");
 
@@ -122,7 +122,7 @@ export function hypothesesLayer(hypotheses: StrategyHypothesis[]): PromptSection
     title: "STRATEGY HYPOTHESES (AI assumptions — explore, never state as fact)",
     body: usable.length
       ? usable
-          .map((h) => `- [${HYPOTHESIS_CATEGORY_LABELS[h.category]}] ${h.statement} (${h.decision === "accepted" ? "accepted by user" : `confidence ${Math.round(h.confidence * 100)}%`})`)
+          .map((h) => `- [${HYPOTHESIS_CATEGORY_LABELS[h.category]}] ${h.statement} (AI inferred, confidence ${Math.round(h.confidence * 100)}%${h.reviewStatus === "accepted" ? ", accepted by user — high priority" : ", unreviewed"})`)
           .join("\n")
       : "None.",
   };
@@ -153,7 +153,7 @@ export const PRIORITY_RULE_LAYER: PromptSection = {
   key: "priority",
   title: "PRIORITY RULE",
   body: [
-    "User provided > Source fact > AI inferred.",
+    "Explicit user input > User-approved AI inference > Source fact > Unreviewed AI inference.",
     "If sources conflict, follow the higher-priority source.",
     "AI-inferred items are hypotheses: use them to explore angles, never as claims.",
   ].join("\n"),

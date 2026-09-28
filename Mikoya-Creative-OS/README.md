@@ -28,6 +28,7 @@ Other scripts:
 | `npm run start`     | Serve the production build           |
 | `npm run lint`      | ESLint (Next.js config)              |
 | `npm run typecheck` | Generate route types + `tsc`         |
+| `npm test`          | Unit tests (Vitest) for the strategy/provenance rules |
 
 Requires Node 20.9+. No environment variables are needed yet. `.env.example`
 lists the keys future integrations will use.
@@ -107,23 +108,52 @@ positioning, product facts or global creative philosophy.
 
 ### Provenance and the priority rule
 
-Every strategic statement is a `SourcedStatement` with a source:
+Every strategic statement is a `SourcedStatement`. Provenance has three
+separate parts:
 
-| Source         | Label         | Priority    |
-| -------------- | ------------- | ----------- |
-| `user_input`   | User provided | 1 (highest) |
-| `source_fact`  | Source fact   | 2           |
-| `ai_inference` | AI inferred   | 3 (lowest), always with a `confidence` |
+| Part                   | Field                             | Meaning |
+| ---------------------- | --------------------------------- | ------- |
+| **Origin**             | `source`                          | Where the idea came from: `user_input`, `source_fact` or `ai_inference`. **Never rewritten.** |
+| **Review**             | `reviewStatus`, `approvedByUser`  | The user's decision: `unreviewed`, `accepted` or `rejected`. |
+| **Effective priority** | `effectivePriority()`             | How much authority the item has. Derived from origin + review. |
 
-- **User input always overrides AI inference.** `mergeByPriority()`
-  (`lib/strategy/provenance.ts`) collapses duplicates onto the highest source.
+```ts
+{
+  statement: "Aesthetic self-expression",
+  source: "ai_inference",      // origin stays AI, even after Accept
+  confidence: 0.82,
+  reviewStatus: "accepted",
+  approvedByUser: true,
+}
+```
+
+Effective priority (`lib/strategy/provenance.ts`), highest first:
+
+| Priority | Item                        | UI badge                  |
+| -------- | --------------------------- | ------------------------- |
+| 4        | Explicit user input         | User provided             |
+| 3        | User-approved AI inference  | AI inferred · 82% ✓ Accepted |
+| 2        | Verified source fact        | Source fact               |
+| 1        | Unreviewed AI inference     | AI inferred · 82%         |
+| —        | Rejected AI inference       | never used                |
+
+- **Accepting an AI inference raises its authority, not its origin.** It
+  outranks source facts, stays below explicit user input, and keeps its
+  "AI inferred" badge, confidence and rationale as an audit trail.
+- **Rejected inferences are never used.** `mergeByPriority()` drops them.
+- **Unreviewed inferences under 65% confidence are ignored.** Accepting one
+  lets it through.
+- **`mergeByPriority()` resolves duplicates.** They collapse onto the entry
+  with the highest effective priority, which keeps its own origin.
 - **Facts can't come from AI.** Product facts use `Fact<T>`, whose source
-  type (`FactSource`) excludes `ai_inference`. An AI assumption cannot become a
-  product fact without a type error.
-- **Hypotheses under 65% confidence are ignored** unless a user accepts them.
-  Accepting one promotes it to `user_input`. Dismissing one drops it.
-- **Quick edits on `/new` count as user input.** Changes to tone, desires,
-  colors and notes override the stored brand profile.
+  type (`FactSource`) excludes `ai_inference`.
+- **Quick edits on `/new` count as explicit user input.** Changes to tone,
+  desires, colors and notes are treated that way.
+- **The prompt keeps the distinction.** Accepted inferences appear as
+  `[AI inferred 82% · accepted by user]`, so the concept writer can tell an
+  approved hypothesis from a verified fact.
+
+`npm test` covers these rules (`lib/strategy/provenance.test.ts`).
 
 ### Brand workspaces (where brand-specific data lives)
 
@@ -216,7 +246,7 @@ All of these are mocked today. Each has a single, typed seam:
 | Step | Future AI call | Replaces | Output |
 | ---- | -------------- | -------- | ------ |
 | 1 | `analyzeProduct()`: scrape the URL, then a vision pass over the assets | `project.truthPacks` / `buildTruthPackFromInput()` | `ProductTruthPack` (facts only) |
-| 2 | `inferStrategy()`: fills gaps in brand and product knowledge | `project.hypotheses` | `StrategyHypothesis[]` (`ai_inference` + confidence) |
+| 2 | `inferStrategy()`: fills gaps in brand and product knowledge | `project.hypotheses` | `StrategyHypothesis[]` (`ai_inference` + confidence, `reviewStatus: "unreviewed"`) |
 | 3 | `writeConcepts()`: LLM with `buildConceptPrompt()` + `CREATIVE_CONCEPT_JSON_SCHEMA` | `lib/mock/concept-templates.ts` / project mock copy | `CreativeConceptDraft[]`, validated with `parseConceptDraft()` |
 | 4 | `renderVariant()`: HTML / image / video / UGC renderer with `buildVariantPrompt()` | client-side `CreativePreview` | `variant.previewUrl`, `variant.outputUrl` |
 
