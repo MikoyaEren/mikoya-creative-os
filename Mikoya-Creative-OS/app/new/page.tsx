@@ -10,7 +10,7 @@ export default function NewGenerationPage() {
       <PageHeader
         eyebrow="New generation"
         title="Create Ads"
-        description="Turn one product into dozens of creative concepts."
+        description="Turn one product into dozens of creative concepts — each delivered in 1:1 and 9:16."
       />
       <NewGenerationForm />
     </PageContainer>

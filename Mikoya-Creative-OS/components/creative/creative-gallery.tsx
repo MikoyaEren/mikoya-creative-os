@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { SearchX } from "lucide-react";
-import type { CreativeBatch, CreativeType, MechanismId } from "@/lib/types";
+import type { CreativeBatch, CreativeType, MechanismId, OutputFormat } from "@/lib/types";
 import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER } from "@/lib/constants";
 import { getMechanism } from "@/lib/recipes";
 import { lifestyleImageOf } from "@/lib/mock/reference-assets";
@@ -21,6 +21,7 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
   const [mechanismFilter, setMechanismFilter] = useState<"all" | MechanismId>("all");
   const [sort, setSort] = useState<SortKey>("newest");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [openFormat, setOpenFormat] = useState<OutputFormat>("1:1");
 
   const { concepts } = batch;
   const productImage = batch.product.mainImage?.previewUrl ?? null;
@@ -82,11 +83,11 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
       </div>
 
       <p className="mt-6 text-xs text-muted">
-        Showing {visible.length} of {concepts.length} creatives
+        Showing {visible.length} of {concepts.length} concepts · each delivered in 1:1 and 9:16
       </p>
 
       {visible.length ? (
-        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="mt-4 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {visible.map((c) => (
             <CreativeCard
               key={c.id}
@@ -95,7 +96,10 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
               productImage={productImage}
               lifestyleImage={lifestyleImage}
               colors={batch.brand.colors}
-              onOpen={() => setOpenId(c.id)}
+              onOpen={(format) => {
+                setOpenFormat(format ?? "1:1");
+                setOpenId(c.id);
+              }}
             />
           ))}
         </div>
@@ -103,7 +107,7 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
         <EmptyState
           className="mt-4"
           icon={SearchX}
-          title="No creatives match these filters"
+          title="No concepts match these filters"
           description="Try another type or mechanism."
           action={
             filtersActive && (
@@ -117,6 +121,8 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
 
       <CreativeDetailSheet
         concept={openConcept}
+        format={openFormat}
+        onFormatChange={setOpenFormat}
         productName={batch.product.name}
         productImage={productImage}
         lifestyleImage={lifestyleImage}

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
 import type { BrandContext, CreativeType, GenerationRequest, MechanismId, OutputMix, OutputPresetId, ProductInput } from "@/lib/types";
-import { CREATIVE_TYPE_ORDER, DEFAULT_BRAND_CONTEXT, DEFAULT_PRESET } from "@/lib/constants";
+import { CREATIVE_TYPE_ORDER, DEFAULT_BRAND_CONTEXT, DEFAULT_PRESET, outputsFor, plural } from "@/lib/constants";
 import { ALL_MECHANISM_IDS, getMechanism } from "@/lib/recipes";
 import { planSlots } from "@/lib/mock/generate-batch";
 import { MIKOYA_EXAMPLE_PRODUCT } from "@/lib/mock/reference-assets";
@@ -46,7 +46,7 @@ export function NewGenerationForm() {
     () => CREATIVE_TYPE_ORDER.filter((t) => mix[t] > 0 && !mechanismIds.some((id) => getMechanism(id).type === t)),
     [mix, mechanismIds],
   );
-  const formatError = submitted && mechanismIds.length === 0 ? "Select at least one creative format." : undefined;
+  const formatError = submitted && mechanismIds.length === 0 ? "Select at least one creative mechanism." : undefined;
 
   async function handleGenerate() {
     setSubmitted(true);
@@ -99,8 +99,10 @@ export function NewGenerationForm() {
       <div className="mt-3 flex flex-col gap-5 rounded-[var(--radius-card)] bg-ink p-6 text-cream sm:flex-row sm:items-center sm:justify-between sm:p-8">
         <div>
           <p className="font-serif text-3xl leading-tight">
-            {plannedCount} creative{plannedCount === 1 ? "" : "s"}{" "}
-            <span className="text-cream/50">from {mechanismIds.length} format{mechanismIds.length === 1 ? "" : "s"}</span>
+            {plural(plannedCount, "concept")} · {plural(outputsFor(plannedCount), "output")}
+          </p>
+          <p className="mt-1 text-[13px] text-cream/70">
+            {plural(mechanismIds.length, "mechanism")} · every concept in 1:1 and 9:16
           </p>
           <p className="mt-1.5 text-[13px] text-cream/60">
             {missing.length
@@ -121,7 +123,7 @@ export function NewGenerationForm() {
         </Button>
       </div>
 
-      {generating && <GeneratingOverlay productName={product.name} total={plannedCount} />}
+      {generating && <GeneratingOverlay productName={product.name} concepts={plannedCount} />}
     </div>
   );
 }

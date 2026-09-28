@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, CircleAlert, Download, FileQuestion, Plus, RefreshCw } from "lucide-react";
-import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, OUTPUT_PRESETS } from "@/lib/constants";
+import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, OUTPUT_PRESETS, batchOutputStats, plural } from "@/lib/constants";
 import { useBatch, useHydrated } from "@/lib/store/generations-store";
 import { toast } from "@/lib/store/toast-store";
 import { formatDateTime, formatRelativeDate } from "@/lib/utils";
@@ -39,6 +39,7 @@ export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) 
   }
 
   const preset = OUTPUT_PRESETS.find((p) => p.id === batch.presetId);
+  const stats = batchOutputStats(batch);
   const counts = CREATIVE_TYPE_ORDER.map((t) => ({ t, n: batch.concepts.filter((c) => c.type === t).length })).filter((x) => x.n);
 
   return (
@@ -55,7 +56,15 @@ export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) 
           <div className="min-w-0">
             <h1 className="font-serif text-[32px] leading-[1.05] sm:text-[46px]">{batch.product.name}</h1>
             <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] text-muted">
-              <span className="font-medium text-ink">{batch.concepts.length} creatives</span>
+              <span className="font-medium text-ink">
+                {plural(stats.concepts, "concept")} · {plural(stats.outputs, "output")}
+              </span>
+              {stats.outputs > 0 && stats.ready < stats.outputs && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>{stats.ready}/{stats.outputs} ready</span>
+                </>
+              )}
               <span aria-hidden>·</span>
               <span title={formatDateTime(batch.createdAt)} suppressHydrationWarning>
                 Generated {isNew ? "just now" : formatRelativeDate(batch.createdAt).toLowerCase()}
@@ -72,7 +81,7 @@ export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) 
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button onClick={() => toast("Batch export", "Zip export will be available once creatives are rendered.")}>
+          <Button onClick={() => toast("Batch export", "Exports every concept in 1:1 and 9:16 once outputs are rendered.")}>
             <Download /> Export all
           </Button>
           <Link href="/new" className={buttonClasses({ variant: "secondary" })}>
@@ -83,9 +92,10 @@ export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) 
 
       {counts.length > 0 && (
         <div className="mt-6 flex flex-wrap gap-2">
+          <span className="rounded-full border border-forest/30 bg-forest-soft/60 px-3 py-1 text-xs font-medium text-forest">1:1 + 9:16 per concept</span>
           {counts.map(({ t, n }) => (
             <span key={t} className="rounded-full border border-line bg-paper px-3 py-1 text-xs text-ink-soft">
-              {n} {CREATIVE_TYPE_LABELS[t]}
+              {n} {CREATIVE_TYPE_LABELS[t]} {n === 1 ? "concept" : "concepts"}
             </span>
           ))}
           <a href={batch.product.url} target="_blank" rel="noreferrer" className="truncate rounded-full border border-line bg-paper px-3 py-1 text-xs text-muted hover:text-ink">
@@ -125,7 +135,7 @@ function ResultsSkeleton() {
           <Skeleton className="h-4 w-56" />
         </div>
       </div>
-      <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {Array.from({ length: 8 }, (_, i) => <CreativeCardSkeleton key={i} />)}
       </div>
     </PageContainer>

@@ -14,8 +14,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "A native X post screenshot with a single punchy observation and believable engagement.",
     type: "static",
     renderer: "html",
-    supportedAspectRatios: ["4:5", "1:1"],
-    defaultAspectRatio: "4:5",
     status: "active",
     version: 3,
     structure: {
@@ -26,6 +24,10 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Must look native to X", "No product image inside the post", "Brand color only in background"],
     },
+    formatLayouts: {
+      "1:1": "Post card left-aligned at 80% width, avatar row on top, engagement row visible; product absent or small bottom-right.",
+      "9:16": "Post card centred in the upper-middle, larger text; product shot below the card in the lower third; CTA pill above the bottom safe zone.",
+    },
     recommendedAngles: ["Community / Identity", "Hot take", "Better routine"],
   },
   {
@@ -35,8 +37,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "An iMessage thread between two friends where the product comes up naturally.",
     type: "static",
     renderer: "html",
-    supportedAspectRatios: ["4:5", "9:16"],
-    defaultAspectRatio: "9:16",
     status: "active",
     version: 2,
     structure: {
@@ -47,6 +47,10 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Pixel-accurate iOS styling", "Last bubble carries the payoff", "Optional product photo as attachment"],
     },
+    formatLayouts: {
+      "1:1": "Condensed thread: 2 bubbles plus product attachment, header cropped to contact name.",
+      "9:16": "Full thread with 3–6 bubbles, iOS header and keyboard hint; product attachment as the last bubble.",
+    },
     recommendedAngles: ["Friend recommendation", "Social proof", "Belonging"],
   },
   {
@@ -56,8 +60,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "Reverse-psychology headline that disqualifies the wrong buyer and flatters the right one.",
     type: "static",
     renderer: "html",
-    supportedAspectRatios: ["4:5", "1:1"],
-    defaultAspectRatio: "4:5",
     status: "active",
     version: 2,
     structure: {
@@ -68,6 +70,10 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Typography-led", "High contrast", "Product small but crisp"],
     },
+    formatLayouts: {
+      "1:1": "Headline top-left over two lines, reasons below, product bottom-right at ~35% width.",
+      "9:16": "Oversized headline across the upper third, reasons centred, product large in the lower half, CTA above safe zone.",
+    },
     recommendedAngles: ["Prestige / Quality", "Objection handling"],
   },
   {
@@ -77,8 +83,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "A personal iOS Notes page — a list, reminder or confession written in first person.",
     type: "static",
     renderer: "html",
-    supportedAspectRatios: ["4:5", "9:16"],
-    defaultAspectRatio: "4:5",
     status: "active",
     version: 1,
     structure: {
@@ -89,6 +93,10 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Native Notes typography", "Imperfect, human tone", "No logo"],
     },
+    formatLayouts: {
+      "1:1": "Note title and list on the left two-thirds, product thumbnail bottom-right.",
+      "9:16": "Full-height note with title, 4–7 lines and generous line spacing; product sticker near the bottom.",
+    },
     recommendedAngles: ["Better routine", "Self care"],
   },
   {
@@ -98,8 +106,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "A search query with autocomplete suggestions that surface the real desire.",
     type: "static",
     renderer: "html",
-    supportedAspectRatios: ["4:5", "1:1"],
-    defaultAspectRatio: "4:5",
     status: "active",
     version: 1,
     structure: {
@@ -110,6 +116,10 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Generic search UI, no Google branding", "Product appears as the answer"],
     },
+    formatLayouts: {
+      "1:1": "Search pill top, suggestions left, product answer card right.",
+      "9:16": "Search pill in the upper third, suggestions stacked below, product answer card large at the bottom.",
+    },
     recommendedAngles: ["Better coffee alternative", "Problem / solution"],
   },
   {
@@ -119,8 +129,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "A thermal-paper receipt itemising what you really get.",
     type: "static",
     renderer: "html",
-    supportedAspectRatios: ["4:5", "9:16"],
-    defaultAspectRatio: "4:5",
     status: "active",
     version: 1,
     structure: {
@@ -131,6 +139,10 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Monospace type", "Subtle paper texture", "Total line is the hook"],
     },
+    formatLayouts: {
+      "1:1": "Receipt rotated slightly on the left half, product on the right half.",
+      "9:16": "Tall receipt centred and cropped by the top edge, product overlapping the bottom corner.",
+    },
     recommendedAngles: ["Price / Value", "Better routine"],
   },
   {
@@ -140,8 +152,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "A playful hazard label listing the 'side effects' of the product.",
     type: "static",
     renderer: "html",
-    supportedAspectRatios: ["4:5", "1:1"],
-    defaultAspectRatio: "1:1",
     status: "beta",
     version: 1,
     structure: {
@@ -152,6 +162,10 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Yellow/black safety palette allowed", "Must stay compliant — no health claims"],
     },
+    formatLayouts: {
+      "1:1": "Horizontal label: hazard icon left, WARNING + effects right, product small.",
+      "9:16": "Vertical label: large hazard icon on top, WARNING header, effects list, product below.",
+    },
     recommendedAngles: ["Playful", "Better routine"],
   },
   {
@@ -161,8 +175,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "An exclusive club card that turns customers into members.",
     type: "static",
     renderer: "html",
-    supportedAspectRatios: ["4:5", "1:1"],
-    defaultAspectRatio: "4:5",
     status: "beta",
     version: 1,
     structure: {
@@ -173,6 +185,10 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Premium card material", "Dark brand color as card base"],
     },
+    formatLayouts: {
+      "1:1": "Card centred at 80% width, slight tilt, perks line below.",
+      "9:16": "Card in the upper-middle, larger; perks list and CTA stacked below.",
+    },
     recommendedAngles: ["Belonging", "Prestige"],
   },
   {
@@ -182,8 +198,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "A studio-lit hero shot of the product with a short editorial headline.",
     type: "static",
     renderer: "image",
-    supportedAspectRatios: ["4:5", "1:1", "9:16"],
-    defaultAspectRatio: "4:5",
     status: "active",
     version: 2,
     structure: {
@@ -194,6 +208,10 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Preserve exact packaging from reference image", "Soft natural shadow", "Brand background color"],
     },
+    formatLayouts: {
+      "1:1": "Product left-centre at ~55% height, headline right, CTA chip under headline.",
+      "9:16": "Headline top, product centred filling ~50% height, CTA chip in the lower third.",
+    },
     recommendedAngles: ["Prestige / Quality", "Aesthetic lifestyle"],
   },
   {
@@ -203,8 +221,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "A creator-style talking-head video with a hook, story and soft CTA.",
     type: "ugc",
     renderer: "ugc_video",
-    supportedAspectRatios: ["9:16"],
-    defaultAspectRatio: "9:16",
     status: "planned",
     version: 0,
     structure: {
@@ -215,6 +231,10 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Natural lighting", "Handheld feel", "Product label legible"],
     },
+    formatLayouts: {
+      "1:1": "Square crop of the creator frame, captions centred low, product visible in hand.",
+      "9:16": "Full vertical selfie frame, captions in the middle third, product enters by second 4.",
+    },
     recommendedAngles: ["Friend recommendation", "Better routine", "Social proof"],
   },
   {
@@ -224,8 +244,6 @@ export const RECIPES: CreativeRecipe[] = [
     description: "A 6–10 second stop-motion clay scene built around one visual metaphor.",
     type: "video",
     renderer: "video",
-    supportedAspectRatios: ["9:16", "4:5"],
-    defaultAspectRatio: "9:16",
     status: "planned",
     version: 0,
     structure: {
@@ -236,9 +254,19 @@ export const RECIPES: CreativeRecipe[] = [
       ],
       visualRules: ["Visible fingerprints / clay texture", "Warm palette", "Product modeled from reference"],
     },
+    formatLayouts: {
+      "1:1": "Square set, camera slightly wider, product reveal centred.",
+      "9:16": "Vertical set with more headroom, product reveal in the lower-middle, end card text top.",
+    },
     recommendedAngles: ["Playful", "Better routine"],
   },
 ];
+
+/** Generic composition used by mechanisms without an authored recipe. */
+export const DEFAULT_FORMAT_LAYOUTS: CreativeRecipe["formatLayouts"] = {
+  "1:1": "Compact composition: hook top-left, product bottom-right at medium scale, CTA under the hook.",
+  "9:16": "Stacked composition: hook in the upper third, product large in the middle, CTA in the lower third above the safe zone.",
+};
 
 const RECIPE_MAP = new Map(RECIPES.map((r) => [r.mechanismId, r]));
 
@@ -258,8 +286,6 @@ export function getRecipeForMechanism(mechanismId: MechanismId): CreativeRecipe 
     description: mechanism.description,
     type: mechanism.type,
     renderer: mechanism.defaultRenderer,
-    supportedAspectRatios: mechanism.aspectRatios,
-    defaultAspectRatio: mechanism.aspectRatios[0],
     status: "planned",
     version: 0,
     structure: {
@@ -267,6 +293,7 @@ export function getRecipeForMechanism(mechanismId: MechanismId): CreativeRecipe 
       copySlots: [{ key: "headline", label: "Headline", required: true }],
       visualRules: [],
     },
+    formatLayouts: DEFAULT_FORMAT_LAYOUTS,
     recommendedAngles: [],
   };
 }

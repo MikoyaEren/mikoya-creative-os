@@ -2,8 +2,11 @@
  * Core domain model for Mikoya Creative OS.
  *
  * Everything the future AI pipeline produces or consumes is described here.
- * `CreativeConcept` is intentionally flat and JSON-serialisable so an LLM can
- * return it directly (see lib/pipeline/concept-schema.ts).
+ *
+ * Core rule: one CreativeConcept = one idea (mechanism, angle, hook, offer)
+ * delivered as exactly two mandatory format variants — 1:1 and 9:16.
+ * Variants share the copy and idea; only layout/composition differs.
+ * An LLM returns `CreativeConceptDraft` JSON (see lib/pipeline/concept-schema.ts).
  */
 
 // ---------------------------------------------------------------------------
@@ -16,12 +19,14 @@ export type CreativeType = "static" | "video" | "ugc" | "experimental";
 /** Which rendering backend turns a concept into a finished asset. */
 export type RendererType = "html" | "image" | "video" | "ugc_video";
 
-export type AspectRatio = "1:1" | "4:5" | "9:16" | "16:9";
+/** The two mandatory output formats every concept is delivered in. */
+export type OutputFormat = "1:1" | "9:16";
 
 /** Whether a mechanism produces a still or a moving creative. */
 export type CreativeMedium = "still" | "motion";
 
-export type CreativeStatus = "planned" | "queued" | "rendering" | "complete" | "failed";
+/** Render state of a single format variant. */
+export type VariantStatus = "planned" | "queued" | "rendering" | "complete" | "failed";
 
 export type BatchStatus = "draft" | "queued" | "generating" | "complete" | "failed";
 
@@ -103,6 +108,7 @@ export interface BrandContext {
   notes: string;
 }
 
+/** Number of *concepts* per type. Outputs = concepts × OUTPUT_FORMATS.length. */
 export interface OutputMix {
   static: number;
   video: number;
@@ -140,7 +146,6 @@ export interface CreativeMechanism {
   type: CreativeType;
   medium: CreativeMedium;
   defaultRenderer: RendererType;
-  aspectRatios: AspectRatio[];
 }
 
 export interface RecipeCopySlot {
@@ -162,8 +167,6 @@ export interface CreativeRecipe {
   description: string;
   type: CreativeType;
   renderer: RendererType;
-  supportedAspectRatios: AspectRatio[];
-  defaultAspectRatio: AspectRatio;
   status: RecipeStatus;
   version: number;
   /** Structural blueprint for the concept writer. */
@@ -172,6 +175,11 @@ export interface CreativeRecipe {
     copySlots: RecipeCopySlot[];
     visualRules: string[];
   };
+  /**
+   * How this mechanism is composed in each mandatory format. The concept and
+   * copy stay identical; only composition, positioning, crop and scale change.
+   */
+  formatLayouts: Record<OutputFormat, string>;
   /** Angles this recipe performs best with. */
   recommendedAngles: string[];
 }
@@ -181,45 +189,61 @@ export interface CreativeRecipe {
 // ---------------------------------------------------------------------------
 
 /**
- * A single creative idea + its render state. Designed so an LLM can return
- * an array of these as JSON (minus the system-managed fields).
+ * One format-specific output of a concept. Same idea and copy as its concept;
+ * its own layout, prompt and render state.
+ */
+export interface CreativeVariant {
+  id: string;
+  conceptId: string;
+  aspectRatio: OutputFormat;
+  layoutDescription: string;
+  /** Final prompt: shared concept layers + this format's layout layer. */
+  generationPrompt: string;
+  /** Low-res preview from the renderer (null → client-side mock preview). */
+  previewUrl: string | null;
+  /** Final rendered asset. */
+  outputUrl: string | null;
+  status: VariantStatus;
+  error?: string;
+}
+
+/**
+ * A single creative idea. Shared across both format variants: mechanism,
+ * angle, hook, subheadline, visual idea and offer.
  */
 export interface CreativeConcept {
   id: string;
-  /** Sequential position in the batch, 1-based ("Ad 01"). */
+  /** Sequential position in the batch, 1-based ("Concept 01"). */
   index: number;
   name: string;
   recipeId: string;
   mechanism: MechanismId;
   type: CreativeType;
   renderer: RendererType;
-  aspectRatio: AspectRatio;
   angle: string;
   hook: string;
   subheadline: string;
-  layoutDescription: string;
   visualDescription: string;
   cta: string;
-  generationPrompt: string;
-  status: CreativeStatus;
-  outputUrl: string | null;
+  /** Always exactly one variant per OutputFormat, in OUTPUT_FORMATS order. */
+  variants: CreativeVariant[];
   createdAt: string;
-  error?: string;
 }
 
-/** Fields the concept-writer model is responsible for. */
-export type CreativeConceptDraft = Pick<
-  CreativeConcept,
-  | "recipeId"
-  | "mechanism"
-  | "aspectRatio"
-  | "angle"
-  | "hook"
-  | "subheadline"
-  | "layoutDescription"
-  | "visualDescription"
-  | "cta"
->;
+/**
+ * What the concept-writer model returns. Shared copy plus optional
+ * per-format layout notes; the system adds the two variants.
+ */
+export interface CreativeConceptDraft {
+  recipeId: string;
+  mechanism: MechanismId;
+  angle: string;
+  hook: string;
+  subheadline: string;
+  visualDescription: string;
+  cta: string;
+  layoutNotes?: Partial<Record<OutputFormat, string>>;
+}
 
 export interface CreativeBatch {
   id: string;

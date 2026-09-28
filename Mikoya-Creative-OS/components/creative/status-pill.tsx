@@ -1,8 +1,8 @@
 import { CircleAlert, LoaderCircle } from "lucide-react";
-import type { BatchStatus, CreativeStatus } from "@/lib/types";
+import type { BatchStatus, VariantStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 
-const LABELS: Record<BatchStatus | CreativeStatus, string> = {
+const LABELS: Record<BatchStatus | VariantStatus, string> = {
   draft: "Draft",
   planned: "Planned",
   queued: "Queued",
@@ -12,7 +12,7 @@ const LABELS: Record<BatchStatus | CreativeStatus, string> = {
   failed: "Failed",
 };
 
-export function StatusPill({ status }: { status: BatchStatus | CreativeStatus }) {
+export function StatusPill({ status }: { status: BatchStatus | VariantStatus }) {
   if (status === "complete") {
     return (
       <Badge tone="forest">

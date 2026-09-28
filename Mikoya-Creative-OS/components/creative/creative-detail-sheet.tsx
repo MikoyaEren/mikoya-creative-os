@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Check, Copy, PenLine, RefreshCw, Sparkles } from "lucide-react";
-import type { BrandColors, CreativeConcept } from "@/lib/types";
-import { CREATIVE_TYPE_LABELS, RENDERER_LABELS } from "@/lib/constants";
+import { Check, Copy, Download, PenLine, RefreshCw, Sparkles } from "lucide-react";
+import type { BrandColors, CreativeConcept, OutputFormat } from "@/lib/types";
+import { CREATIVE_TYPE_LABELS, RENDERER_LABELS, readyOutputs } from "@/lib/constants";
+import { FORMAT_SPECS, OUTPUT_FORMATS } from "@/lib/pipeline/formats";
 import { getMechanism, getRecipeForMechanism } from "@/lib/recipes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Segmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
 import { CreativePreview } from "./creative-preview";
 import { creativeActions } from "./creative-actions";
@@ -15,6 +17,8 @@ import { StatusPill } from "./status-pill";
 
 interface CreativeDetailSheetProps {
   concept: CreativeConcept | null;
+  format: OutputFormat;
+  onFormatChange: (format: OutputFormat) => void;
   productName: string;
   productImage?: string | null;
   lifestyleImage?: string | null;
@@ -31,12 +35,21 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function PromptBlock({ prompt }: { prompt: string }) {
+function SectionLabel({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
+  return (
+    <div className="mt-8 flex items-center justify-between pb-2">
+      <h3 className="text-[11px] font-semibold tracking-[0.14em] text-ink uppercase">{children}</h3>
+      {aside}
+    </div>
+  );
+}
+
+function PromptBlock({ prompt, format }: { prompt: string; format: OutputFormat }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="mt-2 overflow-hidden rounded-xl border border-line bg-ink">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-2">
-        <span className="text-[11px] font-medium tracking-[0.12em] text-cream/60 uppercase">Generation prompt</span>
+        <span className="text-[11px] font-medium tracking-[0.12em] text-cream/60 uppercase">Generation prompt · {format}</span>
         <button
           type="button"
           onClick={async () => {
@@ -54,29 +67,53 @@ function PromptBlock({ prompt }: { prompt: string }) {
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      <pre className="max-h-72 overflow-auto p-4 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap text-cream/85">{prompt}</pre>
+      <pre className="max-h-80 overflow-auto p-4 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap text-cream/85">{prompt}</pre>
     </div>
   );
 }
 
-export function CreativeDetailSheet({ concept, productName, productImage, lifestyleImage, colors, onClose }: CreativeDetailSheetProps) {
+export function CreativeDetailSheet({
+  concept,
+  format,
+  onFormatChange,
+  productName,
+  productImage,
+  lifestyleImage,
+  colors,
+  onClose,
+}: CreativeDetailSheetProps) {
+  const variant = concept?.variants.find((v) => v.aspectRatio === format) ?? concept?.variants[0];
+
   return (
-    <Sheet open={Boolean(concept)} onClose={onClose} title={concept ? `${concept.name} details` : "Creative details"}>
-      {concept && (
+    <Sheet open={Boolean(concept)} onClose={onClose} title={concept ? `${concept.name} details` : "Concept details"}>
+      {concept && variant && (
         <div className="min-h-0 flex-1 overflow-y-auto md:grid md:grid-cols-[minmax(0,4fr)_minmax(0,6fr)] md:overflow-hidden">
-          <div className="flex items-center justify-center border-b border-line bg-sand/70 p-8 md:border-r md:border-b-0">
-            <CreativePreview
-              concept={concept}
-              productName={productName}
-              productImage={productImage}
-              lifestyleImage={lifestyleImage}
-              colors={colors}
-              className={concept.aspectRatio === "9:16" ? "h-[min(70vh,560px)] rounded-lg shadow-xl" : "w-full max-w-[380px] rounded-lg shadow-xl"}
+          <div className="flex flex-col items-center justify-center gap-5 border-b border-line bg-sand/70 p-8 md:border-r md:border-b-0">
+            <Segmented
+              ariaLabel="Output format"
+              value={variant.aspectRatio}
+              onChange={onFormatChange}
+              options={OUTPUT_FORMATS.map((f) => ({ value: f, label: f }))}
             />
+            <div className="relative">
+              <CreativePreview
+                key={variant.id}
+                concept={concept}
+                format={variant.aspectRatio}
+                productName={productName}
+                productImage={productImage}
+                lifestyleImage={lifestyleImage}
+                colors={colors}
+                className={variant.aspectRatio === "9:16" ? "h-[min(64vh,560px)] rounded-lg shadow-xl" : "w-[min(100%,360px)] rounded-lg shadow-xl sm:w-[360px]"}
+              />
+            </div>
+            <p className="text-center text-xs text-muted">
+              {FORMAT_SPECS[variant.aspectRatio].label} · {FORMAT_SPECS[variant.aspectRatio].canvas.width}×{FORMAT_SPECS[variant.aspectRatio].canvas.height} · {FORMAT_SPECS[variant.aspectRatio].placements}
+            </p>
           </div>
 
           <div className="flex min-h-0 flex-col">
-            <div className="flex-1 px-6 md:overflow-y-auto pt-7 pb-6 sm:px-8">
+            <div className="flex-1 px-6 pt-7 pb-6 sm:px-8 md:overflow-y-auto">
               <div className="flex items-center gap-2 pr-10">
                 <span className="flex size-8 items-center justify-center rounded-lg bg-forest-soft text-forest">
                   <MechanismIcon id={concept.mechanism} className="size-4" />
@@ -84,35 +121,51 @@ export function CreativeDetailSheet({ concept, productName, productImage, lifest
                 <span className="text-[13px] text-muted">{getMechanism(concept.mechanism).name}</span>
               </div>
               <h2 className="mt-3 font-serif text-4xl leading-none">{concept.name}</h2>
-              <div className="mt-4 flex flex-wrap gap-1.5">
-                <StatusPill status={concept.status} />
+              <div className="mt-4 flex flex-wrap items-center gap-1.5">
                 <Badge tone="outline">{CREATIVE_TYPE_LABELS[concept.type]}</Badge>
-                <Badge tone="outline">{concept.aspectRatio}</Badge>
                 <Badge tone="blue">{RENDERER_LABELS[concept.renderer]}</Badge>
+                <Badge tone={readyOutputs(concept) === concept.variants.length ? "forest" : "warning"}>
+                  {readyOutputs(concept)}/{concept.variants.length} outputs ready
+                </Badge>
               </div>
 
-              <dl className="mt-6">
-                <Row label="Creative ID"><span className="font-mono text-xs">{concept.id}</span></Row>
-                <Row label="Creative mechanism">{getMechanism(concept.mechanism).name} <span className="text-muted">· recipe {getRecipeForMechanism(concept.mechanism).id} v{getRecipeForMechanism(concept.mechanism).version}</span></Row>
-                <Row label="Format">{concept.aspectRatio} · {CREATIVE_TYPE_LABELS[concept.type]}</Row>
+              <SectionLabel aside={<span className="text-xs text-muted">Shared by 1:1 and 9:16</span>}>Concept</SectionLabel>
+              <dl>
+                <Row label="Concept ID"><span className="font-mono text-xs">{concept.id}</span></Row>
+                <Row label="Creative mechanism">
+                  {getMechanism(concept.mechanism).name}{" "}
+                  <span className="text-muted">· recipe {getRecipeForMechanism(concept.mechanism).id} v{getRecipeForMechanism(concept.mechanism).version}</span>
+                </Row>
                 <Row label="Creative angle">{concept.angle}</Row>
                 <Row label="Hook"><span className="font-medium">{concept.hook}</span></Row>
                 <Row label="Subheadline">{concept.subheadline}</Row>
-                <Row label="Layout description">{concept.layoutDescription}</Row>
-                <Row label="Visual description">{concept.visualDescription}</Row>
+                <Row label="Visual idea">{concept.visualDescription}</Row>
                 <Row label="CTA / Offer">{concept.cta}</Row>
                 <Row label="Renderer"><span className="font-mono text-xs">{RENDERER_LABELS[concept.renderer]}</span></Row>
               </dl>
-              <div className="mt-4 border-t border-line pt-4">
-                <p className="text-xs font-medium text-muted">Generation prompt</p>
-                <PromptBlock prompt={concept.generationPrompt} />
-              </div>
+
+              <SectionLabel aside={<StatusPill status={variant.status} />}>Format · {variant.aspectRatio}</SectionLabel>
+              <dl>
+                <Row label="Variant ID"><span className="font-mono text-xs">{variant.id}</span></Row>
+                <Row label="Layout description">{variant.layoutDescription}</Row>
+                <Row label="Output">
+                  {variant.outputUrl ? (
+                    <a href={variant.outputUrl} className="text-forest underline" target="_blank" rel="noreferrer">Open file</a>
+                  ) : (
+                    <span className="text-muted">{variant.error ?? "Not rendered yet — preview is drawn from the concept."}</span>
+                  )}
+                </Row>
+              </dl>
+              <PromptBlock key={variant.id} prompt={variant.generationPrompt} format={variant.aspectRatio} />
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-line bg-paper px-6 py-4 sm:px-8">
               <Button variant="primary" onClick={() => creativeActions.regenerate(concept)}><RefreshCw /> Regenerate</Button>
               <Button onClick={() => creativeActions.createVariants(concept, 3)}><Sparkles /> Create 3 Variants</Button>
               <Button variant="ghost" onClick={() => creativeActions.editCopy(concept)}><PenLine /> Edit Creative</Button>
+              <Button variant="ghost" size="icon" aria-label={`Download ${variant.aspectRatio}`} title={`Download ${variant.aspectRatio}`} onClick={() => creativeActions.download(concept, variant)}>
+                <Download />
+              </Button>
             </div>
           </div>
         </div>

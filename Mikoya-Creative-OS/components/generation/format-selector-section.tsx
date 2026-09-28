@@ -24,8 +24,8 @@ export function FormatSelectorSection({ value, onChange, error }: FormatSelector
     <SectionCard
       id="section-formats"
       step="D"
-      title="Creative formats"
-      description={`Pick the mechanisms to draw from. ${value.length} of ${MECHANISMS.length} selected.`}
+      title="Creative mechanisms"
+      description={`Pick the ad mechanisms to draw concepts from. ${value.length} of ${MECHANISMS.length} selected. 1:1 and 9:16 are always generated for every concept.`}
       actions={
         <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="ghost" onClick={() => onChange(ALL_MECHANISM_IDS)}>Select all</Button>
@@ -36,6 +36,12 @@ export function FormatSelectorSection({ value, onChange, error }: FormatSelector
       }
     >
       {error && <p role="alert" className="mb-4 text-xs text-danger">{error}</p>}
+      <div className="mb-5 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-cream/60 px-4 py-3 text-xs text-ink-soft">
+        <span className="font-medium text-ink">Mandatory outputs per concept</span>
+        <span className="rounded-md bg-paper px-1.5 py-0.5 font-mono ring-1 ring-line">1:1</span>
+        <span className="rounded-md bg-paper px-1.5 py-0.5 font-mono ring-1 ring-line">9:16</span>
+        <span className="text-muted">Same idea and copy, layout adapted to each format.</span>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {MECHANISMS.map((m) => {
           const active = selected.has(m.id);

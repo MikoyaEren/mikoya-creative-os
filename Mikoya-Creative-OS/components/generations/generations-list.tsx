@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowUpRight, History, Search } from "lucide-react";
-import { OUTPUT_PRESETS } from "@/lib/constants";
+import { OUTPUT_PRESETS, batchOutputStats } from "@/lib/constants";
 import { useBatches } from "@/lib/store/generations-store";
 import { formatDateTime, formatRelativeDate } from "@/lib/utils";
 import { buttonClasses } from "@/components/ui/button";
@@ -19,15 +19,18 @@ export function GenerationsList() {
     () => batches.filter((b) => b.product.name.toLowerCase().includes(query.trim().toLowerCase())),
     [batches, query],
   );
-  const totalCreatives = batches.reduce((sum, b) => sum + b.concepts.length, 0);
+  const totals = batches.map(batchOutputStats).reduce(
+    (acc, s) => ({ concepts: acc.concepts + s.concepts, outputs: acc.outputs + s.outputs }),
+    { concepts: 0, outputs: 0 },
+  );
 
   return (
     <div className="mt-10">
       <div className="grid grid-cols-3 gap-px overflow-hidden rounded-[var(--radius-card)] border border-line bg-line">
         {[
           { label: "Generations", value: batches.length },
-          { label: "Creatives", value: totalCreatives },
-          { label: "Products", value: new Set(batches.map((b) => b.product.name)).size },
+          { label: "Concepts", value: totals.concepts },
+          { label: "Outputs (1:1 + 9:16)", value: totals.outputs },
         ].map((s) => (
           <div key={s.label} className="bg-paper px-5 py-4 sm:px-6">
             <p className="text-xs text-muted">{s.label}</p>
@@ -62,7 +65,7 @@ export function GenerationsList() {
           <div className="hidden grid-cols-[minmax(0,2.4fr)_1fr_1fr_1fr_40px] gap-4 border-b border-line px-5 py-3 text-xs font-medium text-muted md:grid">
             <span>Product</span>
             <span>Date</span>
-            <span>Creatives</span>
+            <span>Concepts · Outputs</span>
             <span>Status</span>
             <span />
           </div>
@@ -89,7 +92,9 @@ export function GenerationsList() {
                     </span>
                     <span className="hidden text-[13px] md:block">
                       <span className="font-medium tabular-nums">{b.concepts.length}</span>
-                      <span className="text-muted"> creatives</span>
+                      <span className="text-muted"> concepts · </span>
+                      <span className="font-medium tabular-nums">{batchOutputStats(b).outputs}</span>
+                      <span className="text-muted"> outputs</span>
                       {preset && <span className="block text-xs text-faint">{preset.label}</span>}
                     </span>
                     <span className="justify-self-end md:justify-self-start">
@@ -99,7 +104,7 @@ export function GenerationsList() {
                       <ArrowUpRight className="size-4" />
                     </span>
                     <span className="col-span-2 text-xs text-muted md:hidden" suppressHydrationWarning>
-                      {formatRelativeDate(b.createdAt)} · {b.concepts.length} creatives
+                      {formatRelativeDate(b.createdAt)} · {b.concepts.length} concepts · {batchOutputStats(b).outputs} outputs
                     </span>
                   </Link>
                 </li>

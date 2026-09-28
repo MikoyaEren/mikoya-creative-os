@@ -1,7 +1,9 @@
 # Mikoya Creative OS
 
 Internal creative generation platform for Mikoya. Enter a product once and get
-30–40 ad concepts across static, video, UGC and experimental mechanisms.
+up to 20 creative concepts across static, video, UGC and experimental
+mechanisms. Every concept is delivered in both mandatory formats, **1:1 and
+9:16**, so a Full Creative Drop is 20 concepts, which makes 40 outputs.
 
 > **Milestone 1 (this version):** architecture, polished frontend, input
 > workflow, asset handling, output gallery and the TypeScript data model.
@@ -39,17 +41,37 @@ component library dependency). Runtime dependencies beyond Next/React:
 | -------------------- | ----------- | ---------------------------------------------------- |
 | `/new`               | Full UI     | Create Ads: product, brand context, output mix, formats |
 | `/generations`       | Full UI     | History of batches                                   |
-| `/generations/[id]`  | Full UI     | Creative gallery with filters, sort and detail drawer |
+| `/generations/[id]`  | Full UI     | Concept gallery (1:1 + 9:16 per card), filters, sort, detail drawer with format switcher |
 | `/recipes`           | Read-only   | Recipe cards + the prompt-layer architecture         |
 | `/library`, `/brand`, `/settings` | Placeholder | Roadmap for each area                  |
 
 ## Architecture
 
+### Concepts and format variants
+
+A **CreativeConcept** is one idea. It has one mechanism, angle, hook,
+subheadline, visual idea and offer. It always carries exactly two
+**CreativeVariants**, `1:1` and `9:16` (`lib/pipeline/formats.ts`).
+Both variants share the concept's copy. What differs is the layout: the
+composition, where elements sit, text wrapping, spacing, product scale and
+crop. Users pick mechanisms, never formats.
+
+```
+Presets          concepts   outputs (× 2 formats)
+Quick Test          5          10
+Standard Batch     10          20
+Full Creative Drop 20          40
+```
+
+### Prompt layers
+
 The future pipeline is **layered**, not 40 giant prompts:
 
 ```
-GLOBAL BRAND CONTEXT  +  PRODUCT TRUTH PACK  +  CREATIVE RECIPE
-      +  CREATIVE CONCEPT  +  RENDERER INSTRUCTIONS  =  FINAL GENERATION PROMPT
+BRAND CONTEXT + PRODUCT TRUTH PACK + CREATIVE RECIPE + CREATIVE CONCEPT   ← shared
+      + FORMAT VARIANT INSTRUCTIONS (1:1 | 9:16)                          ← per variant
+      + RENDERER INSTRUCTIONS
+      = FINAL GENERATION PROMPT (one per variant)
 ```
 
 Each layer has its own module and can be versioned and cached on its own:
@@ -60,6 +82,7 @@ Each layer has its own module and can be versioned and cached on its own:
 | Product truth pack    | `lib/pipeline/truth-pack.ts` (stub)     |
 | Creative recipe       | `lib/recipes/recipes.ts`                |
 | Creative concept      | `CreativeConcept` type, `lib/pipeline/concept-schema.ts` |
+| Format variant        | `lib/pipeline/formats.ts` + `recipe.formatLayouts` |
 | Renderer instructions | `lib/pipeline/renderers.ts`             |
 | Composition           | `lib/pipeline/prompt-builder.ts`        |
 
@@ -67,8 +90,9 @@ The UI only talks to the `GenerationProvider` interface
 (`lib/pipeline/provider.ts`). Today it is `mockProvider`. Swapping in a real
 provider does not touch any components.
 
-Every mock concept already carries a real composed `generationPrompt`, which
-you can inspect in the creative detail drawer.
+Both variants of every mock concept already carry a real composed
+`generationPrompt`. You can compare them in the detail drawer by switching
+between 1:1 and 9:16.
 
 ### Folder structure
 
@@ -104,8 +128,9 @@ lib/
 - Batches you create are saved in `localStorage`. Four seed batches are always
   present.
 - `components/creative/creative-preview.tsx` draws a recognisable mock for
-  every mechanism (tweet, iMessage, receipt, warning label, …). Once renderers
-  exist, show `concept.outputUrl` instead.
+  every mechanism (tweet, iMessage, receipt, warning label, …), with a separate
+  composition for 1:1 and for 9:16. Once renderers exist, show
+  `variant.previewUrl` / `variant.outputUrl` instead.
 
 ## Recommended next step
 
@@ -114,8 +139,10 @@ Connect the concept writer:
 1. Add a server route (`app/api/generations/route.ts`) that builds the product
    truth pack. Scrape the product URL, then run a vision pass over the images.
 2. Call the LLM with Brand context + Truth pack + the selected recipes, using
-   `CREATIVE_CONCEPT_JSON_SCHEMA` as structured output. Validate the result
-   with `parseConceptDraft`.
+   `CREATIVE_CONCEPT_JSON_SCHEMA` as structured output. The model writes each
+   idea once, with optional per-format layout notes. Validate the result with
+   `parseConceptDraft`, then expand every draft into its 1:1 and 9:16 variants
+   (see `createMockBatch` for the reference flow).
 3. Persist batches in a database and assets in object storage.
 4. Implement an `apiProvider` that satisfies `GenerationProvider`.
 

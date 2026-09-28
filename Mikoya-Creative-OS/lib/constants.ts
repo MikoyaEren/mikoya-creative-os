@@ -1,4 +1,5 @@
-import type { BrandContext, CreativeType, OutputMix, OutputPreset, RendererType } from "@/lib/types";
+import type { BrandContext, CreativeBatch, CreativeConcept, CreativeType, OutputMix, OutputPreset, RendererType } from "@/lib/types";
+import { OUTPUTS_PER_CONCEPT } from "@/lib/pipeline/formats";
 
 export const DEFAULT_BRAND_CONTEXT: BrandContext = {
   brandName: "Mikoya",
@@ -39,28 +40,54 @@ export const OUTPUT_PRESETS: OutputPreset[] = [
     id: "quick_test",
     label: "Quick Test",
     description: "A fast read on which angles land.",
-    mix: { static: 6, video: 2, ugc: 1, experimental: 1 },
+    mix: { static: 2, video: 1, ugc: 1, experimental: 1 },
   },
   {
     id: "standard_batch",
     label: "Standard Batch",
     description: "Enough variety for a weekly test.",
-    mix: { static: 12, video: 4, ugc: 2, experimental: 2 },
+    mix: { static: 6, video: 2, ugc: 1, experimental: 1 },
   },
   {
     id: "full_drop",
     label: "Full Creative Drop",
     description: "The complete set across every mechanism.",
-    mix: { static: 24, video: 8, ugc: 4, experimental: 4 },
+    mix: { static: 12, video: 4, ugc: 2, experimental: 2 },
   },
 ];
 
 export const DEFAULT_PRESET = OUTPUT_PRESETS[2];
 
-export const MAX_PER_TYPE = 60;
+/** Max concepts per type. */
+export const MAX_PER_TYPE = 30;
 
+/** Total number of concepts in a mix. */
 export function totalOf(mix: OutputMix) {
   return mix.static + mix.video + mix.ugc + mix.experimental;
+}
+
+/** Every concept yields one output per mandatory format (1:1 + 9:16). */
+export function outputsFor(conceptCount: number) {
+  return conceptCount * OUTPUTS_PER_CONCEPT;
+}
+
+export function plural(n: number, word: string) {
+  return `${n} ${word}${n === 1 ? "" : "s"}`;
+}
+
+/** "20 concepts · 40 outputs" */
+export function countLabel(conceptCount: number) {
+  return `${plural(conceptCount, "concept")} · ${plural(outputsFor(conceptCount), "output")}`;
+}
+
+export function readyOutputs(concept: CreativeConcept) {
+  return concept.variants.filter((v) => v.status === "complete").length;
+}
+
+export function batchOutputStats(batch: CreativeBatch) {
+  const outputs = batch.concepts.reduce((n, c) => n + c.variants.length, 0);
+  const ready = batch.concepts.reduce((n, c) => n + readyOutputs(c), 0);
+  return { concepts: batch.concepts.length, outputs, ready };
 }
 
 export const CREATIVE_TYPE_LABELS: Record<CreativeType, string> = {

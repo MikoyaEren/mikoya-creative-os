@@ -2,7 +2,7 @@
 
 import { Clapperboard, FlaskConical, Image as ImageIcon, Minus, Plus, UserRound, type LucideIcon } from "lucide-react";
 import type { CreativeType, OutputMix, OutputPresetId } from "@/lib/types";
-import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, MAX_PER_TYPE, OUTPUT_PRESETS, totalOf } from "@/lib/constants";
+import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, MAX_PER_TYPE, OUTPUT_PRESETS, outputsFor, plural, totalOf } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { SectionCard } from "@/components/ui/section-card";
 
@@ -35,11 +35,15 @@ export function OutputMixSection({ mix, presetId, onChange, uncoveredTypes }: Ou
     <SectionCard
       step="C"
       title="Output mix"
-      description="How many creatives of each kind should this batch contain?"
+      description="How many creative concepts of each kind? Every concept is delivered in 1:1 and 9:16."
       actions={
         <div className="text-right">
-          <p className="font-serif text-4xl leading-none tabular-nums">{total}</p>
-          <p className="mt-1 text-xs text-muted">creatives total</p>
+          <p className="font-serif text-4xl leading-none tabular-nums">
+            {total} <span className="text-2xl text-muted">concepts</span>
+          </p>
+          <p className="mt-1.5 text-xs text-muted">
+            × 2 formats = <span className="font-medium text-ink">{plural(outputsFor(total), "output")}</span>
+          </p>
         </div>
       }
     >
@@ -64,7 +68,10 @@ export function OutputMixSection({ mix, presetId, onChange, uncoveredTypes }: Ou
                   {active && <span className="size-1.5 rounded-full bg-white" />}
                 </span>
               </div>
-              <p className="mt-3 font-serif text-3xl leading-none">{totalOf(preset.mix)}</p>
+              <p className="mt-3 font-serif text-3xl leading-none">
+                {totalOf(preset.mix)} <span className="text-lg">concepts</span>
+              </p>
+              <p className="mt-1 text-[13px] font-medium text-ink-soft">{plural(outputsFor(totalOf(preset.mix)), "output")}</p>
               <p className="mt-2 text-xs text-muted">{preset.description}</p>
             </button>
           );
@@ -83,7 +90,7 @@ export function OutputMixSection({ mix, presetId, onChange, uncoveredTypes }: Ou
             <div key={type} className={cn("rounded-xl border bg-cream/50 p-4", uncovered ? "border-[#e5cf95]" : "border-line")}>
               <div className="flex items-center gap-2">
                 <Icon className="size-4 text-muted" />
-                <span className="text-[13px] font-medium">{CREATIVE_TYPE_LABELS[type]} ads</span>
+                <span className="text-[13px] font-medium">{CREATIVE_TYPE_LABELS[type]} concepts</span>
               </div>
               <p className="mt-0.5 text-xs text-muted">{hint}</p>
               <div className="mt-4 flex items-center justify-between rounded-lg border border-line-strong bg-paper p-1">
@@ -91,7 +98,7 @@ export function OutputMixSection({ mix, presetId, onChange, uncoveredTypes }: Ou
                   type="button"
                   onClick={() => setCount(type, mix[type] - 1)}
                   disabled={mix[type] <= 0}
-                  aria-label={`Fewer ${type} ads`}
+                  aria-label={`Fewer ${type} concepts`}
                   className="flex size-8 items-center justify-center rounded-md text-ink-soft hover:bg-sand disabled:opacity-30"
                 >
                   <Minus className="size-3.5" />
@@ -102,20 +109,21 @@ export function OutputMixSection({ mix, presetId, onChange, uncoveredTypes }: Ou
                   max={MAX_PER_TYPE}
                   value={mix[type]}
                   onChange={(e) => setCount(type, e.target.valueAsNumber)}
-                  aria-label={`${CREATIVE_TYPE_LABELS[type]} ads`}
+                  aria-label={`${CREATIVE_TYPE_LABELS[type]} concepts`}
                   className="w-12 bg-transparent text-center text-[15px] font-medium tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <button
                   type="button"
                   onClick={() => setCount(type, mix[type] + 1)}
                   disabled={mix[type] >= MAX_PER_TYPE}
-                  aria-label={`More ${type} ads`}
+                  aria-label={`More ${type} concepts`}
                   className="flex size-8 items-center justify-center rounded-md text-ink-soft hover:bg-sand disabled:opacity-30"
                 >
                   <Plus className="size-3.5" />
                 </button>
               </div>
-              {uncovered && <p className="mt-2 text-[11px] leading-snug text-[#8a6212]">No {CREATIVE_TYPE_LABELS[type].toLowerCase()} format selected — these slots will be skipped.</p>}
+              <p className="mt-2 text-[11px] text-faint">→ {plural(outputsFor(mix[type]), "output")}</p>
+              {uncovered && <p className="mt-2 text-[11px] leading-snug text-[#8a6212]">No {CREATIVE_TYPE_LABELS[type].toLowerCase()} format selected — these concepts will be skipped.</p>}
             </div>
           );
         })}

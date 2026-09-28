@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, LoaderCircle } from "lucide-react";
+import { countLabel } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 const STEPS = [
@@ -9,13 +10,14 @@ const STEPS = [
   "Building product truth pack",
   "Matching recipes to angles",
   "Drafting creative concepts",
+  "Laying out 1:1 and 9:16 variants",
 ];
 
-export function GeneratingOverlay({ productName, total }: { productName: string; total: number }) {
+export function GeneratingOverlay({ productName, concepts }: { productName: string; concepts: number }) {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), 420);
+    const t = setInterval(() => setStep((s) => Math.min(s + 1, STEPS.length - 1)), 320);
     return () => clearInterval(t);
   }, []);
 
@@ -24,7 +26,7 @@ export function GeneratingOverlay({ productName, total }: { productName: string;
       <div className="w-full max-w-sm rounded-2xl border border-line bg-paper p-7 shadow-[0_20px_60px_-20px_rgba(20,20,19,0.25)]">
         <p className="text-[11px] font-medium tracking-[0.14em] text-muted uppercase">Generating</p>
         <p className="mt-2 font-serif text-3xl leading-tight">{productName}</p>
-        <p className="mt-1 text-[13px] text-muted">{total} creative concepts · simulated run</p>
+        <p className="mt-1 text-[13px] text-muted">{countLabel(concepts)} · simulated run</p>
         <ul className="mt-6 flex flex-col gap-3">
           {STEPS.map((label, i) => (
             <li key={label} className={cn("flex items-center gap-3 text-[13px]", i > step ? "text-faint" : "text-ink")}>

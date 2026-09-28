@@ -1,5 +1,6 @@
 import type { CreativeRecipe, RecipeStatus } from "@/lib/types";
 import { CREATIVE_TYPE_LABELS, RENDERER_LABELS } from "@/lib/constants";
+import { OUTPUT_FORMATS } from "@/lib/pipeline/formats";
 import { Badge } from "@/components/ui/badge";
 import { MechanismIcon } from "@/components/creative/mechanism-icon";
 
@@ -37,9 +38,18 @@ export function RecipeCard({ recipe }: { recipe: CreativeRecipe }) {
         </div>
       </dl>
 
+      <div className="mt-4 space-y-1.5 text-xs leading-relaxed text-muted">
+        {OUTPUT_FORMATS.map((f) => (
+          <p key={f}>
+            <span className="mr-1.5 font-mono text-[10.5px] text-ink-soft">{f}</span>
+            {recipe.formatLayouts[f]}
+          </p>
+        ))}
+      </div>
+
       <div className="mt-4 flex flex-wrap gap-1.5">
-        {recipe.supportedAspectRatios.map((r) => (
-          <span key={r} className="rounded-md bg-sand/80 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-soft">{r}</span>
+        {OUTPUT_FORMATS.map((f) => (
+          <span key={f} title={recipe.formatLayouts[f]} className="rounded-md bg-sand/80 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-soft">{f}</span>
         ))}
         <span className="rounded-md px-1.5 py-0.5 text-[10.5px] text-faint">{recipe.structure.copySlots.length} copy slots</span>
       </div>

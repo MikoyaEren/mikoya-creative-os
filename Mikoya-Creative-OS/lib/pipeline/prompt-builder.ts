@@ -1,4 +1,5 @@
-import type { BrandContext, CreativeConceptDraft, CreativeRecipe } from "@/lib/types";
+import type { BrandContext, CreativeConceptDraft, CreativeRecipe, OutputFormat } from "@/lib/types";
+import { FORMAT_SPECS } from "./formats";
 import { RENDERERS } from "./renderers";
 import type { ProductTruthPack } from "./truth-pack";
 
@@ -7,11 +8,14 @@ import type { ProductTruthPack } from "./truth-pack";
  *   GLOBAL BRAND CONTEXT
  * + PRODUCT TRUTH PACK
  * + CREATIVE RECIPE
- * + CREATIVE CONCEPT
+ * + CREATIVE CONCEPT              ← shared by both formats
+ * + FORMAT VARIANT INSTRUCTIONS   ← 1:1 or 9:16 layout/composition
  * + RENDERER INSTRUCTIONS
  *
- * Each layer is built independently so it can be cached, versioned and
- * swapped. We never maintain 40 separate giant prompts.
+ * The first four layers are identical for the 1:1 and 9:16 variant of a
+ * concept; only the format layer differs. Each layer is built independently
+ * so it can be cached, versioned and swapped. We never maintain 40 separate
+ * giant prompts.
  */
 export interface PromptLayers {
   brand: BrandContext;
@@ -20,8 +24,14 @@ export interface PromptLayers {
   concept: CreativeConceptDraft;
 }
 
+export interface VariantLayers extends PromptLayers {
+  format: OutputFormat;
+  /** Resolved layout for this format (recipe layout + concept layout notes). */
+  layoutDescription: string;
+}
+
 export interface PromptSection {
-  key: "brand" | "product" | "recipe" | "concept" | "renderer";
+  key: "brand" | "product" | "recipe" | "concept" | "format" | "renderer";
   title: string;
   body: string;
 }
@@ -78,16 +88,30 @@ export function recipeLayer(recipe: CreativeRecipe): PromptSection {
 export function conceptLayer(concept: CreativeConceptDraft): PromptSection {
   return {
     key: "concept",
-    title: "CREATIVE CONCEPT",
+    title: "CREATIVE CONCEPT (shared across formats)",
     body: [
       `Angle: ${concept.angle}`,
-      `Aspect ratio: ${concept.aspectRatio}`,
       `Hook: ${concept.hook}`,
       `Subheadline: ${concept.subheadline}`,
-      `Layout: ${concept.layoutDescription}`,
-      `Visual: ${concept.visualDescription}`,
-      `CTA: ${concept.cta}`,
+      `Visual idea: ${concept.visualDescription}`,
+      `CTA / offer: ${concept.cta}`,
+      "Keep this idea and copy identical in every format; adapt only the layout.",
     ].join("\n"),
+  };
+}
+
+/** Resolve the layout for one format from recipe + optional concept notes. */
+export function resolveLayout(recipe: CreativeRecipe, concept: CreativeConceptDraft, format: OutputFormat) {
+  const note = concept.layoutNotes?.[format];
+  return note ? `${recipe.formatLayouts[format]} ${note}` : recipe.formatLayouts[format];
+}
+
+export function formatLayer(format: OutputFormat, layoutDescription: string): PromptSection {
+  const spec = FORMAT_SPECS[format];
+  return {
+    key: "format",
+    title: `FORMAT VARIANT — ${format} ${spec.label} (${spec.canvas.width}×${spec.canvas.height})`,
+    body: [`Layout: ${layoutDescription}`, ...spec.instructions.map((i) => `- ${i}`)].join("\n"),
   };
 }
 
@@ -100,18 +124,26 @@ export function rendererLayer(recipe: CreativeRecipe): PromptSection {
   };
 }
 
-export function buildPromptSections(layers: PromptLayers): PromptSection[] {
+/** Layers shared by every format variant of a concept. */
+export function buildSharedSections(layers: PromptLayers): PromptSection[] {
   return [
     brandLayer(layers.brand),
     productLayer(layers.truthPack),
     recipeLayer(layers.recipe),
     conceptLayer(layers.concept),
+  ];
+}
+
+export function buildVariantSections(layers: VariantLayers): PromptSection[] {
+  return [
+    ...buildSharedSections(layers),
+    formatLayer(layers.format, layers.layoutDescription),
     rendererLayer(layers.recipe),
   ];
 }
 
-export function composeGenerationPrompt(layers: PromptLayers): string {
-  return buildPromptSections(layers)
+export function composeVariantPrompt(layers: VariantLayers): string {
+  return buildVariantSections(layers)
     .map((s) => `## ${s.title}\n${s.body}`)
     .join("\n\n");
 }

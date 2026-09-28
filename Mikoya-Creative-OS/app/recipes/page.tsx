@@ -11,7 +11,8 @@ const LAYERS = [
   { title: "Brand context", body: "Colors, tone, desires. Shared by every creative." },
   { title: "Product truth pack", body: "Verified facts, claims and visuals of the product." },
   { title: "Creative recipe", body: "How a mechanism is built: layout, copy slots, rules." },
-  { title: "Creative concept", body: "The specific angle, hook and visual for one ad." },
+  { title: "Creative concept", body: "One idea: angle, hook, offer. Shared by both formats." },
+  { title: "Format variant", body: "1:1 or 9:16 layout, crop and composition." },
   { title: "Renderer", body: "HTML, image, video or UGC instructions." },
 ];
 
@@ -21,7 +22,7 @@ export default function RecipesPage() {
       <PageHeader
         eyebrow={<Badge tone="outline">Read only</Badge>}
         title="Recipes"
-        description="Creative Recipes define how each ad mechanism is constructed. They are reusable building blocks — never product-specific prompts."
+        description="Creative Recipes define how each ad mechanism is constructed — including how it is composed in the two mandatory formats, 1:1 and 9:16. They are reusable building blocks, never product-specific prompts."
       />
 
       <section className="mt-10 rounded-[var(--radius-card)] border border-line bg-paper p-6 sm:p-8">
@@ -38,7 +39,7 @@ export default function RecipesPage() {
             </li>
           ))}
         </ol>
-        <p className="mt-5 text-xs text-muted">= Final generation prompt. See <code className="font-mono">lib/pipeline/prompt-builder.ts</code>.</p>
+        <p className="mt-5 text-xs text-muted">= Final generation prompt, built twice per concept (1:1 and 9:16) with only the format layer changing. See <code className="font-mono">lib/pipeline/prompt-builder.ts</code>.</p>
       </section>
 
       <div className="mt-10 flex items-baseline justify-between">

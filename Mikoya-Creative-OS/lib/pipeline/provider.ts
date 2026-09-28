@@ -7,9 +7,10 @@ import { createMockBatch } from "@/lib/mock/generate-batch";
  *
  * Future real implementation:
  *   1. analyzeProduct(request)      → ProductTruthPack
- *   2. planConcepts(truthPack, …)   → CreativeConceptDraft[] (LLM, JSON)
- *   3. composeGenerationPrompt(…)   → per-concept final prompt
- *   4. renderConcept(concept)       → outputUrl via html / image / video / ugc renderer
+ *   2. planConcepts(truthPack, …)   → CreativeConceptDraft[] (LLM, JSON, shared idea)
+ *   3. expand each draft into 1:1 + 9:16 CreativeVariants
+ *   4. composeVariantPrompt(…)      → one final prompt per variant
+ *   5. renderVariant(variant)       → outputUrl via html / image / video / ugc renderer
  */
 export interface GenerationProvider {
   createBatch(request: GenerationRequest): Promise<CreativeBatch>;
