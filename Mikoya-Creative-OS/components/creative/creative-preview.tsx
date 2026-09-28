@@ -8,6 +8,8 @@ interface CreativePreviewProps {
   concept: CreativeConcept;
   productName: string;
   productImage?: string | null;
+  /** Optional lifestyle photo used by scene-based mechanisms. */
+  lifestyleImage?: string | null;
   colors: BrandColors;
   className?: string;
 }
@@ -25,21 +27,21 @@ const RATIO: Record<CreativeConcept["aspectRatio"], string> = {
  * recognisable, on-brand visual so the gallery can be reviewed.
  * All sizes use container-query units so it scales from card to drawer.
  */
-export function CreativePreview({ concept, productName, productImage, colors, className }: CreativePreviewProps) {
+export function CreativePreview({ concept, productName, productImage, lifestyleImage, colors, className }: CreativePreviewProps) {
   return (
     <div
       className={cn("@container relative overflow-hidden text-left", className)}
       style={{ aspectRatio: RATIO[concept.aspectRatio], background: colors.background }}
     >
-      <PreviewBody concept={concept} productName={productName} productImage={productImage} colors={colors} />
+      <PreviewBody concept={concept} productName={productName} productImage={productImage} lifestyleImage={lifestyleImage} colors={colors} />
     </div>
   );
 }
 
-function PreviewBody({ concept, productName, productImage, colors }: CreativePreviewProps) {
+function PreviewBody({ concept, productName, productImage, lifestyleImage, colors }: CreativePreviewProps) {
   const { hook, subheadline: sub } = concept;
   const product = (cls: string) => (
-    <ProductVisual src={productImage} name={productName} dark={colors.dark} className={cls} />
+    <ProductVisual src={productImage} name={productName} className={cls} />
   );
 
   switch (concept.mechanism) {
@@ -274,6 +276,19 @@ function PreviewBody({ concept, productName, productImage, colors }: CreativePre
 
     case "lifestyle":
     case "pov":
+      if (lifestyleImage) {
+        return (
+          <div className="relative h-full">
+            <SceneImage src={lifestyleImage} alt={`${productName} lifestyle`} />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/10 to-transparent" />
+            <div className="absolute top-[7cqw] right-[7cqw] left-[7cqw] text-white">
+              <p className="font-serif text-[8cqw] leading-[1.05] drop-shadow-sm">{hook}</p>
+              <p className="mt-[2cqw] text-[3.4cqw] opacity-90">{sub}</p>
+            </div>
+            <span className="absolute bottom-[6cqw] left-[7cqw] rounded-full bg-white/90 px-[4cqw] py-[1.8cqw] text-[3cqw] font-medium text-black">{concept.cta}</span>
+          </div>
+        );
+      }
       return (
         <div className="relative h-full" style={{ background: `radial-gradient(120% 90% at 70% 20%, #fff7e2 0%, ${colors.background} 45%, #d9d3c2 100%)` }}>
           <div className="absolute inset-x-0 bottom-[18%] h-[22%] bg-[#cbbfa4]/60" />
@@ -287,7 +302,7 @@ function PreviewBody({ concept, productName, productImage, colors }: CreativePre
 
     case "claymation":
     case "ai_ugc":
-      return <MotionPreview concept={concept} productName={productName} productImage={productImage} colors={colors} />;
+      return <MotionPreview concept={concept} productName={productName} productImage={productImage} lifestyleImage={lifestyleImage} colors={colors} />;
 
     default: {
       // Typography-led statements: don't buy this, hot take, confession, unpopular opinion, etc.
@@ -308,33 +323,46 @@ function PreviewBody({ concept, productName, productImage, colors }: CreativePre
   }
 }
 
-function MotionPreview({ concept, productName, productImage, colors }: CreativePreviewProps) {
+function SceneImage({ src, alt }: { src: string; alt: string }) {
+  // eslint-disable-next-line @next/next/no-img-element -- local/public previews
+  return <img src={src} alt={alt} className="absolute inset-0 size-full object-cover" draggable={false} />;
+}
+
+function MotionPreview({ concept, productName, productImage, lifestyleImage, colors }: CreativePreviewProps) {
   const ugc = concept.mechanism === "ai_ugc";
+  // UGC frames use the real lifestyle photo as a stand-in for the creator shot.
+  const scene = ugc ? lifestyleImage : null;
   return (
     <div
       className="relative flex h-full flex-col text-white"
-      style={{
+      style={scene ? undefined : {
         background: ugc
           ? "linear-gradient(180deg, #c9b79a 0%, #8f7b61 55%, #3d3226 100%)"
           : `radial-gradient(circle at 50% 40%, #f0c9a0 0%, #c98f63 45%, ${colors.dark} 100%)`,
       }}
     >
-      <div className="flex items-center justify-between p-[4cqw] text-[2.8cqw]">
+      {scene && (
+        <>
+          <SceneImage src={scene} alt={`${productName} creator scene`} />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
+        </>
+      )}
+      <div className="relative flex items-center justify-between p-[4cqw] text-[2.8cqw]">
         <span className="rounded-full bg-black/30 px-[2.5cqw] py-[1cqw] backdrop-blur">{ugc ? "AI UGC" : "Claymation"}</span>
         <span className="rounded-full bg-black/30 px-[2.5cqw] py-[1cqw] tabular-nums backdrop-blur">{ugc ? "0:24" : "0:08"}</span>
       </div>
       <div className="flex flex-1 items-center justify-center">
-        {ugc ? (
+        {scene ? null : ugc ? (
           <div className="relative flex h-[62%] w-[56%] items-end justify-center">
             <div className="absolute top-0 size-[26cqw] rounded-full bg-[#e8cbb0]" />
             <div className="absolute top-[24cqw] h-[45cqw] w-full rounded-t-[20cqw] bg-[#f3efe6]" />
             <div className="absolute right-[-6cqw] bottom-[8cqw] h-[26cqw] w-[20cqw]">
-              <ProductVisual src={productImage} name={productName} dark={colors.dark} className="h-full w-full" />
+              <ProductVisual src={productImage} name={productName} className="h-full w-full" />
             </div>
           </div>
         ) : (
           <div className="relative h-[46%] w-[60%]">
-            <ProductVisual src={productImage} name={productName} dark={colors.dark} className="h-full w-full drop-shadow-[0_2cqw_2cqw_rgba(0,0,0,0.3)]" />
+            <ProductVisual src={productImage} name={productName} className="h-full w-full drop-shadow-[0_2cqw_2cqw_rgba(0,0,0,0.3)]" />
           </div>
         )}
       </div>
@@ -343,7 +371,7 @@ function MotionPreview({ concept, productName, productImage, colors }: CreativeP
           <Play className="ml-[0.6cqw] size-[5.5cqw] fill-current" />
         </span>
       </div>
-      <div className="p-[5cqw]">
+      <div className="relative p-[5cqw]">
         <p className={cn("text-center text-[4cqw] leading-snug font-semibold", ugc && "rounded-[1.5cqw] bg-black/55 px-[3cqw] py-[1.5cqw]")}>{concept.hook}</p>
       </div>
     </div>

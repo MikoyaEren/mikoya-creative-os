@@ -13,6 +13,7 @@ interface CreativeCardProps {
   concept: CreativeConcept;
   productName: string;
   productImage?: string | null;
+  lifestyleImage?: string | null;
   colors: BrandColors;
   onOpen: () => void;
 }
@@ -34,7 +35,7 @@ function ActionButton({ label, onClick, children }: { label: string; onClick: ()
   );
 }
 
-export function CreativeCard({ concept, productName, productImage, colors, onOpen }: CreativeCardProps) {
+export function CreativeCard({ concept, productName, productImage, lifestyleImage, colors, onOpen }: CreativeCardProps) {
   const mechanism = getMechanism(concept.mechanism);
 
   return (
@@ -51,6 +52,7 @@ export function CreativeCard({ concept, productName, productImage, colors, onOpe
           concept={concept}
           productName={productName}
           productImage={productImage}
+          lifestyleImage={lifestyleImage}
           colors={colors}
           className={cn(
             "max-h-full w-auto rounded-md shadow-[0_4px_16px_-6px_rgba(20,20,19,0.25)] transition-transform duration-300 group-hover:scale-[1.015]",

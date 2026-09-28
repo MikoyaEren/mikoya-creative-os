@@ -1,6 +1,8 @@
 "use client";
 
+import { Wand2 } from "lucide-react";
 import type { ProductInput } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { SectionCard } from "@/components/ui/section-card";
@@ -13,13 +15,23 @@ interface ProductSectionProps {
   value: ProductInput;
   onChange: (value: ProductInput) => void;
   errors: ProductErrors;
+  /** Fills the section with the Mikoya reference product. */
+  onLoadExample?: () => void;
 }
 
-export function ProductSection({ value, onChange, errors }: ProductSectionProps) {
+export function ProductSection({ value, onChange, errors, onLoadExample }: ProductSectionProps) {
   const set = <K extends keyof ProductInput>(key: K, v: ProductInput[K]) => onChange({ ...value, [key]: v });
 
   return (
-    <SectionCard id="section-product" step="A" title="Product" description="What are we making ads for? This becomes the product truth every creative is built on.">
+    <SectionCard id="section-product" step="A" title="Product" description="What are we making ads for? This becomes the product truth every creative is built on."
+      actions={
+        onLoadExample && (
+          <Button size="sm" variant="outline" onClick={onLoadExample}>
+            <Wand2 /> Load Mikoya example
+          </Button>
+        )
+      }
+    >
       <div className="grid gap-6 md:grid-cols-2">
         <Field label="Product name" htmlFor="product-name" error={errors.name}>
           <Input

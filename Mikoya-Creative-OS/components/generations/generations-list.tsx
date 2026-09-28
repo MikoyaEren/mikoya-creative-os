@@ -77,7 +77,7 @@ export function GenerationsList() {
                   >
                     <div className="flex min-w-0 items-center gap-4">
                       <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line p-1.5" style={{ background: b.brand.colors.background }}>
-                        <ProductVisual src={b.product.mainImage?.previewUrl} name={b.product.name} dark={b.brand.colors.dark} className="h-full w-full" />
+                        <ProductVisual src={b.product.mainImage?.previewUrl} name={b.product.name} className="h-full w-full" />
                       </span>
                       <div className="min-w-0">
                         <p className="truncate text-[14px] font-medium">{b.product.name}</p>

@@ -2,6 +2,7 @@ import type { CreativeBatch } from "@/lib/types";
 import { DEFAULT_BRAND_CONTEXT, OUTPUT_PRESETS } from "@/lib/constants";
 import { ALL_MECHANISM_IDS } from "@/lib/recipes";
 import { createMockBatch } from "./generate-batch";
+import { MIKOYA_EXAMPLE_PRODUCT, REFERENCE_ASSETS, asRole } from "./reference-assets";
 
 const HOUR = 60 * 60 * 1000;
 
@@ -21,12 +22,7 @@ export function createSeedBatches(): CreativeBatch[] {
 
   const ceremonial = createMockBatch(
     {
-      product: {
-        name: "Mikoya Ceremonial Matcha",
-        url: "https://mikoya.de/products/ceremonial-matcha",
-        mainImage: null,
-        additionalAssets: [],
-      },
+      product: MIKOYA_EXAMPLE_PRODUCT,
       brand: DEFAULT_BRAND_CONTEXT,
       outputMix: full.mix,
       presetId: full.id,
@@ -40,8 +36,8 @@ export function createSeedBatches(): CreativeBatch[] {
       product: {
         name: "Mikoya Matcha Starter Set",
         url: "https://mikoya.de/products/matcha-starter-set",
-        mainImage: null,
-        additionalAssets: [],
+        mainImage: asRole(REFERENCE_ASSETS.starterSet, "main"),
+        additionalAssets: [REFERENCE_ASSETS.pouch, REFERENCE_ASSETS.lifestyle],
       },
       brand: DEFAULT_BRAND_CONTEXT,
       outputMix: standard.mix,
@@ -54,20 +50,20 @@ export function createSeedBatches(): CreativeBatch[] {
     { id: "batch_starterset", createdAt: hoursAgo(26) },
   );
 
-  const hojicha = createMockBatch(
+  const icedLatte = createMockBatch(
     {
       product: {
-        name: "Mikoya Hojicha Roast",
-        url: "https://mikoya.de/products/hojicha",
-        mainImage: null,
-        additionalAssets: [],
+        name: "Mikoya JPN Matcha 30g",
+        url: "https://mikoya.de/products/jpn-matcha",
+        mainImage: asRole(REFERENCE_ASSETS.pouch, "main"),
+        additionalAssets: [REFERENCE_ASSETS.lifestyle],
       },
       brand: DEFAULT_BRAND_CONTEXT,
       outputMix: quick.mix,
       presetId: quick.id,
-      mechanismIds: ["dont_buy_this", "hot_take", "search_bar", "warning_label", "product_hero", "claymation", "ai_ugc", "missing_poster"],
+      mechanismIds: ["dont_buy_this", "hot_take", "search_bar", "lifestyle", "product_hero", "claymation", "ai_ugc", "missing_poster"],
     },
-    { id: "batch_hojicha", createdAt: hoursAgo(24 * 4) },
+    { id: "batch_jpn_matcha", createdAt: hoursAgo(24 * 4) },
   );
 
   const whisk: CreativeBatch = {
@@ -92,5 +88,5 @@ export function createSeedBatches(): CreativeBatch[] {
     completedAt: undefined,
   };
 
-  return [ceremonial, starterSet, hojicha, whisk];
+  return [ceremonial, starterSet, icedLatte, whisk];
 }

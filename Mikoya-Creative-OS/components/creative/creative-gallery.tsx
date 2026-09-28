@@ -5,6 +5,7 @@ import { SearchX } from "lucide-react";
 import type { CreativeBatch, CreativeType, MechanismId } from "@/lib/types";
 import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER } from "@/lib/constants";
 import { getMechanism } from "@/lib/recipes";
+import { lifestyleImageOf } from "@/lib/mock/reference-assets";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Segmented } from "@/components/ui/segmented";
@@ -23,6 +24,7 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
 
   const { concepts } = batch;
   const productImage = batch.product.mainImage?.previewUrl ?? null;
+  const lifestyleImage = lifestyleImageOf(batch.product);
 
   const typeOptions = useMemo(
     () => [
@@ -91,6 +93,7 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
               concept={c}
               productName={batch.product.name}
               productImage={productImage}
+              lifestyleImage={lifestyleImage}
               colors={batch.brand.colors}
               onOpen={() => setOpenId(c.id)}
             />
@@ -116,6 +119,7 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
         concept={openConcept}
         productName={batch.product.name}
         productImage={productImage}
+        lifestyleImage={lifestyleImage}
         colors={batch.brand.colors}
         onClose={() => setOpenId(null)}
       />

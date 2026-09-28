@@ -50,7 +50,7 @@ export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) 
       <div className="mt-6 flex flex-wrap items-end justify-between gap-6">
         <div className="flex min-w-0 items-center gap-5">
           <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-line p-2 sm:size-20 sm:p-2.5" style={{ background: batch.brand.colors.background }}>
-            <ProductVisual src={batch.product.mainImage?.previewUrl} name={batch.product.name} dark={batch.brand.colors.dark} className="h-full w-full" />
+            <ProductVisual src={batch.product.mainImage?.previewUrl} name={batch.product.name} className="h-full w-full" />
           </div>
           <div className="min-w-0">
             <h1 className="font-serif text-[32px] leading-[1.05] sm:text-[46px]">{batch.product.name}</h1>

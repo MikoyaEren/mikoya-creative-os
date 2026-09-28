@@ -17,6 +17,7 @@ interface CreativeDetailSheetProps {
   concept: CreativeConcept | null;
   productName: string;
   productImage?: string | null;
+  lifestyleImage?: string | null;
   colors: BrandColors;
   onClose: () => void;
 }
@@ -58,7 +59,7 @@ function PromptBlock({ prompt }: { prompt: string }) {
   );
 }
 
-export function CreativeDetailSheet({ concept, productName, productImage, colors, onClose }: CreativeDetailSheetProps) {
+export function CreativeDetailSheet({ concept, productName, productImage, lifestyleImage, colors, onClose }: CreativeDetailSheetProps) {
   return (
     <Sheet open={Boolean(concept)} onClose={onClose} title={concept ? `${concept.name} details` : "Creative details"}>
       {concept && (
@@ -68,6 +69,7 @@ export function CreativeDetailSheet({ concept, productName, productImage, colors
               concept={concept}
               productName={productName}
               productImage={productImage}
+              lifestyleImage={lifestyleImage}
               colors={colors}
               className={concept.aspectRatio === "9:16" ? "h-[min(70vh,560px)] rounded-lg shadow-xl" : "w-full max-w-[380px] rounded-lg shadow-xl"}
             />

@@ -7,6 +7,7 @@ import type { BrandContext, CreativeType, GenerationRequest, MechanismId, Output
 import { CREATIVE_TYPE_ORDER, DEFAULT_BRAND_CONTEXT, DEFAULT_PRESET } from "@/lib/constants";
 import { ALL_MECHANISM_IDS, getMechanism } from "@/lib/recipes";
 import { planSlots } from "@/lib/mock/generate-batch";
+import { MIKOYA_EXAMPLE_PRODUCT } from "@/lib/mock/reference-assets";
 import { generationProvider } from "@/lib/pipeline/provider";
 import { addBatch } from "@/lib/store/generations-store";
 import { toast } from "@/lib/store/toast-store";
@@ -82,7 +83,7 @@ export function NewGenerationForm() {
 
   return (
     <div className="mt-12 flex flex-col gap-5">
-      <ProductSection value={product} onChange={setProduct} errors={errors} />
+      <ProductSection value={product} onChange={setProduct} errors={errors} onLoadExample={() => setProduct(MIKOYA_EXAMPLE_PRODUCT)} />
       <BrandContextSection value={brand} onChange={setBrand} />
       <OutputMixSection
         mix={mix}

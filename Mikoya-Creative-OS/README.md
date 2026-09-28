@@ -93,6 +93,12 @@ lib/
 
 ### Data and storage
 
+- `public/references/` holds three real Mikoya visuals (JPN Matcha pouch,
+  starter set, iced-matcha lifestyle shot). They are wired in through
+  `lib/mock/reference-assets.ts`: the seed batches use them, **Load Mikoya
+  example** on `/new` pre-fills the form with them, and Lifestyle, POV and
+  UGC previews use the lifestyle photo. The packaging is never redrawn.
+  Packshots are only blended onto brand backgrounds with `mix-blend-multiply`.
 - Uploaded images are validated (JPG, PNG or WEBP, 15 MB max) and downscaled
   to a preview data URL in the browser. Nothing is uploaded to a server.
 - Batches you create are saved in `localStorage`. Four seed batches are always

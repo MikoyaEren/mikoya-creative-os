@@ -60,7 +60,7 @@ export function MainImageDropzone({ value, onChange, invalid }: MainImageDropzon
           style={{ backgroundImage: "radial-gradient(circle, rgba(20,20,19,0.06) 1px, transparent 1px)", backgroundSize: "14px 14px" }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element -- local preview */}
-          <img src={value.previewUrl} alt="Main product" className="max-h-full max-w-full object-contain drop-shadow-sm" />
+          <img src={value.previewUrl} alt="Main product" className="max-h-full max-w-full object-contain mix-blend-multiply" />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-paper px-4 py-3">
           <div className="min-w-0">
