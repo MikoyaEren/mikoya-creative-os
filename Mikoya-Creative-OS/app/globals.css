@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+/*
+ * Mikoya Creative OS design tokens.
+ * Cream surfaces, ink typography, a single dark-green accent and a reserved
+ * brand-blue slot (replace --mikoya-blue once the final brand value is set).
+ */
+:root {
+  --cream: #f8f6f0;
+  --paper: #fdfcf9;
+  --sand: #efece4;
+  --line: #e5e1d6;
+  --line-strong: #d6d1c4;
+  --ink: #141413;
+  --ink-soft: #3a3935;
+  --muted: #74716a;
+  --faint: #a19d93;
+  --forest: #255c33;
+  --forest-hover: #1d4a29;
+  --forest-soft: #e5ede6;
+  --mikoya-blue: #2f5aa8;
+  --danger: #b4412f;
+  --danger-soft: #f7e7e3;
+}
+
+@theme inline {
+  --color-cream: var(--cream);
+  --color-paper: var(--paper);
+  --color-sand: var(--sand);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-forest: var(--forest);
+  --color-forest-hover: var(--forest-hover);
+  --color-forest-soft: var(--forest-soft);
+  --color-mikoya-blue: var(--mikoya-blue);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-instrument-serif);
+
+  --radius-card: 14px;
+}
+
+html {
+  background: var(--cream);
+}
+
+body {
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--forest-soft);
+  color: var(--forest);
+}
+
+:focus-visible {
+  outline: 2px solid var(--forest);
+  outline-offset: 2px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--sand) 0%, #f5f2ea 50%, var(--sand) 100%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
