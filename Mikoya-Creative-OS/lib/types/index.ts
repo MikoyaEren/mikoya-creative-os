@@ -285,6 +285,73 @@ export interface CreativeVariant {
   outputUrl: string | null;
   status: VariantStatus;
   error?: string;
+  /** Render state and audit of the last render attempt (HTML renderer). */
+  render?: RenderRecord;
+}
+
+export type RenderErrorCode =
+  | "no_template"
+  | "renderer_not_html"
+  | "legacy_copy"
+  | "invalid_payload"
+  | "text_overflow"
+  | "safe_zone_violation"
+  | "asset_covers_copy"
+  | "missing_required_asset"
+  | "asset_unreadable"
+  | "browser_unavailable"
+  | "timeout"
+  | "internal";
+
+/** Final size of one fitted text unit (after deterministic step-down). */
+export interface RenderFitResult {
+  unit: string;
+  role: string;
+  px: number;
+  minPx: number;
+  maxPx: number;
+  fits: boolean;
+}
+
+/** Which product asset filled which template slot, and how. */
+export interface RenderAssetUse {
+  slot: string;
+  assetHash: string;
+  role: AssetRole;
+  fit: "contain" | "cover";
+  treatment: RenderAssetTreatment;
+}
+
+/** How an uploaded asset can sit on a canvas: transparent cut-out, packshot on a light studio background, or a photo. */
+export type RenderAssetTreatment = "cutout" | "light_studio" | "photo";
+
+/** Audit of one render attempt of one variant. */
+export interface RenderRecord {
+  status: VariantStatus;
+  renderer: "html";
+  templateId: string | null;
+  templateVersion: number | null;
+  rendererVersion: string;
+  format: OutputFormat;
+  width: number;
+  height: number;
+  mime: "image/png";
+  bytes: number | null;
+  outputUrl: string | null;
+  /** Fingerprint of everything that shaped the render; a different hash means the render is stale. */
+  inputHash: string;
+  /** Concept fields drawn on the canvas (e.g. hook, copyFields, cta). */
+  renderedFields: string[];
+  cta: boolean;
+  assets: RenderAssetUse[];
+  fontSizes: RenderFitResult[];
+  /** Smallest rendered text on the canvas (chrome included), px. */
+  minTextPx?: number;
+  queuedAt?: string;
+  renderedAt?: string;
+  durationMs?: number;
+  error?: { code: RenderErrorCode; message: string; detail?: string };
+  warnings: string[];
 }
 
 /**

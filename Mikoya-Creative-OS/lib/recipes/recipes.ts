@@ -156,7 +156,7 @@ export const RECIPES: CreativeRecipe[] = [
     structure: {
       layout: "Slightly rotated receipt on brand background, line items, total, footer message.",
       copySlots: [
-        { key: "items", label: "Line items", maxChars: 220, required: true, kind: "list", minRows: 3, maxRows: 6, row: { label: { meaning: "quantity", maxChars: 4, example: "1x" }, text: { meaning: "item", maxChars: 38, required: true }, note: { meaning: "amount column: a grounded price or a word, never an invented price", maxChars: 10, example: "free" } } },
+        { key: "items", label: "Line items", maxChars: 200, required: true, kind: "list", minRows: 3, maxRows: 5, row: { label: { meaning: "quantity", maxChars: 4, example: "1x" }, text: { meaning: "item", maxChars: 32, required: true }, note: { meaning: "amount column: a grounded price or a word, never an invented price", maxChars: 10, example: "free" } } },
         { key: "total", label: "Total value (the template prints the word TOTAL itself)", maxChars: 30, required: true },
       ],
       visualRules: ["Monospace type", "Subtle paper texture", "Total line is the hook"],

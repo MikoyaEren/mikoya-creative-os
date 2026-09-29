@@ -1,0 +1,256 @@
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
+import { describe, expect, it } from "vitest";
+import type { CopyField, OutputFormat, RenderRecord } from "@/lib/types";
+import { OUTPUT_FORMATS } from "@/lib/pipeline/formats";
+import { brandTokens, contrast, toHex } from "./html/brand-style";
+import { html, raw } from "./html/escape";
+import { frameFor } from "./html/format-adapter";
+import { placeAssets } from "./html/asset-placement";
+import { TEMPLATE_MECHANISMS, listTemplates, templateFor } from "./html/template-registry";
+import { ROLE_FLOOR_PX, type TypeRole } from "./html/typography";
+import { LAB_CASES } from "./lab/fixtures";
+import type { MeasureReport } from "./html/fit-script";
+import { Semaphore, type HtmlRasterizer } from "./rasterize/chromium";
+import { decideCta, decideHeadline, hookIsDistinct, renderVariant, LEGACY_MESSAGE, type RenderVariantInput } from "./render-variant";
+import type { RenderStore } from "./store/fs-store";
+import type { RenderAsset } from "./types";
+import { renderConcept } from "@/lib/server/render/render-service";
+
+const t = (key: string, text: string): CopyField => ({ key, text, rows: [] });
+const rows = (key: string, r: [string, string, string?][]): CopyField => ({ key, text: "", rows: r.map(([label, text, note]) => ({ label, text, note: note ?? "" })) });
+
+const THREAD = [rows("messages", [["them", "you look rested"], ["me", "new morning thing"]]), t("contact", "Jules")];
+const BRAND = { brandName: "Brand", colors: { background: "#F4EFEA", dark: "#3A2E2A", accent: "#C98B6B" } };
+
+/** A rasterizer that returns a fixed report and a correctly sized blank PNG (no browser). */
+async function png(width: number, height: number) {
+  const sharp = (await import("sharp")).default;
+  return sharp({ create: { width, height, channels: 3, background: "#fff" } }).png().toBuffer();
+}
+function fakeRasterizer(report: Partial<MeasureReport> = {}, onRender?: (html: string) => void): HtmlRasterizer {
+  return {
+    async render({ html: doc, width, height }) {
+      onRender?.(doc);
+      return {
+        png: await png(width, height),
+        report: { units: [{ unit: "thread", role: "body", px: 40, minPx: 34, maxPx: 44, fits: true }], lineOverflow: [], outsideSafe: [], assetOverCopy: [], images: [], fonts: {}, smallestText: { px: 24, where: "chrome" }, ...report },
+      };
+    },
+  };
+}
+function memoryStore(): RenderStore & { files: Map<string, Buffer> } {
+  const files = new Map<string, Buffer>();
+  return {
+    files,
+    putRender: async (p, b) => void files.set(p, b),
+    readRender: async (p) => files.get(p) ?? null,
+    hasRender: async (p) => files.has(p),
+    putAsset: async () => {
+      throw new Error("n/a");
+    },
+    readAsset: async () => null,
+    assetMeta: async (hash) => ({ hash, mime: "image/png", width: 1200, height: 1600, treatment: "cutout" }),
+  };
+}
+const input = (over: Partial<RenderVariantInput> = {}): RenderVariantInput => ({
+  batchId: "batch_t",
+  variantId: "batch_t_c01_1x1",
+  format: "1:1",
+  concept: { mechanism: "imessage", renderer: "html", hook: "you look rested", cta: "Try it", copyFields: THREAD },
+  brand: BRAND,
+  assets: [],
+  options: { cta: false },
+  ...over,
+});
+
+describe("html escaping", () => {
+  it("escapes concept copy and only passes trusted markup through raw()", () => {
+    const copy = `<img src=x onerror=alert(1)> & "quotes"`;
+    expect(html`<p>${copy}</p>`.value).toBe("<p>&lt;img src=x onerror=alert(1)&gt; &amp; &quot;quotes&quot;</p>");
+    expect(html`<p>${raw("<b>chrome</b>")}${["a", "<b>"]}</p>`.value).toBe("<p><b>chrome</b>a&lt;b&gt;</p>");
+  });
+});
+
+describe("brand style", () => {
+  it("never lets brand colours inject CSS and keeps text readable on any background", () => {
+    expect(toHex("red;}</style><script>")).toBe("#000000");
+    for (const bg of ["#FFFFFF", "#111111", "#F8F6F0", "#255C33", "#FFD400", "#2F5AA8"]) {
+      const b = brandTokens({ background: bg, dark: "#777777", accent: "#888888" }, "x");
+      expect(contrast(b.ink, bg), bg).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(b.onDark, "#777777")).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+describe("formats", () => {
+  it("frames exactly 1080×1080 and 1080×1920 with the platform safe zones", () => {
+    expect(OUTPUT_FORMATS.map((f) => [frameFor(f).width, frameFor(f).height])).toEqual([[1080, 1080], [1080, 1920]]);
+    expect(frameFor("9:16").safe).toEqual({ top: 250, right: 60, bottom: 340, left: 60 });
+  });
+});
+
+describe("template registry and contracts", () => {
+  it("has one proper template per implemented mechanism, and none for the rest", () => {
+    expect(TEMPLATE_MECHANISMS.sort()).toEqual(["imessage", "lock_screen", "receipt"]);
+    expect(templateFor("x_post")).toBeNull();
+  });
+
+  it("declares CTA policies per template (never on for native lock screens)", () => {
+    const modes = Object.fromEntries(listTemplates().map((tpl) => [tpl.id, tpl.ctaMode]));
+    expect(modes).toEqual({ imessage: "optional", receipt: "optional", lock_screen: "none" });
+  });
+
+  it("maps copy fields to typed payloads and rejects shapes it cannot draw", () => {
+    expect(templateFor("imessage")!.payload(THREAD)).toEqual({ contact: "Jules", messages: [{ from: "them", text: "you look rested" }, { from: "me", text: "new morning thing" }] });
+    expect(() => templateFor("imessage")!.payload([t("contact", "Jules")])).toThrow(/two messages/);
+    expect(templateFor("receipt")!.payload([rows("items", [["1x", "slow start", "free"]]), t("total", "one morning")])).toEqual({ items: [{ qty: "1x", item: "slow start", amount: "free" }], total: "one morning" });
+    expect(templateFor("lock_screen")!.payload([rows("notifications", [["Notes", "hello", "now"]]), t("time", "7:12")])).toEqual({ time: "7:12", notifications: [{ app: "Notes", text: "hello", when: "now" }] });
+  });
+
+  it("never sets a fit unit below its type-role floor, in either format", () => {
+    for (const tpl of listTemplates()) {
+      const cases = LAB_CASES[tpl.mechanismId] ?? [];
+      for (const c of cases) {
+        for (const format of OUTPUT_FORMATS) {
+          const frame = frameFor(format);
+          const out = tpl.render({ payload: tpl.payload(c.concept.copyFields!), format, frame, brand: brandTokens(BRAND.colors, "B"), headline: "A headline", cta: "Go", assets: {} });
+          for (const m of out.body.value.matchAll(/data-role="(\w+)" data-max="(\d+)" data-min="(\d+)"/g)) {
+            expect(Number(m[3]), `${tpl.id} ${format} ${m[1]}`).toBeGreaterThanOrEqual(ROLE_FLOOR_PX[m[1] as TypeRole]);
+            expect(Number(m[2])).toBeGreaterThanOrEqual(Number(m[3]));
+          }
+        }
+      }
+    }
+  });
+});
+
+describe("hook, CTA and asset decisions (identical for both formats)", () => {
+  it("draws the hook only when the copy does not already carry it", () => {
+    expect(hookIsDistinct("you look rested", THREAD)).toBe(false);
+    expect(hookIsDistinct("The text every group chat sends", THREAD)).toBe(true);
+    expect(decideHeadline(templateFor("imessage")!, "The text every group chat sends", THREAD)).toBe("The text every group chat sends");
+  });
+
+  it("uses only the concept's CTA, following the template policy", () => {
+    expect(decideCta(templateFor("imessage")!, "Try it", { cta: false })).toBeNull();
+    expect(decideCta(templateFor("imessage")!, "Try it", { cta: true })).toBe("Try it");
+    expect(decideCta(templateFor("lock_screen")!, "Try it", { cta: true })).toBeNull();
+  });
+
+  it("never crops product shots, flags low resolution and reports missing required slots", () => {
+    const assets: RenderAsset[] = [
+      { hash: "a".repeat(64), role: "packaging", width: 400, height: 900, mime: "image/png", treatment: "cutout" },
+      { hash: "b".repeat(64), role: "lifestyle", width: 2000, height: 2000, mime: "image/jpeg", treatment: "photo" },
+    ];
+    const p = placeAssets(
+      [
+        { id: "photo", accepts: ["packaging", "lifestyle"], requirement: "optional", fit: "cover", minSourcePx: 600 },
+        { id: "wall", accepts: ["lifestyle"], requirement: "optional", fit: "cover", minSourcePx: 1080 },
+        { id: "logo", accepts: ["other"], requirement: "required", fit: "contain", minSourcePx: 100 },
+      ],
+      assets,
+      "https://render.local/",
+    );
+    expect(p.assets.photo).toMatchObject({ role: "packaging", fit: "contain" });
+    expect(p.assets.wall).toMatchObject({ role: "lifestyle", fit: "cover" });
+    expect(p.missingRequired).toEqual(["logo"]);
+    expect(p.warnings.join(" ")).toMatch(/low_resolution_asset: photo/);
+  });
+});
+
+describe("renderVariant (fake rasterizer)", () => {
+  it("renders, stores and records metadata", async () => {
+    const store = memoryStore();
+    const { record } = await renderVariant(input({ format: "9:16", variantId: "batch_t_c01_9x16" }), { rasterizer: fakeRasterizer(), store, now: () => 1000 });
+    expect(record).toMatchObject({ status: "complete", renderer: "html", templateId: "imessage", templateVersion: 1, format: "9:16", width: 1080, height: 1920, mime: "image/png", renderedFields: ["copyFields"], cta: false });
+    expect(record.outputUrl).toMatch(/^\/api\/renders\/batch_t\/batch_t_c01_9x16-[a-f0-9]{8}\.png$/);
+    expect(record.inputHash).toMatch(/^[a-f0-9]{16}$/);
+    expect(store.files.size).toBe(1);
+  });
+
+  it("fails auditably and writes nothing for overflow, safe-zone, overlap, legacy, template and renderer problems", async () => {
+    const cases: [Partial<RenderVariantInput>, Partial<MeasureReport>, string][] = [
+      [{}, { units: [{ unit: "thread", role: "body", px: 34, minPx: 34, maxPx: 44, fits: false }] }, "text_overflow"],
+      [{}, { outsideSafe: [{ id: "cta", rect: [0, 0, 10, 10] }] }, "safe_zone_violation"],
+      [{}, { assetOverCopy: ["product over receipt"] }, "asset_covers_copy"],
+      [{ concept: { ...input().concept, copyFields: undefined } }, {}, "legacy_copy"],
+      [{ concept: { ...input().concept, mechanism: "x_post" } }, {}, "no_template"],
+      [{ concept: { ...input().concept, renderer: "image" } }, {}, "renderer_not_html"],
+      [{ concept: { ...input().concept, copyFields: [t("contact", "Jules"), t("messages", "me: hi / them: hey")] } }, {}, "invalid_payload"],
+    ];
+    for (const [over, report, code] of cases) {
+      const store = memoryStore();
+      const { record } = await renderVariant(input(over), { rasterizer: fakeRasterizer(report), store });
+      expect(record.status, code).toBe("failed");
+      expect(record.error?.code).toBe(code);
+      expect(record.outputUrl).toBeNull();
+      expect(store.files.size).toBe(0);
+    }
+    const legacy = await renderVariant(input({ concept: { ...input().concept, copyFields: undefined } }), { rasterizer: fakeRasterizer(), store: memoryStore() });
+    expect(legacy.record.error?.message).toBe(LEGACY_MESSAGE);
+  });
+
+  it("puts exactly the same copy into both formats", async () => {
+    const docs: string[] = [];
+    for (const format of OUTPUT_FORMATS) await renderVariant(input({ format, variantId: `v_${format.replace(":", "x")}`, concept: { ...input().concept, hook: "A distinct headline here" } }), { rasterizer: fakeRasterizer({}, (d) => docs.push(d)), store: memoryStore() });
+    const words = (d: string) => [...d.matchAll(/>([^<>]+)</g)].map((m) => m[1].trim()).filter((x) => /[a-z]{3}/i.test(x) && !x.includes("{")).sort();
+    expect(words(docs[0])).toEqual(words(docs[1]));
+    for (const text of ["you look rested", "new morning thing", "Jules", "A distinct headline here"]) for (const d of docs) expect(d).toContain(text);
+  });
+});
+
+describe("render service and concurrency", () => {
+  it("isolates failures: one format failing never stops the other", async () => {
+    let n = 0;
+    const flaky: HtmlRasterizer = {
+      async render(i) {
+        n += 1;
+        if (i.height === 1920) throw new Error("boom");
+        return fakeRasterizer().render(i);
+      },
+    };
+    const records = (await renderConcept(
+      {
+        batchId: "b1",
+        concept: { id: "b1_c01", mechanism: "imessage", renderer: "html", hook: "you look rested", cta: "", copyFields: THREAD, variants: [{ id: "b1_c01_1x1", aspectRatio: "1:1" }, { id: "b1_c01_9x16", aspectRatio: "9:16" }] },
+        brand: BRAND,
+        assets: [],
+        options: { cta: false },
+        formats: ["1:1", "9:16"],
+      },
+      { rasterizer: flaky, store: memoryStore() },
+    )) as Record<OutputFormat, RenderRecord>;
+    expect(n).toBe(2);
+    expect(records["1:1"].status).toBe("complete");
+    expect(records["9:16"]).toMatchObject({ status: "failed", error: { code: "internal" } });
+  });
+
+  it("bounds concurrent renders", async () => {
+    const sem = new Semaphore(3);
+    let peak = 0;
+    await Promise.all(
+      Array.from({ length: 12 }, () =>
+        sem.run(async () => {
+          peak = Math.max(peak, sem.inFlight);
+          await new Promise((r) => setTimeout(r, 5));
+        }),
+      ),
+    );
+    expect(peak).toBe(3);
+  });
+});
+
+describe("product-agnostic renderer", () => {
+  it("keeps brand and category words out of shared renderer code", () => {
+    const LEAK = /\b(mikoya|matcha|coffee|kaffee|tencha|clean girl|wellness|green tea|lumen)\b/i;
+    const walk = (dir: string): string[] =>
+      readdirSync(dir).flatMap((f) => {
+        const p = path.join(dir, f);
+        return statSync(p).isDirectory() ? walk(p) : [p];
+      });
+    const files = ["lib/renderers", "lib/server/render"].flatMap((d) => walk(path.join(process.cwd(), d))).filter((f) => /\.tsx?$/.test(f) && !f.endsWith(".test.ts"));
+    expect(files.length).toBeGreaterThan(10);
+    expect(files.filter((f) => LEAK.test(readFileSync(f, "utf8"))).map((f) => path.relative(process.cwd(), f))).toEqual([]);
+  });
+});

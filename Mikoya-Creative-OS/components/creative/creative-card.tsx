@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { CircleAlert, Copy, Download, Eye, LoaderCircle, PenLine, RefreshCw } from "lucide-react";
+import { CircleAlert, Clock, Copy, Download, Eye, ImagePlay, LoaderCircle, PenLine, RefreshCw } from "lucide-react";
 import type { BrandColors, CreativeConcept, CreativeVariant, OutputFormat } from "@/lib/types";
 import { CREATIVE_TYPE_LABELS, readyOutputs } from "@/lib/constants";
 import { getMechanism } from "@/lib/recipes";
 import { cn } from "@/lib/utils";
+import type { Eligibility } from "@/lib/render-client";
 import { CreativePreview } from "./creative-preview";
 import { creativeActions } from "./creative-actions";
 
@@ -17,6 +18,9 @@ interface CreativeCardProps {
   brandName: string;
   colors: BrandColors;
   onOpen: (format?: OutputFormat) => void;
+  /** Explicit render action (both formats, or one). */
+  onRender: (formats?: OutputFormat[]) => void;
+  eligibility: Eligibility;
 }
 
 function ActionButton({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
@@ -37,21 +41,39 @@ function ActionButton({ label, onClick, children }: { label: string; onClick: ()
 }
 
 function VariantStatusOverlay({ variant }: { variant: CreativeVariant }) {
-  if (variant.status === "complete") return null;
+  // Not rendered yet ("planned") shows the concept preview without an overlay.
+  if (variant.status === "complete" || variant.status === "planned") return null;
   const failed = variant.status === "failed";
+  const queued = variant.status === "queued";
   return (
     <div className={cn("absolute inset-0 flex flex-col items-center justify-center gap-1.5 px-2 text-center backdrop-blur-[2px]", failed ? "bg-paper/85" : "bg-paper/70")}>
-      {failed ? <CircleAlert className="size-4 text-danger" /> : <LoaderCircle className="size-4 animate-spin text-forest" />}
-      <span className={cn("text-[11px] font-medium", failed ? "text-danger" : "text-ink-soft")}>{failed ? "Failed" : "Rendering…"}</span>
+      {failed ? <CircleAlert className="size-4 text-danger" /> : queued ? <Clock className="size-4 text-ink-soft" /> : <LoaderCircle className="size-4 animate-spin text-forest" />}
+      <span className={cn("text-[11px] font-medium", failed ? "text-danger" : "text-ink-soft")} title={failed ? variant.error : undefined}>
+        {failed ? (variant.render?.error?.code?.replace(/_/g, " ") ?? "Failed") : queued ? "Queued" : "Rendering…"}
+      </span>
     </div>
   );
 }
 
+/** The rendered PNG when the renderer produced one; otherwise the concept preview. */
+function VariantImage(props: { variant: CreativeVariant } & Omit<Parameters<typeof CreativePreview>[0], "format" | "className">) {
+  const { variant, ...rest } = props;
+  const url = variant.render?.status === "complete" ? variant.outputUrl : null;
+  if (url) {
+    // eslint-disable-next-line @next/next/no-img-element -- rendered creative file
+    return <img src={url} alt={`${rest.concept.name} ${variant.aspectRatio}`} className="block w-full" style={{ aspectRatio: variant.aspectRatio === "1:1" ? "1 / 1" : "9 / 16" }} />;
+  }
+  return <CreativePreview {...rest} format={variant.aspectRatio} className="w-full" />;
+}
+
 /** One concept = one card, showing its mandatory 1:1 and 9:16 variants side by side. */
-export function CreativeCard({ concept, productName, productImage, lifestyleImage, brandName, colors, onOpen }: CreativeCardProps) {
+export function CreativeCard({ concept, productName, productImage, lifestyleImage, brandName, colors, onOpen, onRender, eligibility }: CreativeCardProps) {
   const mechanism = getMechanism(concept.mechanism);
   const ready = readyOutputs(concept);
   const total = concept.variants.length;
+  const busy = concept.variants.some((v) => v.status === "queued" || v.status === "rendering");
+  const failed = concept.variants.filter((v) => v.status === "failed");
+  const rendered = concept.variants.some((v) => v.render);
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-paper transition-[border-color,box-shadow] hover:border-line-strong hover:shadow-[0_8px_24px_-12px_rgba(20,20,19,0.18)]">
@@ -66,19 +88,21 @@ export function CreativeCard({ concept, productName, productImage, lifestyleImag
             style={{ flex: v.aspectRatio === "1:1" ? "1 1 0" : "0.5625 1 0" }}
           >
             <div className="relative w-full overflow-hidden rounded-md shadow-[0_4px_14px_-6px_rgba(20,20,19,0.28)] ring-1 ring-black/5 transition-transform duration-300 group-hover:-translate-y-0.5">
-              <CreativePreview
+              <VariantImage
+                variant={v}
                 concept={concept}
-                format={v.aspectRatio}
                 productName={productName}
                 productImage={productImage}
                 lifestyleImage={lifestyleImage}
                 brandName={brandName}
                 colors={colors}
-                className="w-full"
               />
               <VariantStatusOverlay variant={v} />
             </div>
-            <span className="rounded-md bg-paper/90 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-soft">{v.aspectRatio}</span>
+            <span className="rounded-md bg-paper/90 px-1.5 py-0.5 font-mono text-[10.5px] text-ink-soft">
+              {v.aspectRatio}
+              {v.render?.status === "complete" ? " · rendered" : v.status === "planned" ? " · preview" : ""}
+            </span>
           </button>
         ))}
       </div>
@@ -110,6 +134,7 @@ export function CreativeCard({ concept, productName, productImage, lifestyleImag
           </span>
           {ready}/{total} outputs ready
         </p>
+        {!eligibility.ok && <p className="mt-1 text-[11.5px] text-muted">{eligibility.reason}</p>}
 
         <div className="mt-3 flex items-center justify-between border-t border-line pt-2.5">
           <button
@@ -120,10 +145,18 @@ export function CreativeCard({ concept, productName, productImage, lifestyleImag
             <Eye className="size-[15px]" /> Preview
           </button>
           <div className="flex">
+            {eligibility.ok && (
+              <ActionButton
+                label={busy ? "Rendering…" : failed.length ? `Retry ${failed.map((f) => f.aspectRatio).join(" + ")}` : rendered ? "Re-render 1:1 + 9:16" : "Render 1:1 + 9:16"}
+                onClick={() => !busy && onRender(failed.length ? failed.map((f) => f.aspectRatio) : undefined)}
+              >
+                {busy ? <LoaderCircle className="animate-spin" /> : <ImagePlay />}
+              </ActionButton>
+            )}
             <ActionButton label="Regenerate" onClick={() => creativeActions.regenerate(concept)}><RefreshCw /></ActionButton>
             <ActionButton label="Edit copy" onClick={() => creativeActions.editCopy(concept)}><PenLine /></ActionButton>
             <ActionButton label="Create variants" onClick={() => creativeActions.createVariants(concept)}><Copy /></ActionButton>
-            <ActionButton label="Download 1:1 + 9:16" onClick={() => creativeActions.download(concept)}><Download /></ActionButton>
+            <ActionButton label="Download 1:1 + 9:16" onClick={() => creativeActions.download(concept, undefined, brandName)}><Download /></ActionButton>
           </div>
         </div>
       </div>

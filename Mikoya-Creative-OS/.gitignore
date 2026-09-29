@@ -42,3 +42,6 @@ next-env.d.ts
 
 # allow the env template
 !.env.example
+
+# rendered creatives and uploaded render assets (local store)
+/.data/

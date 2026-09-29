@@ -5,6 +5,8 @@ import { ArrowLeft, CircleAlert, Download, FileQuestion, Plus, RefreshCw } from 
 import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, OUTPUT_PRESETS, batchOutputStats, plural } from "@/lib/constants";
 import { getProject } from "@/lib/projects";
 import { useBatch, useHydrated } from "@/lib/store/generations-store";
+import { setBatchRenderOptions, useBatchRenderOptions, useBatchWithRenders } from "@/lib/store/render-store";
+import { renderEligibility, renderTargets } from "@/lib/render-client";
 import { toast } from "@/lib/store/toast-store";
 import type { CreativeBatch } from "@/lib/types";
 import { formatDateTime, formatRelativeDate } from "@/lib/utils";
@@ -22,7 +24,7 @@ import { CollapsibleSection } from "@/components/strategy/creative-strategy-sect
 
 export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) {
   const hydrated = useHydrated();
-  const batch = useBatch(id);
+  const batch = useBatchWithRenders(useBatch(id));
 
   if (!batch && !hydrated) return <ResultsSkeleton />;
 
@@ -148,7 +150,10 @@ export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) 
             }
           />
         ) : (
-          <CreativeGallery batch={batch} />
+          <>
+            <RenderBatchBar batch={batch} />
+            <CreativeGallery batch={batch} />
+          </>
         )}
       </div>
     </PageContainer>
@@ -174,6 +179,69 @@ function ResultsSkeleton() {
 }
 
 /** How the concepts were produced: writer, plan, diversity, drops, unfilled slots, swaps. */
+/**
+ * Batch rendering: explicit action, bounded concurrency (see render-client),
+ * failures isolated and retryable. Only HTML-renderer concepts with a
+ * template and structured copy are eligible; the rest are counted, not hidden.
+ */
+function RenderBatchBar({ batch }: { batch: CreativeBatch }) {
+  const options = useBatchRenderOptions(batch.id);
+  const eligible = batch.concepts.filter((c) => renderEligibility(c).ok);
+  const variants = eligible.flatMap((c) => c.variants);
+  const ready = variants.filter((v) => v.render?.status === "complete" && v.status === "complete").length;
+  const failed = variants.filter((v) => v.status === "failed");
+  const busy = variants.filter((v) => v.status === "queued" || v.status === "rendering").length;
+  const skipped = batch.concepts.length - eligible.length;
+  const reasons = [...new Set(batch.concepts.map(renderEligibility).flatMap((e) => (e.ok ? [] : [e.reason])))];
+  const run = (onlyFailed: boolean) =>
+    void renderTargets(
+      batch,
+      eligible
+        .map((c) => ({ concept: c, formats: c.variants.filter((v) => (onlyFailed ? v.status === "failed" : v.render?.status !== "complete")).map((v) => v.aspectRatio) }))
+        .filter((t) => t.formats.length),
+      options,
+    );
+
+  return (
+    <div className="mb-5 rounded-[var(--radius-card)] border border-line bg-paper px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-[13px]">
+          <span className="font-medium text-ink">Rendered files · {ready}/{variants.length} ready</span>
+          {failed.length > 0 && <span className="ml-2 text-danger">· {failed.length} failed</span>}
+          {busy > 0 && <span className="ml-2 text-ink-soft">· {busy} in progress</span>}
+          {skipped > 0 && (
+            <span className="ml-2 text-muted" title={reasons.join(" · ")}>
+              · {skipped} {skipped === 1 ? "concept" : "concepts"} not renderable here ({reasons.join("; ")})
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="inline-flex items-center gap-2 text-[12.5px] text-ink-soft" title="Draws the concept's CTA where the template allows an optional CTA. Same for 1:1 and 9:16.">
+            <input type="checkbox" checked={options.cta} onChange={(e) => setBatchRenderOptions(batch.id, { cta: e.target.checked })} />
+            Burn in CTA (optional templates)
+          </label>
+          {failed.length > 0 && (
+            <Button size="sm" disabled={busy > 0} onClick={() => run(true)}>
+              <RefreshCw /> Retry failed
+            </Button>
+          )}
+          <Button size="sm" variant="primary" disabled={busy > 0 || ready === variants.length || !variants.length} onClick={() => run(false)}>
+            {busy > 0 ? "Rendering…" : "Render batch"}
+          </Button>
+        </div>
+      </div>
+      {variants.length > 0 && (
+        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sand" aria-hidden>
+          <div className="flex h-full">
+            <div className="bg-forest transition-[width]" style={{ width: `${(ready / variants.length) * 100}%` }} />
+            <div className="bg-danger transition-[width]" style={{ width: `${(failed.length / variants.length) * 100}%` }} />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ConceptRunPanel({ batch }: { batch: CreativeBatch }) {
   const run = batch.conceptRun;
   if (!run) return null;

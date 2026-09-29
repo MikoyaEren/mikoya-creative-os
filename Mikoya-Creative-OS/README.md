@@ -380,6 +380,28 @@ CreativeBatch { strategy, conceptRun (plan, drops, unfilled, swaps, usage), conc
   was given. Every kept concept's basis, focus and proof resolve to them;
   unknown references are removed, and a concept with none left is dropped.
 
+### HTML creative rendering (Phase 5A)
+
+UI- and text-led mechanisms are rendered **programmatically**, never drawn by an image model: exact text, deterministic layout, controllable type, real 1080×1080 and 1080×1920 PNGs.
+
+```
+concept.copyFields ──validate──▶ template payload (typed)
+   + template (visual grammar) + format frame (FORMAT_SPECS, safe zones)
+   + brand tokens (BrandContext) + placed product assets
+   ──▶ static HTML document ──▶ Chromium (fit & measure) ──▶ PNG ──▶ local store
+```
+
+- **Structured copy.** The concept writer returns `copyFields` (text fields and list rows of label · text · note, as each recipe declares). Templates receive typed payloads; nothing is parsed out of prose. Concepts without `copyFields` stay visible as *"Legacy concept — regenerate to render"*.
+- **Templates** (`lib/renderers/html/templates/`) own native structure, spacing, type roles, chrome, asset slots and format adaptation — never words. Chrome is neutral: no counts, ratings, badges, real identities or platform logos. First set: Messages thread, thermal receipt, lock screen.
+- **Same copy in both formats.** Hook (drawn only when the copy doesn't already carry it), CTA (template policy `none | optional | required`; optional = the batch's "Burn in CTA" switch) and asset use are decided once for both formats.
+- **Text fitting.** Each text unit steps down from its max size to a role floor (headline 56 px, body 34 px, secondary 28 px, chrome 22 px); space is rebalanced deterministically. Nothing is truncated: if the copy still doesn't fit, the render fails as `text_overflow` with the unit and sizes. Other audited failures: `safe_zone_violation`, `asset_covers_copy`, `missing_required_asset`, `invalid_payload`, `legacy_copy`, `no_template`.
+- **Product assets** are uploaded once (`/api/render-assets`, content-addressed) and classified as cut-out, light studio packshot or photo. Product shots are always `contain` (never cropped or stretched); only lifestyle photos may be `cover`-cropped.
+- **Rasterizer:** `playwright-core` + headless Chromium, one browser per process, ≤3 pages (`CREATIVE_OS_RENDER_CONCURRENCY`), no network (fonts and assets served locally), fixed viewport/scale/locale. Fonts are bundled OFL files in `assets/fonts` (Inter, Instrument Serif, IBM Plex Mono, Oswald) with their licences.
+- **Rendering is an explicit action** — one variant (detail sheet), one concept (card) or the whole batch (bounded client queue, failures isolated and retryable). Render records (template, versions, sizes, font sizes, assets, errors) are stored per variant.
+- **Storage (temporary):** PNGs and assets on the server filesystem under `CREATIVE_OS_DATA_DIR` (default `./.data`), served by `/api/renders/…`; render state in the browser. Production: object storage + database behind the same interfaces, and a dedicated render worker with Chromium.
+- **Template Lab:** `/dev/templates` (development; `CREATIVE_OS_TEMPLATE_LAB=1` in production builds) shows every template × fixture case in 1:1 and 9:16 side by side, rendered through the production `renderVariant()`, with font sizes, fields, assets and warnings.
+- **Tests:** unit (`lib/renderers/renderers.test.ts`) and real-Chromium (`renderers.chromium.test.ts`: pixel sizes, copy parity, type floors, safe zones, determinism, brand separation, visual goldens in `test/goldens`, tied to the pinned Chromium; `UPDATE_GOLDENS=1` to refresh).
+
 ### Strategy inference (Phase 3)
 
 ```

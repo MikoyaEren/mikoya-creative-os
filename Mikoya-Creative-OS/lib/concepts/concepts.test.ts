@@ -217,7 +217,7 @@ describe("concept guards", () => {
   it("does not mistake copy field names, camera terms or situational durations for claims (live-run phrases)", () => {
     const r = validateConcepts(
       [
-        draft(slots[0], withCopy(slots[0], "Seeing someone new in the mornings", "Bright green, mild, keeps things soft.")),
+        draft(slots[0], { hook: "Seeing someone new in the mornings", coreMessage: "Bright green, mild, keeps things soft." }),
         draft(slots[1], { productRole: "supporting — pouch in soft focus behind the bowl." }),
         draft(slots[2], withCopy(slots[2], "can we do 8:20 instead", "give me 20 minutes")),
       ],

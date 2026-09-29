@@ -12,6 +12,8 @@ import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { CreativeCard } from "./creative-card";
 import { CreativeDetailSheet } from "./creative-detail-sheet";
+import { renderEligibility, renderTargets } from "@/lib/render-client";
+import { useBatchRenderOptions } from "@/lib/store/render-store";
 
 type TypeFilter = "all" | CreativeType;
 type SortKey = "newest" | "format" | "type";
@@ -22,6 +24,8 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
   const [sort, setSort] = useState<SortKey>("newest");
   const [openId, setOpenId] = useState<string | null>(null);
   const [openFormat, setOpenFormat] = useState<OutputFormat>("1:1");
+  const renderOptions = useBatchRenderOptions(batch.id);
+  const renderConcept = (concept: (typeof batch.concepts)[number], formats?: OutputFormat[]) => void renderTargets(batch, [{ concept, formats }], renderOptions);
 
   const { concepts } = batch;
   const productImage = batch.product.mainImage?.previewUrl ?? null;
@@ -101,6 +105,8 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
                 setOpenFormat(format ?? "1:1");
                 setOpenId(c.id);
               }}
+              onRender={(formats) => renderConcept(c, formats)}
+              eligibility={renderEligibility(c)}
             />
           ))}
         </div>
@@ -130,6 +136,7 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
         brandName={batch.brand.brandName}
         strategy={batch.strategy}
         colors={batch.brand.colors}
+        onRender={(formats) => openConcept && renderConcept(openConcept, formats)}
         onClose={() => setOpenId(null)}
       />
     </>

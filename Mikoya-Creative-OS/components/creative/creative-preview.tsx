@@ -1,4 +1,4 @@
-import { BadgeCheck, Heart, MessageCircle, Play, Repeat2, Search, TriangleAlert } from "lucide-react";
+import { Heart, MessageCircle, Play, Repeat2, Search, TriangleAlert } from "lucide-react";
 import type { BrandColors, CreativeConcept, OutputFormat } from "@/lib/types";
 import { getMechanism } from "@/lib/recipes";
 import { cn } from "@/lib/utils";
@@ -63,17 +63,16 @@ function PreviewBody({ concept, format, productName, productImage, lifestyleImag
             <div className="flex items-center gap-[2.5cqw]">
               <span className="flex size-[9cqw] items-center justify-center rounded-full font-serif text-[5cqw] text-white" style={{ background: colors.dark }}>{initial}</span>
               <div className="leading-tight">
-                <p className="flex items-center gap-[1cqw] text-[3.6cqw] font-semibold text-black">
-                  sophie <BadgeCheck className="size-[3.6cqw] text-[#1d9bf0]" />
-                </p>
-                <p className="text-[3.2cqw] text-neutral-500">@slowmornings</p>
+                <p className="text-[3.6cqw] font-semibold text-black">{brandName || "Brand"}</p>
+                <p className="text-[3.2cqw] text-neutral-500">{concept.copyFields?.find((f) => f.key === "handle")?.text ?? ""}</p>
               </div>
             </div>
             <p className={cn("mt-[3.5cqw] leading-[1.35] text-black", sq ? "text-[4.6cqw]" : "text-[5.4cqw]")}>{hook}</p>
             <div className="mt-[4cqw] flex gap-[7cqw] text-[3cqw] text-neutral-500">
-              <span className="flex items-center gap-[1cqw]"><MessageCircle className="size-[3.4cqw]" />214</span>
-              <span className="flex items-center gap-[1cqw]"><Repeat2 className="size-[3.4cqw]" />1.2K</span>
-              <span className="flex items-center gap-[1cqw]"><Heart className="size-[3.4cqw]" />18.4K</span>
+              {/* Neutral chrome only: no fabricated engagement counts. */}
+              <MessageCircle className="size-[3.4cqw]" />
+              <Repeat2 className="size-[3.4cqw]" />
+              <Heart className="size-[3.4cqw]" />
             </div>
           </div>
           {!sq && (
@@ -332,7 +331,7 @@ function PreviewBody({ concept, format, productName, productImage, lifestyleImag
       return (
         <div className={cn("flex h-full p-[8cqw]", sq ? "flex-row items-center gap-[4cqw]" : "flex-col items-center justify-center text-center")}>
           <div className={cn(sq && "w-[58%]")}>
-            <p className="text-[5.4cqw] tracking-[0.2em]" style={{ color: colors.dark }}>★★★★★</p>
+            <p className="font-serif text-[12cqw] leading-none" style={{ color: colors.dark }} aria-hidden>“</p>
             <p className={cn("mt-[3cqw] font-serif leading-[1.15] text-ink", sq ? "text-[5.6cqw]" : "text-[8cqw]")}>{hook}</p>
             <p className="mt-[3cqw] text-[3.2cqw] text-muted">{sub.replace(/^★+\s*—\s*/, "— ")}</p>
           </div>

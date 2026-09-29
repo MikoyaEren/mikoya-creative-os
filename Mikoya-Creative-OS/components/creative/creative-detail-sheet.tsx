@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Check, Copy, Download, PenLine, RefreshCw, Sparkles } from "lucide-react";
+import { Check, Copy, Download, ImagePlay, LoaderCircle, PenLine, RefreshCw, Sparkles } from "lucide-react";
 import type { BrandColors, CreativeConcept, OutputFormat, StrategySnapshot } from "@/lib/types";
 import { GLOBAL_CREATIVE_CONSTITUTION } from "@/lib/prompts/global-creative-constitution";
 import { buildConceptPrompt } from "@/lib/prompts/prompt-builder";
@@ -17,6 +17,7 @@ import { CreativePreview } from "./creative-preview";
 import { creativeActions } from "./creative-actions";
 import { MechanismIcon } from "./mechanism-icon";
 import { StatusPill } from "./status-pill";
+import { renderEligibility } from "@/lib/render-client";
 
 interface CreativeDetailSheetProps {
   concept: CreativeConcept | null;
@@ -29,6 +30,7 @@ interface CreativeDetailSheetProps {
   /** Strategy layers the batch was written from (for the shared concept prompt). */
   strategy: StrategySnapshot;
   colors: BrandColors;
+  onRender: (formats?: OutputFormat[]) => void;
   onClose: () => void;
 }
 
@@ -78,6 +80,34 @@ function PromptBlock({ prompt, title, dark = true }: { prompt: string; title: st
   );
 }
 
+/** Renderer / template / fit / asset audit of the variant's last render. */
+function RenderInfo({ record }: { record: NonNullable<CreativeConcept["variants"][number]["render"]> }) {
+  return (
+    <>
+      <Row label="Render">
+        <span className="font-mono text-xs">
+          {record.status} · {record.templateId ? `${record.templateId}@${record.templateVersion}` : "no template"} · {record.rendererVersion}
+          {record.width ? ` · ${record.width}×${record.height}` : ""}
+          {record.bytes ? ` · ${Math.round(record.bytes / 1024)} KB` : ""}
+          {record.durationMs !== undefined ? ` · ${record.durationMs} ms` : ""}
+        </span>
+      </Row>
+      {record.error && (
+        <Row label="Render error">
+          <span className="text-danger">
+            <span className="font-mono text-xs">{record.error.code}</span> — {record.error.message}
+            {record.error.detail ? <span className="block text-xs text-muted">{record.error.detail}</span> : null}
+          </span>
+        </Row>
+      )}
+      {record.fontSizes.length > 0 && <Row label="Type sizes">{record.fontSizes.map((u) => `${u.unit} ${u.px}px (min ${u.minPx})`).join(" · ")}</Row>}
+      <Row label="Drawn from concept">{record.renderedFields.join(", ") || "—"} · CTA {record.cta ? "burned in" : "not drawn"}</Row>
+      {record.assets.length > 0 && <Row label="Product assets">{record.assets.map((a) => `${a.slot}: ${a.role} (${a.treatment}, ${a.fit})`).join(" · ")}</Row>}
+      {record.warnings.length > 0 && <Row label="Render warnings">{record.warnings.join(" · ")}</Row>}
+    </>
+  );
+}
+
 export function CreativeDetailSheet({
   concept,
   format,
@@ -88,6 +118,7 @@ export function CreativeDetailSheet({
   brandName,
   strategy,
   colors,
+  onRender,
   onClose,
 }: CreativeDetailSheetProps) {
   const variant = concept?.variants.find((v) => v.aspectRatio === format) ?? concept?.variants[0];
@@ -119,6 +150,15 @@ export function CreativeDetailSheet({
               options={OUTPUT_FORMATS.map((f) => ({ value: f, label: f }))}
             />
             <div className="relative">
+              {variant.render?.status === "complete" && variant.outputUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- rendered creative file
+                <img
+                  key={variant.id}
+                  src={variant.outputUrl}
+                  alt={`${concept.name} ${variant.aspectRatio}`}
+                  className={variant.aspectRatio === "9:16" ? "h-[min(64vh,560px)] rounded-lg shadow-xl" : "w-[min(100%,360px)] rounded-lg shadow-xl sm:w-[360px]"}
+                />
+              ) : (
               <CreativePreview
                 key={variant.id}
                 concept={concept}
@@ -130,7 +170,11 @@ export function CreativeDetailSheet({
                 colors={colors}
                 className={variant.aspectRatio === "9:16" ? "h-[min(64vh,560px)] rounded-lg shadow-xl" : "w-[min(100%,360px)] rounded-lg shadow-xl sm:w-[360px]"}
               />
+              )}
             </div>
+            <p className="text-center text-[11px] font-medium text-ink-soft">
+              {variant.render?.status === "complete" ? "Rendered file" : "Concept preview — not rendered"}
+            </p>
             <p className="text-center text-xs text-muted">
               {FORMAT_SPECS[variant.aspectRatio].label} · {FORMAT_SPECS[variant.aspectRatio].canvas.width}×{FORMAT_SPECS[variant.aspectRatio].canvas.height} · {FORMAT_SPECS[variant.aspectRatio].placements}
             </p>
@@ -210,21 +254,32 @@ export function CreativeDetailSheet({
                 <Row label="Variant ID"><span className="font-mono text-xs">{variant.id}</span></Row>
                 <Row label="Layout description">{variant.layoutDescription}</Row>
                 <Row label="Output">
-                  {variant.outputUrl ? (
+                  {variant.render?.status === "complete" && variant.outputUrl ? (
                     <a href={variant.outputUrl} className="text-forest underline" target="_blank" rel="noreferrer">Open file</a>
                   ) : (
-                    <span className="text-muted">{variant.error ?? "Not rendered yet — preview is drawn from the concept."}</span>
+                    <span className="text-muted">{renderEligibility(concept).ok ? "Not rendered yet — preview is drawn from the concept." : (renderEligibility(concept) as { reason: string }).reason}</span>
                   )}
                 </Row>
+                {variant.render && <RenderInfo record={variant.render} />}
               </dl>
               <PromptBlock key={variant.id} prompt={variant.generationPrompt} title={`Variant prompt · ${variant.aspectRatio}`} />
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-line bg-paper px-6 py-4 sm:px-8">
-              <Button variant="primary" onClick={() => creativeActions.regenerate(concept)}><RefreshCw /> Regenerate</Button>
+              {renderEligibility(concept).ok && (
+                <Button
+                  variant="primary"
+                  disabled={variant.status === "queued" || variant.status === "rendering"}
+                  onClick={() => onRender([variant.aspectRatio])}
+                >
+                  {variant.status === "queued" || variant.status === "rendering" ? <LoaderCircle className="animate-spin" /> : <ImagePlay />}
+                  {variant.render ? (variant.status === "failed" ? `Retry ${variant.aspectRatio}` : `Re-render ${variant.aspectRatio}`) : `Render ${variant.aspectRatio}`}
+                </Button>
+              )}
+              <Button variant={renderEligibility(concept).ok ? "outline" : "primary"} onClick={() => creativeActions.regenerate(concept)}><RefreshCw /> Regenerate</Button>
               <Button onClick={() => creativeActions.createVariants(concept, 3)}><Sparkles /> Create 3 Variants</Button>
               <Button variant="ghost" onClick={() => creativeActions.editCopy(concept)}><PenLine /> Edit Creative</Button>
-              <Button variant="ghost" size="icon" aria-label={`Download ${variant.aspectRatio}`} title={`Download ${variant.aspectRatio}`} onClick={() => creativeActions.download(concept, variant)}>
+              <Button variant="ghost" size="icon" aria-label={`Download ${variant.aspectRatio}`} title={`Download ${variant.aspectRatio}`} onClick={() => creativeActions.download(concept, variant, brandName)}>
                 <Download />
               </Button>
             </div>
