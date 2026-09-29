@@ -9,9 +9,10 @@ import { ASSET_CSS, assetImg, headlineBlock } from "../primitives";
  *
  * The notifications are the ad: 1–3 native-looking cards whose copy (from
  * the concept) carries the hook, the curiosity or the offer. The wallpaper
- * carries the product / lifestyle visual (a lifestyle photo, else the product
- * shot on a brand gradient). A separate headline appears only when the
- * concept writes one. Chrome is neutral: generic source glyphs (no platform
+ * carries the product / lifestyle visual (a lifestyle photo is preferred; the
+ * product shot on a brand gradient is the fallback). A separate headline
+ * appears only when the concept writes one that adds something beyond the
+ * notification copy. Chrome is neutral: generic source glyphs (no platform
  * logos), fictional sender names from the concept, relative times ("now",
  * "2m ago") that state nothing about the product.
  */
@@ -37,7 +38,7 @@ const WHEN = ["now", "2m ago", "5m ago"];
 export const lockScreenTemplate: HtmlTemplate<LockScreenPayload> = {
   id: "lock_screen",
   mechanismId: "lock_screen",
-  version: 2,
+  version: 3,
   name: "Lock screen",
   ctaMode: "none",
   // Notification-first: the hook lives in the notifications; an extra line only via the concept's `headline` field.
@@ -53,7 +54,11 @@ export const lockScreenTemplate: HtmlTemplate<LockScreenPayload> = {
     const notifications = fieldRows(fields, "notifications").map((r) => ({ source: r.label as NotificationSource, text: r.text, sender: r.label === "Messages" ? r.note : "" }));
     if (!time || !notifications.length) throw new PayloadError("A lock screen needs a time and at least one notification.");
     if (notifications.some((n) => !(n.source in GLYPH))) throw new PayloadError("Notification source must be Messages, Reminders or Calendar.");
-    return { time, notifications, headline: fieldText(fields, "headline") };
+    // The optional headline is drawn only when it adds words beyond the notifications.
+    const headline = fieldText(fields, "headline");
+    const words = (x: string) => x.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w.length > 1);
+    const said = new Set(notifications.flatMap((n) => words(n.text)));
+    return { time, notifications, headline: words(headline).some((w) => !said.has(w)) ? headline : "" };
   },
 
   render({ payload, frame, brand, assets }) {

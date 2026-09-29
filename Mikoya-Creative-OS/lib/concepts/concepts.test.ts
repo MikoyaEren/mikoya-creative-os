@@ -292,6 +292,19 @@ describe("concept guards", () => {
     expect(classifyRisk("the best routines")).toBe("comparative");
   });
 
+  it("does not read a clock time followed by a word starting with 'Star' as a star rating (live run, lock screen)", () => {
+    // Live: the lock-screen time "7:12" and the CTA "Start your mornings" on the next line.
+    expect(unsupportedNumbers("7:12\nStart your mornings", inputs.groundText)).toEqual([]);
+    expect(unsupportedNumbers("12 starters on the menu", inputs.groundText)).toEqual([]);
+    const r = validateConcepts([draft(slots[0], { hook: "7:12", cta: "Start your mornings" })], [], ctx);
+    expect(r.dropped).toEqual([]);
+    // Real ratings and counts stay blocked.
+    expect(unsupportedNumbers("rated 5 stars", inputs.groundText)).toEqual(["5 stars"]);
+    expect(unsupportedNumbers("4.8 stars from 1,200 reviews", inputs.groundText)).toEqual(["4.8 stars", "1,200 reviews"]);
+    expect(unsupportedNumbers("loved by 10000 customers", inputs.groundText)).toEqual(["10000 customers"]);
+    expect(validateConcepts([draft(slots[1], { hook: "5 stars from everyone" })], [], ctx).dropped[0].reason).toBe("unsupported_claim");
+  });
+
   it("blocks invented offer and urgency wording unless an approved input states it", () => {
     const invented = [
       "last chance!!",

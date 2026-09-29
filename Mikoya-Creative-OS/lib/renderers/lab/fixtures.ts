@@ -27,7 +27,7 @@ const rows = (key: string, r: [string, string, string?][]): CopyField => ({ key,
 const IMESSAGE: LabCase[] = [
   {
     id: "short",
-    label: "Short copy · Brand A · with photo",
+    label: "Short copy · Brand A · concept attaches a lifestyle photo",
     brand: "A",
     withAssets: true,
     cta: false,
@@ -35,7 +35,7 @@ const IMESSAGE: LabCase[] = [
       mechanism: "imessage",
       hook: "you look weirdly rested lately",
       cta: "See what changed",
-      copyFields: [rows("messages", [["them", "you look weirdly rested lately"], ["me", "new morning thing. phone stays in the other room"], ["them", "ok tell me everything"]]), t("contact", "Jules")],
+      copyFields: [rows("messages", [["them", "you look weirdly rested lately"], ["me", "new morning thing. phone stays in the other room"], ["them", "ok tell me everything"]]), t("contact", "Jules"), t("attachment", "lifestyle")],
     },
   },
   {
@@ -61,7 +61,7 @@ const IMESSAGE: LabCase[] = [
   },
   {
     id: "max_rows",
-    label: "Maximum rows (6), long but valid · Brand B · with product",
+    label: "Maximum rows (6), long but valid · Brand B · assets uploaded, no attachment in the concept → no photo",
     brand: "B",
     withAssets: true,
     cta: false,
@@ -83,6 +83,20 @@ const IMESSAGE: LabCase[] = [
     },
   },
 ];
+
+IMESSAGE.push({
+  id: "product_attachment",
+  label: "Concept attaches the product shot · Brand A",
+  brand: "A",
+  withAssets: true,
+  cta: false,
+  concept: {
+    mechanism: "imessage",
+    hook: "is this the one you meant",
+    cta: "Try it",
+    copyFields: [rows("messages", [["me", "is this the one you meant"], ["them", "YES. that one"], ["them", "order it before you overthink it"]]), t("contact", "Nora"), t("attachment", "product")],
+  },
+});
 
 const RECEIPT: LabCase[] = [
   {
@@ -144,6 +158,19 @@ const RECEIPT: LabCase[] = [
 ];
 
 const LOCK_SCREEN: LabCase[] = [
+  {
+    id: "headline_repeat",
+    label: "Headline field only repeats the notification → not drawn · Brand A",
+    brand: "A",
+    withAssets: true,
+    cta: false,
+    concept: {
+      mechanism: "lock_screen",
+      hook: "ok you need to see this",
+      cta: "",
+      copyFields: [rows("notifications", [["Messages", "ok you need to see this", "Lena"]]), t("time", "8:05"), t("headline", "You need to see this")],
+    },
+  },
   {
     id: "friend",
     label: "Friend notification · Brand A · lifestyle wallpaper",

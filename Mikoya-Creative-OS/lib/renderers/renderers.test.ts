@@ -102,7 +102,7 @@ describe("template registry and contracts", () => {
   });
 
   it("maps copy fields to typed payloads and rejects shapes it cannot draw", () => {
-    expect(templateFor("imessage")!.payload(THREAD)).toEqual({ contact: "Jules", messages: [{ from: "them", text: "you look rested" }, { from: "me", text: "new morning thing" }] });
+    expect(templateFor("imessage")!.payload(THREAD)).toEqual({ contact: "Jules", messages: [{ from: "them", text: "you look rested" }, { from: "me", text: "new morning thing" }], attachment: null });
     expect(() => templateFor("imessage")!.payload([t("contact", "Jules")])).toThrow(/two messages/);
     expect(templateFor("receipt")!.payload([rows("items", [["1x", "slow start", "free"]]), t("total", "one morning")])).toEqual({ items: [{ qty: "1x", item: "slow start", amount: "free" }], total: "one morning" });
     expect(templateFor("lock_screen")!.payload([rows("notifications", [["Messages", "did you see this", "Lena"], ["Reminders", "check the set", ""]]), t("time", "7:12")])).toEqual({
@@ -168,7 +168,7 @@ describe("renderVariant (fake rasterizer)", () => {
   it("renders, stores and records metadata", async () => {
     const store = memoryStore();
     const { record } = await renderVariant(input({ format: "9:16", variantId: "batch_t_c01_9x16" }), { rasterizer: fakeRasterizer(), store, now: () => 1000 });
-    expect(record).toMatchObject({ status: "complete", renderer: "html", templateId: "imessage", templateVersion: 1, format: "9:16", width: 1080, height: 1920, mime: "image/png", renderedFields: ["copyFields"], cta: false });
+    expect(record).toMatchObject({ status: "complete", renderer: "html", templateId: "imessage", templateVersion: 2, format: "9:16", width: 1080, height: 1920, mime: "image/png", renderedFields: ["copyFields"], cta: false });
     expect(record.outputUrl).toMatch(/^\/api\/renders\/batch_t\/batch_t_c01_9x16-[a-f0-9]{8}\.png$/);
     expect(record.inputHash).toMatch(/^[a-f0-9]{16}$/);
     expect(store.files.size).toBe(1);
@@ -202,6 +202,51 @@ describe("renderVariant (fake rasterizer)", () => {
     const words = (d: string) => [...d.matchAll(/>([^<>]+)</g)].map((m) => m[1].trim()).filter((x) => /[a-z]{3}/i.test(x) && !x.includes("{")).sort();
     expect(words(docs[0])).toEqual(words(docs[1]));
     for (const text of ["you look rested", "new morning thing", "Jules", "A distinct headline here"]) for (const d of docs) expect(d).toContain(text);
+  });
+});
+
+describe("who decides what exists: the concept (assets and headline), the template (layout)", () => {
+  const ASSETS: RenderAsset[] = [
+    { hash: "a".repeat(64), role: "main", width: 2000, height: 2000, mime: "image/webp", treatment: "light_studio" },
+    { hash: "b".repeat(64), role: "lifestyle", width: 2000, height: 2000, mime: "image/webp", treatment: "photo" },
+  ];
+  const docFor = async (over: Partial<RenderVariantInput>) => {
+    let doc = "";
+    const r = await renderVariant(input({ assets: ASSETS, ...over }), { rasterizer: fakeRasterizer({}, (d) => (doc = d)), store: memoryStore() });
+    return { doc, record: r.record };
+  };
+
+  it("iMessage shows a photo only when the concept's attachment field asks for one", async () => {
+    expect((await docFor({})).doc).not.toContain('data-slot="attachment"');
+    const product = await docFor({ concept: { ...input().concept, copyFields: [...THREAD, t("attachment", "product")] } });
+    expect(product.doc).toContain(`assets/${"a".repeat(64)}`);
+    expect(product.doc).toMatch(/data-slot="attachment"[^>]*object-fit:contain/);
+    const lifestyle = await docFor({ concept: { ...input().concept, copyFields: [...THREAD, t("attachment", "Lifestyle")] } });
+    expect(lifestyle.doc).toContain(`assets/${"b".repeat(64)}`);
+    const missing = await docFor({ assets: [], concept: { ...input().concept, copyFields: [...THREAD, t("attachment", "product")] } });
+    expect(missing.record.warnings.join(" ")).toMatch(/asset_unavailable: attachment/);
+    const invalid = await docFor({ concept: { ...input().concept, copyFields: [...THREAD, t("attachment", "video")] } });
+    expect(invalid.record.error?.code).toBe("invalid_payload");
+  });
+
+  it("Receipt shows its decorative product on sparse receipts and omits it on dense ones", async () => {
+    const receipt = (items: [string, string, string][]) => ({ mechanism: "receipt" as const, renderer: "html" as const, hook: "", cta: "", copyFields: [rows("items", items), t("total", "one good morning")] });
+    const sparse = await docFor({ concept: receipt([["1x", "slow start", "free"], ["1x", "window seat", "free"], ["0x", "rushing", ""]]) });
+    expect(sparse.doc).toContain('data-slot="product"');
+    const dense = await docFor({ concept: receipt([["1x", "ten quiet minutes before email", "free"], ["1x", "phone face down on the counter", "free"], ["1x", "one playlist, zero skipping", "free"], ["2x", "deep breaths by the open window", "free"]]) });
+    expect(dense.doc).not.toContain('data-slot="product"');
+  });
+
+  it("Lock screen: lifestyle wallpaper preferred, product on gradient as fallback, headline only when it adds words", async () => {
+    const lock = (extra: CopyField[] = []) => ({ mechanism: "lock_screen" as const, renderer: "html" as const, hook: "x", cta: "", copyFields: [rows("notifications", [["Messages", "ok you need to see this", "Lena"]]), t("time", "8:05"), ...extra] });
+    const photo = await docFor({ concept: lock() });
+    expect(photo.doc).toContain('data-slot="wallpaper"');
+    expect(photo.doc).not.toContain('data-slot="product"');
+    const fallback = await docFor({ concept: lock(), assets: [ASSETS[0]] });
+    expect(fallback.doc).toContain('data-slot="product"');
+    expect((await docFor({ concept: lock() })).doc).not.toContain('class="headline"');
+    expect((await docFor({ concept: lock([t("headline", "You need to see this")]) })).doc).not.toContain('class="headline"');
+    expect((await docFor({ concept: lock([t("headline", "The text you'll want to get")]) })).doc).toContain("The text you&#39;ll want to get");
   });
 });
 

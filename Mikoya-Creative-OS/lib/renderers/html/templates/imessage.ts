@@ -14,6 +14,8 @@ import { ASSET_CSS, CTA_CSS, assetImg, ctaPill, headlineBlock } from "../primiti
 export interface IMessagePayload {
   contact: string;
   messages: { from: "me" | "them"; text: string }[];
+  /** Photo sent in the thread — only when the concept says so. */
+  attachment: "product" | "lifestyle" | null;
 }
 
 const CHEVRON = raw(`<svg viewBox="0 0 12 20" width="22" height="36" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`);
@@ -22,24 +24,33 @@ const PLUS = raw(`<svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="t
 export const imessageTemplate: HtmlTemplate<IMessagePayload> = {
   id: "imessage",
   mechanismId: "imessage",
-  version: 1,
+  version: 2,
   name: "Messages thread",
   ctaMode: "optional",
   hookMode: "if_distinct",
   brandInfluence: "framed",
-  assetSlots: [{ id: "attachment", accepts: ["lifestyle", "main", "packaging", "bundle"], requirement: "optional", fit: "cover", minSourcePx: 700 }],
+  assetSlots: [
+    { id: "attachment", accepts: ["main", "packaging", "bundle"], requirement: "optional", fit: "contain", minSourcePx: 600 },
+    { id: "attachment", accepts: ["lifestyle"], requirement: "optional", fit: "cover", minSourcePx: 700 },
+  ],
+  // The concept decides whether a photo exists and which kind; no attachment field → no photo.
+  assetSlotsFor(payload) {
+    if (!payload.attachment) return [];
+    return this.assetSlots.filter((s) => (payload.attachment === "lifestyle" ? s.accepts.includes("lifestyle") : !s.accepts.includes("lifestyle")));
+  },
 
   payload(fields) {
     const contact = fieldText(fields, "contact");
     const messages = fieldRows(fields, "messages").map((r) => ({ from: r.label === "me" ? ("me" as const) : ("them" as const), text: r.text }));
     if (!contact || messages.length < 2) throw new PayloadError("A thread needs a contact and at least two messages.");
-    return { contact, messages };
+    const a = fieldText(fields, "attachment");
+    return { contact, messages, attachment: a === "product" || a === "lifestyle" ? a : null };
   },
 
   render({ payload, frame, brand, headline, cta, assets }) {
     const v = frame.vertical;
-    // The optional photo joins short threads only (≤ 4 messages) — the same rule for both formats.
-    const photo = payload.messages.length <= 4 ? assets.attachment : null;
+    // Drawn only when the concept asked for an attachment (see assetSlotsFor) and the asset exists.
+    const photo = payload.attachment ? assets.attachment : null;
     // The optional photo is sent last, by "me"; grouping and tails follow the whole sequence.
     const seq = [...payload.messages.map((m) => m.from), ...(photo ? (["me"] as const) : [])];
     const cls = (i: number) => [seq[i], i > 0 && seq[i - 1] !== seq[i] ? "turn" : "", !seq[i + 1] || seq[i + 1] !== seq[i] ? "tail" : ""].join(" ");

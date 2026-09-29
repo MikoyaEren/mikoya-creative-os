@@ -135,7 +135,9 @@ export async function renderVariant(input: RenderVariantInput, deps: RenderDeps)
   record.cta = cta !== null;
   record.renderedFields = ["copyFields", ...(headline ? ["hook"] : []), ...(cta ? ["cta"] : [])];
 
-  const placement = placeAssets(template.assetSlots, input.assets, RENDER_ORIGIN);
+  const slots = template.assetSlotsFor ? template.assetSlotsFor(payload as never) : template.assetSlots;
+  const placement = placeAssets(slots, input.assets, RENDER_ORIGIN);
+  for (const slot of slots) if (!placement.assets[slot.id] && slot.requirement === "optional") record.warnings.push(`asset_unavailable: ${slot.id} requested but no ${slot.accepts.join("/")} asset was uploaded.`);
   record.warnings.push(...placement.warnings);
   record.assets = Object.values(placement.assets)
     .filter((a) => a !== null)

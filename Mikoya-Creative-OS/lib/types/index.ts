@@ -214,6 +214,8 @@ export interface RecipeCopySlot {
   row?: { label?: RowPartSpec; text: RowPartSpec; note?: RowPartSpec };
   /** A short neutral example (text fields), shown to the writer. */
   example?: string;
+  /** Allowed values (text fields), normalised case-insensitively — for structural choices such as an attachment. */
+  values?: string[];
   minRows?: number;
   maxRows?: number;
 }

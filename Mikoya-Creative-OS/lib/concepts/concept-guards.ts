@@ -99,8 +99,9 @@ export function nearDuplicate(a: string, b: string) {
  * hours", "ready in 2 minutes") — not in situations ("give me 20 minutes").
  * Times ("07:30"), dates and list numbering are never claims.
  */
+// Counts of reviews / customers must be one phrase: same line, whole word ("12 stars", not "7:12⏎Start …").
 const ALWAYS_NUMBER =
-  /(\d+(?:[.,]\d+)?\s?%|\b\d(?:[.,]\d)?\s?(?:\/|out of)\s?5\b|\b\d+(?:[.,]\d+)?\s?(?:x|times)\s+(?:more|less|faster|better|stronger|longer|the)\b|[€$£]\s?\d+(?:[.,]\d+)?|\b\d+(?:[.,]\d+)?\s?(?:€|eur|usd|gbp)\b|\b\d[\d.,]*\+?\s*(?:reviews?|ratings?|stars?|customers?|people|users?|buyers?|substances?))/gi;
+  /(\d+(?:[.,]\d+)?\s?%|\b\d(?:[.,]\d)?\s?(?:\/|out of)\s?5\b|\b\d+(?:[.,]\d+)?\s?(?:x|times)\s+(?:more|less|faster|better|stronger|longer|the)\b|[€$£]\s?\d+(?:[.,]\d+)?|\b\d+(?:[.,]\d+)?\s?(?:€|eur|usd|gbp)\b|\b\d[\d.,]*\+?[ \t]*(?:reviews?|ratings?|stars?|customers?|people|users?|buyers?|substances?)\b)/gi;
 const CONTEXTUAL_NUMBER = /\b\d[\d.,]*\+?\s*(?:hours?|hrs?|h\b|days?|weeks?|minutes?|mins?|years?|times|cups?|servings?|mg|g\b|kg|ml|l\b)/gi;
 const CLAIM_CONTEXT = /\b(lasts?|lasting|keeps?|works?|ready|takes?|within|up to|in just|only takes|results?|effects?|kicks? in|contains?|per (day|serving|cup)|each (pouch|pack|bottle))\b/i;
 

@@ -39,7 +39,7 @@ function tornEdge(teeth: number, depth: number) {
 export const receiptTemplate: HtmlTemplate<ReceiptPayload> = {
   id: "receipt",
   mechanismId: "receipt",
-  version: 1,
+  version: 2,
   name: "Thermal receipt",
   ctaMode: "optional",
   hookMode: "if_distinct",
@@ -55,8 +55,11 @@ export const receiptTemplate: HtmlTemplate<ReceiptPayload> = {
 
   render({ payload, frame, brand, headline, cta, assets }) {
     const v = frame.vertical;
-    // The optional product joins receipts of up to 4 lines — the same rule for both formats.
-    const product = payload.items.length <= 4 ? assets.product : null;
+    // Decorative, optional product: shown when the receipt is sparse enough for it to help the
+    // composition; dense receipts keep the space for the copy instead of shrinking it. Decided from
+    // the payload, so both formats agree.
+    const itemChars = payload.items.reduce((n, r) => n + r.qty.length + r.item.length + r.amount.length, 0);
+    const product = payload.items.length <= 4 && itemChars <= 110 ? assets.product : null;
     const rows = payload.items.map(
       (r) => html`<div class="row"><span class="qty">${r.qty}</span><span class="item">${r.item}</span><span class="amt">${r.amount}</span></div>`,
     );

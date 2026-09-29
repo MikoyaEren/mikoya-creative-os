@@ -44,18 +44,19 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "active",
-    version: 3,
+    version: 4,
     structure: {
       layout: "iOS Messages UI, 3–6 bubbles, grey incoming and blue outgoing.",
       copySlots: [
         { key: "messages", label: "Message thread", maxChars: 320, required: true, kind: "list", minRows: 2, maxRows: 6, row: { label: { meaning: "speaker", values: ["me", "them"], maxChars: 4, required: true }, text: { meaning: "one message bubble", maxChars: 90, required: true } } },
         { key: "contact", label: "Contact name", maxChars: 16, required: true },
+        { key: "attachment", label: "Photo sent in the thread: product (product shot) or lifestyle (scene photo). Leave empty for none.", maxChars: 9, required: false, values: ["product", "lifestyle"] },
       ],
-      visualRules: ["Pixel-accurate iOS styling", "Last bubble carries the payoff", "Optional product photo as attachment"],
+      visualRules: ["Native messaging styling, no platform logos", "Last bubble carries the payoff", "A photo appears only when the concept sets the attachment field"],
     },
     formatLayouts: {
-      "1:1": "The full thread at a smaller scale (same messages as 9:16), compact header; optional photo attachment kept small.",
-      "9:16": "Full thread with 3–6 bubbles, iOS header and keyboard hint; product attachment as the last bubble.",
+      "1:1": "The full thread at a smaller scale (same messages as 9:16), compact header; the attachment (if the concept sets one) kept small.",
+      "9:16": "Full thread with the same messages, native header and composer; the attachment (if the concept sets one) as the last sent bubble.",
     },
     principles: [
       "A believable two-person conversation between friends",

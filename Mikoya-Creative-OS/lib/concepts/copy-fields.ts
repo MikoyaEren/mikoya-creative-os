@@ -62,6 +62,11 @@ function checkSlot(slot: RecipeCopySlot, field: CopyField | undefined, issues: s
     return null;
   }
   if (slot.maxChars && text.length > slot.maxChars) issues.push(`${where}: ${text.length} chars (max ${slot.maxChars}).`);
+  if (slot.values) {
+    const match = slot.values.find((v) => v.toLowerCase() === text.toLowerCase());
+    if (!match) issues.push(`${where}: must be one of ${slot.values.join(" / ")} (got "${text}").`);
+    return { key: slot.key, text: match ?? text, rows: [] };
+  }
   return { key: slot.key, text, rows: [] };
 }
 
@@ -109,7 +114,7 @@ export function describeCopySlots(slots: RecipeCopySlot[]): string {
     .map((s) =>
       s.kind === "list"
         ? `${s.key} (list, ${s.minRows ?? 1}–${s.maxRows ?? 12} rows${s.required ? "" : ", optional"}; ${part("label", s.row?.label)}; ${part("text", s.row?.text)}; ${part("note", s.row?.note)})`
-        : `${s.key} (text${s.maxChars ? ` ≤${s.maxChars}` : ""}${s.required ? "" : ", optional"}${s.example ? `, e.g. "${s.example}"` : ""})`,
+        : `${s.key} (text${s.values ? `: ${s.values.join(" | ")}` : ""}${s.maxChars && !s.values ? ` ≤${s.maxChars}` : ""}${s.required ? "" : ", optional"}${s.example ? `, e.g. "${s.example}"` : ""})`,
     )
     .join("; ");
 }

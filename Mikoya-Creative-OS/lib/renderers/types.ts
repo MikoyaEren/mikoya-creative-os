@@ -79,6 +79,11 @@ export interface HtmlTemplate<P = unknown> {
   /** native: platform look wins, brand only frames it · framed: native object on a brand canvas · branded: brand colours carry the design. */
   brandInfluence: "native" | "framed" | "branded";
   assetSlots: AssetSlot[];
+  /**
+   * The slots this concept actually asks for (default: all `assetSlots`). The concept decides WHAT
+   * exists (e.g. an attachment); the template only decides how it is laid out.
+   */
+  assetSlotsFor?(payload: P): AssetSlot[];
   /** Typed payload from validated copy fields. Throws PayloadError when the fields cannot form one. */
   payload(fields: CopyField[]): P;
   render(input: TemplateInput<P>): TemplateOutput;
