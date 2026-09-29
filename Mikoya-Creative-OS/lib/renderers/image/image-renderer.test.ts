@@ -425,12 +425,58 @@ describe("image render service (submit → poll → stored result)", () => {
 
 describe("mechanism behaviour in the prompt", () => {
   const promptFor = (c: BriefConcept, refs = selectReferences(c.mechanism, c, AVAILABLE)) => new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: c, variant: { id: "v", aspectRatio: "1:1" }, context, references: refs }));
+  const promptAt = (c: BriefConcept, format: "1:1" | "9:16") =>
+    new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: c, variant: { id: "v", aspectRatio: format }, context, references: selectReferences(c.mechanism, c, AVAILABLE) }));
 
   it("POV asks for a first-person view and guards anatomy", () => {
     const p = promptFor(pov);
     expect(p).toMatch(/first-person/i);
     expect(p).toMatch(/no extra or missing fingers/);
     expect(p).toMatch(/no duplicated objects/);
+  });
+
+  it("POV defines first person visually: the camera is the viewer, looking at their own hands", () => {
+    for (const f of ["1:1", "9:16"] as const) {
+      const p = promptAt(pov, f);
+      expect(p).toContain("the camera is the viewer's own eyes or phone");
+      expect(p).toContain("the viewer is the person doing the action, looking down at their own hands");
+      expect(p).toMatch(/enter naturally from the bottom or lower side edges/);
+      expect(p).toMatch(/physically located in the scene/);
+    }
+  });
+
+  it("POV explicitly forbids third-person, observer and over-the-shoulder views", () => {
+    for (const f of ["1:1", "9:16"] as const) {
+      const p = promptAt(pov, f);
+      expect(p).toContain("no third-person, observer-view or lifestyle photography of someone doing the action");
+      expect(p).toContain("no other person performing the action in front of the camera");
+      expect(p).toContain("no person seated or standing across the table facing the camera");
+      expect(p).toContain("no over-the-shoulder view");
+      expect(p).toContain("no face of the acting person");
+    }
+  });
+
+  it("POV never shows the acting person's torso", () => {
+    for (const f of ["1:1", "9:16"] as const) expect(promptAt(pov, f)).toContain("no visible torso, chest, lap, apron or clothing front of the acting person");
+  });
+
+  it("POV square keeps first person with a tighter, downward view instead of pulling back", () => {
+    const sq = promptAt(pov, "1:1");
+    expect(sq).toMatch(/Camera: first-person viewpoint at the viewer's own eye position, top-down or steeply downward/);
+    expect(sq).toContain("keep the first-person view even if that means a tighter crop");
+    expect(sq).toContain("hands or forearms enter from the bottom edge or bottom corners");
+    expect(sq).toContain("the action and its objects in the middle and lower part of the frame");
+    expect(sq).toContain("never pull the camera back far enough to show the acting person's body");
+    // The vertical composition that already produced a convincing POV is unchanged.
+    const tall = promptAt(pov, "9:16");
+    expect(tall).toContain("Composition: vertical frame from the viewer's eyes; the action in the lower two thirds, product mid-to-lower frame when present; the upper third is still part of the scene, calm and uncluttered");
+    expect(tall).toContain("Camera: first-person viewpoint, looking down the vertical frame, 24 mm look, immersive");
+  });
+
+  it("keeps the generic POV grammar product-agnostic (no concept-specific words)", () => {
+    const other = promptAt(conceptOf("pov", { visualDescription: "First-person view of your hands opening a laptop on a desk", productRole: "none", layoutNotes: {} }), "1:1");
+    const grammar = other.split("\n").filter((l) => /^(Subject|Camera|Composition|Avoid):/.test(l)).join(" ");
+    expect(grammar).not.toMatch(/matcha|whisk|bowl|pouch|tea/i);
   });
 
   it("product hero is premium campaign photography, not plain e-commerce", () => {

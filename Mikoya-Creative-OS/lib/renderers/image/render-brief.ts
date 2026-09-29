@@ -108,19 +108,32 @@ const GRAMMAR: Record<ImageMechanismId, MechanismGrammar> = {
     style: "authentic social-media photography, candid and warm, not a staged catalogue shot",
     negative: ["no catalogue-style isolated product", "no pasted-in look: the product must sit in the scene's light and perspective"],
   },
+  // First person is defined spatially, not just named: a real square render answered "first-person" with an
+  // actor facing the camera across the table (torso and apron in frame). 9:16 worked and is unchanged.
   pov: {
-    subject: "a first-person point-of-view moment the viewer steps into; hands appear only if the scene needs them (holding, reaching for or preparing)",
+    subject:
+      "a true first-person moment: the camera is the viewer's own eyes or phone, and the viewer is the person doing the action, looking down at their own hands while they do it; the action happens directly in front of the viewer, who is physically located in the scene; hands and forearms appear only if the scene needs them (holding, reaching for or preparing) and enter naturally from the bottom or lower side edges of the frame",
     camera: {
-      "1:1": "first-person viewpoint, looking slightly down at the scene, 24–35 mm look",
+      "1:1": "first-person viewpoint at the viewer's own eye position, top-down or steeply downward onto the action, 24–35 mm look; stay close: keep the first-person view even if that means a tighter crop",
       "9:16": "first-person viewpoint, looking down the vertical frame, 24 mm look, immersive",
     },
     composition: {
-      "1:1": "square frame from the viewer's eyes; the action in the centre, product in the lower half when present; the scene continues calmly along the top edge",
+      "1:1": "square frame seen from the viewer's own eyes, looking down; the action and its objects in the middle and lower part of the frame, product in the lower half when present; the viewer's hands or forearms enter from the bottom edge or bottom corners; the surrounding environment (surface, room) fills the upper background and continues calmly along the top edge; never pull the camera back far enough to show the acting person's body",
       "9:16": "vertical frame from the viewer's eyes; the action in the lower two thirds, product mid-to-lower frame when present; the upper third is still part of the scene, calm and uncluttered",
     },
     lighting: "natural available light of the scene",
     style: "native social-content photography, believable and unstaged",
-    negative: ["no extra or missing fingers", "no malformed hands, wrists or arms", "no duplicated objects or duplicated hands", "no third-person view of the person"],
+    negative: [
+      "no extra or missing fingers",
+      "no malformed hands, wrists or arms",
+      "no duplicated objects or duplicated hands",
+      "no third-person, observer-view or lifestyle photography of someone doing the action",
+      "no other person performing the action in front of the camera",
+      "no person seated or standing across the table facing the camera",
+      "no face of the acting person",
+      "no visible torso, chest, lap, apron or clothing front of the acting person",
+      "no over-the-shoulder view",
+    ],
   },
   product_hero: {
     subject: "the product as the clear visual focus of a premium campaign photograph",
