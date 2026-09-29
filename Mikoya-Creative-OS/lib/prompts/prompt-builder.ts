@@ -7,11 +7,12 @@ import type {
   DynamicCreativeStrategy,
   GlobalCreativeConstitution,
   OutputFormat,
+  ReviewField,
   SourcedStatement,
   StrategyHypothesis,
 } from "@/lib/types";
 import { FORMAT_SPECS } from "@/lib/pipeline/formats";
-import { safeClaimValues } from "@/lib/strategy/safe-profile";
+import { safeClaimValues, usableAsProof } from "@/lib/strategy/safe-profile";
 import { SOURCE_LABELS, isApprovedInference } from "@/lib/strategy/provenance";
 import { HYPOTHESIS_CATEGORY_LABELS, isUsable } from "@/lib/strategy/strategy-hypotheses";
 import type { RendererSpec } from "./renderer-instructions";
@@ -71,6 +72,8 @@ export function constitutionLayer(c: GlobalCreativeConstitution): PromptSection 
  */
 export function safeProfileLayer(p: CreativeSafeProductProfile): PromptSection {
   const one = (label: string, f: { value: string } | null) => (f ? `${label}: ${f.value}` : null);
+  // Ratings, counts and testimonials are stated only once approved (same rule as Supporting Proof).
+  const proof = (field: ReviewField) => p.claims.filter((c) => c.field === field && usableAsProof(c)).map((c) => ({ value: c.value }));
   return {
     key: "truth",
     title: "CREATIVE-SAFE PRODUCT PROFILE (reviewed facts — the only claims you may make)",
@@ -87,10 +90,10 @@ export function safeProfileLayer(p: CreativeSafeProductProfile): PromptSection {
       `Features: ${factList(safeClaimValues(p, "features").map((value) => ({ value })))}`,
       `Specifications: ${factList(safeClaimValues(p, "ingredientsOrSpecifications").map((value) => ({ value })))}`,
       `Benefits: ${factList(safeClaimValues(p, "benefits").map((value) => ({ value })))}`,
-      `Claims: ${factList(safeClaimValues(p, "sourceClaims").map((value) => ({ value })))}`,
-      `Guarantees: ${factList(safeClaimValues(p, "guarantees").map((value) => ({ value })))}`,
-      `Social proof: ${factList(safeClaimValues(p, "socialProof").map((value) => ({ value })))}`,
-      p.reviews.length ? `Reviews: ${p.reviews.map((r) => `"${r.quote}" — ${r.author}`).join(" | ")}` : null,
+      `Claims: ${factList(proof("sourceClaims"))}`,
+      `Guarantees: ${factList(proof("guarantees"))}`,
+      `Social proof (approved only): ${factList(proof("socialProof"))}`,
+      p.reviews.length ? `Customer reviews (context only — not approved as proof; do not quote or cite numbers): ${p.reviews.map((r) => `"${r.quote}"`).join(" | ")}` : null,
       p.packagingDescription && `Packaging: ${p.packagingDescription}`,
       p.unknown.length ? `Unknown (do not invent): ${p.unknown.join(", ")}` : null,
       p.excluded.length ? `Withheld after review (never state or imply): ${p.excluded.length} item(s) — rejected, blocked, conflicting or unapproved high-risk.` : null,

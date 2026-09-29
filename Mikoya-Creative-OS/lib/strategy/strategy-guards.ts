@@ -11,6 +11,30 @@ import { classifyRisk, isBlockedStatement, isHighRisk, sameClaim, significantTok
  *   sensitive   health / performance / comparative / regulated → never used unless accepted
  */
 
+/**
+ * Emotional / identity words that the product-claim classifier treats as
+ * health-adjacent ("keeps you calm"). In a strategy hypothesis they usually
+ * describe a feeling or a style ("a calm, considered routine"), so on their
+ * own they do not make a hypothesis sensitive.
+ */
+const EMOTIONAL_WORDS = /\b(calm(ing|er|ly|ness)?|peaceful(ness)?|relax(ed|ing)?|serene|serenity|tranquil(ity)?|at ease|unhurried|grounded|ruhig\w*|entspannt\w*|gelassen\w*|beruhig\w*)\b/gi;
+
+/** Wording that makes or implies a product effect on the body or mind. */
+const EFFECT_WORDS =
+  /\b(reduc\w*|lower\w*|improv\w*|boost\w*|increas\w*|enhanc\w*|helps?|keeps? (you|them|people)|makes? (you|them|people)|gives? (you|them)|promot\w*|supports?|reliev\w*|relief|fights?|prevents?|treats?|heals?|lindert|senkt|reduziert|verbessert|steigert|hilft|fördert|sorgt für|macht (dich|sie))\b/i;
+
+/**
+ * Sensitive hypothesis wording: the product-claim risk classifier, minus
+ * isolated emotional language. When the hypothesis states or implies an
+ * effect ("reduces stress and keeps you calm"), nothing is removed and the
+ * full product-claim protection applies. Phase 2 claim classification itself
+ * is unchanged.
+ */
+export function isSensitiveHypothesis(statement: string) {
+  const text = EFFECT_WORDS.test(statement) ? statement : statement.replace(EMOTIONAL_WORDS, " ");
+  return isHighRisk(classifyRisk(text));
+}
+
 /** Categories where explicit brand values are authoritative. */
 export const BRAND_OWNED: Partial<Record<HypothesisCategory, (b: BrandStrategyProfile) => boolean>> = {
   audience: (b) => b.targetAudience.length > 0,
@@ -41,7 +65,7 @@ export function assessHypothesis(h: StrategyHypothesis, brand: BrandStrategyProf
   const forbidden = Boolean(h.forbidden) || brand.forbiddenTopics.some((t) => coversTopic(h.statement, t.statement));
   const deprioritised = brand.messagingToDeprioritize.filter((t) => coversTopic(h.statement, t.statement)).map((t) => t.statement);
   const brandConflicts = [...new Set([...(h.brandConflicts ?? []), ...deprioritised])];
-  const requiresReview = Boolean(h.requiresReview) || isHighRisk(classifyRisk(h.statement));
+  const requiresReview = Boolean(h.requiresReview) || isSensitiveHypothesis(h.statement);
   return {
     ...h,
     source: "ai_inference",

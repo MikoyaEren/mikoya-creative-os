@@ -230,6 +230,24 @@ export interface StrategyHypothesis {
   forbidden?: boolean;
 }
 
+/** Why a (validated) hypothesis did not enter the dynamic strategy. */
+export type HypothesisExclusionReason =
+  | "rejected"
+  | "below_confidence"
+  | "requires_review"
+  | "brand_override"
+  | "brand_conflict"
+  | "forbidden_topic"
+  | "category_limit"
+  | "duplicate"
+  | "stale_run";
+
+/** Deterministic usage result of one derivation — the UI reads this, it never recomputes it. */
+export interface HypothesisUsageResult {
+  usedHypothesisIds: string[];
+  excludedHypotheses: { hypothesisId: string; reason: HypothesisExclusionReason }[];
+}
+
 /** Why a hypothesis was dropped during validation (audit only). */
 export interface DroppedHypothesis {
   category: string;
@@ -333,4 +351,6 @@ export interface StrategyAudit {
   hypothesisReviews: Record<string, ReviewStatus>;
   /** Hypotheses that actually entered the dynamic strategy. */
   usedHypothesisIds: string[];
+  /** Every other hypothesis, with the reason it was not used. */
+  excludedHypotheses: HypothesisUsageResult["excludedHypotheses"];
 }

@@ -346,8 +346,22 @@ deriveDynamicCreativeStrategy()  → StrategySnapshot (+ audit)
     unless accepted.
 - **Brand override:** where the brand defines audience, positioning or
   desired identity, unreviewed AI hypotheses of that category are not
-  merged. Accepted ones are added below the brand values. AI items that
-  restate an explicit item are dropped.
+  merged. Accepted ones are added below the brand values. An AI item that
+  restates an explicit item is dropped: the explicit item must have 2 or more
+  significant words, and the AI item must contain at least 75% of them.
+- **Sensitive wording** reuses the product-claim classifier, but isolated
+  emotional words (calm, peaceful, relaxed…) are ignored unless the
+  hypothesis states or implies an effect ("reduces stress and keeps you
+  calm"). Product-claim classification itself is unchanged.
+- **Usage result:** the derivation returns `usedHypothesisIds` and
+  `excludedHypotheses` (with a reason: `rejected`, `below_confidence`,
+  `requires_review`, `brand_override`, `brand_conflict`, `forbidden_topic`,
+  `category_limit`, `duplicate`, `stale_run`). Both are stored in the
+  snapshot audit, and the UI only renders them.
+- **Social proof** (ratings, review or customer counts, testimonials, in any
+  claim field) is supporting proof only once approved, verified or
+  user-approved. The concept prompt applies the same rule, and customer
+  reviews are passed as context only.
 - **Provenance:** hypotheses are always `source = ai_inference`. Accepting
   one sets `reviewStatus = accepted` and `approvedByUser`; it never becomes
   user input.

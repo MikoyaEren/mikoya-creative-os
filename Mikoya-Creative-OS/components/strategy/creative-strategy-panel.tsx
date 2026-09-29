@@ -6,6 +6,7 @@ import type {
   CreativeSafeProductProfile,
   Fact,
   HypothesisCategory,
+  HypothesisExclusionReason,
   ProductAnalysisFailure,
   ReviewStatus,
   SafeFact,
@@ -17,7 +18,7 @@ import type {
 import { formatPrice } from "@/lib/strategy/product-truth-pack";
 import { REVIEW_FIELD_LABELS } from "@/lib/strategy/claims";
 import { BRAND_OWNED } from "@/lib/strategy/strategy-guards";
-import { HYPOTHESIS_CATEGORIES, HYPOTHESIS_CATEGORY_LABELS, MIN_HYPOTHESIS_CONFIDENCE, hypothesisUsage, type HypothesisUsage } from "@/lib/strategy/strategy-hypotheses";
+import { HYPOTHESIS_CATEGORIES, HYPOTHESIS_CATEGORY_LABELS, MIN_HYPOTHESIS_CONFIDENCE } from "@/lib/strategy/strategy-hypotheses";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -235,21 +236,24 @@ function BrandTab({ snapshot }: { snapshot: StrategySnapshot }) {
   );
 }
 
-const USAGE_TEXT: Record<HypothesisUsage, string> = {
+/** Labels for the derivation's own usage result — the UI never recomputes usage. */
+const EXCLUSION_TEXT: Record<HypothesisExclusionReason, string> = {
   rejected: "Rejected — never used",
-  forbidden: "Touches a “never mention” topic — never used",
+  forbidden_topic: "Touches a “never mention” topic — never used",
   brand_conflict: "Conflicts with brand intent — not used, brand wins",
-  accepted: "Accepted by you · used",
-  used_unreviewed: "Used · unreviewed (lowest priority)",
-  needs_acceptance_sensitive: "Sensitive wording — used only if you accept",
-  needs_acceptance_low_confidence: `Below ${Math.round(MIN_HYPOTHESIS_CONFIDENCE * 100)}% — used only if you accept`,
+  brand_override: "Brand defines this — used only if you accept",
+  requires_review: "Sensitive wording — used only if you accept",
+  below_confidence: `Below ${Math.round(MIN_HYPOTHESIS_CONFIDENCE * 100)}% — used only if you accept`,
+  category_limit: "Eligible · not used (category limit reached)",
+  duplicate: "Eligible · not used (restates a higher-priority item)",
+  stale_run: "Run out of date — not used",
 };
 
-function HypothesisCard({ h, brandOwned, onReview }: { h: StrategyHypothesis; brandOwned: boolean; onReview?: CreativeStrategyPanelProps["onReview"] }) {
-  const usage = hypothesisUsage(h);
-  // Brand-owned categories take only accepted hypotheses, as secondary input below the brand's own values.
-  const usageText = brandOwned && usage === "used_unreviewed" ? "Brand defines this — used only if you accept" : USAGE_TEXT[usage];
-  const used = usage === "accepted" || (usage === "used_unreviewed" && !brandOwned);
+type Outcome = { used: true } | { used: false; reason: HypothesisExclusionReason };
+
+function HypothesisCard({ h, outcome, onReview }: { h: StrategyHypothesis; outcome: Outcome; onReview?: CreativeStrategyPanelProps["onReview"] }) {
+  const used = outcome.used;
+  const usageText = outcome.used ? (h.reviewStatus === "accepted" ? "Accepted by you · used" : "Used · unreviewed (lowest priority)") : EXCLUSION_TEXT[outcome.reason];
   return (
     <article
       data-hypothesis-id={h.id}
@@ -289,7 +293,7 @@ function HypothesisCard({ h, brandOwned, onReview }: { h: StrategyHypothesis; br
         </div>
       )}
       <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-        <span className={cn("text-[11px]", used ? "text-forest" : "text-faint")}>{usageText}</span>
+        <span data-usage={outcome.used ? "used" : outcome.reason} className={cn("text-[11px]", used ? "text-forest" : "text-faint")}>{usageText}</span>
         {onReview && (
           <div className="flex gap-1">
             <button
@@ -384,6 +388,8 @@ function RunHeader({ snapshot, inference }: { snapshot: StrategySnapshot; infere
 function InferencesTab({ snapshot, onReview, inference }: CreativeStrategyPanelProps) {
   const hs = snapshot.hypotheses;
   const brandOwned = (c: HypothesisCategory) => BRAND_OWNED[c]?.(snapshot.brandStrategy) ?? false;
+  const excluded = new Map(snapshot.audit.excludedHypotheses.map((e) => [e.hypothesisId, e.reason]));
+  const outcomeOf = (id: string): Outcome => (excluded.has(id) ? { used: false, reason: excluded.get(id)! } : { used: true });
   const run = inference?.state.status === "success" ? inference.state.run : null;
   const grouped = HYPOTHESIS_CATEGORIES.map((c) => [c, hs.filter((h) => h.category === c)] as const).filter(([, items]) => items.length);
   return (
@@ -406,7 +412,7 @@ function InferencesTab({ snapshot, onReview, inference }: CreativeStrategyPanelP
               </h4>
               <div className="grid gap-3 md:grid-cols-2">
                 {items.map((h) => (
-                  <HypothesisCard key={h.id} h={h} brandOwned={brandOwned(category)} onReview={onReview} />
+                  <HypothesisCard key={h.id} h={h} outcome={outcomeOf(h.id)} onReview={onReview} />
                 ))}
               </div>
             </section>

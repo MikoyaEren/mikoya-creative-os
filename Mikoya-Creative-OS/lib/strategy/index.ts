@@ -1,12 +1,10 @@
 import type {
   BrandContext,
   CreativeDirectionInput,
-  DynamicCreativeStrategy,
   ProductInput,
   ProductReviewBundle,
   ProductTruthPack,
   ReviewStatus,
-  SourcedStatement,
   StrategyInferenceRun,
   StrategySnapshot,
   UserDecisions,
@@ -15,7 +13,7 @@ import type { CreativeProject } from "@/lib/projects/types";
 import { GLOBAL_CREATIVE_CONSTITUTION } from "@/lib/prompts/global-creative-constitution";
 import { applyBrandContext } from "./brand-strategy";
 import { buildProductReview } from "./claims";
-import { deriveDynamicCreativeStrategy } from "./dynamic-creative-strategy";
+import { deriveDynamicCreativeStrategyWithUsage } from "./dynamic-creative-strategy";
 import { buildTruthPackFromInput, withUserInput } from "./product-truth-pack";
 import { applyReviews } from "./strategy-hypotheses";
 import { deriveCreativeSafeProfile } from "./safe-profile";
@@ -49,26 +47,6 @@ export interface SnapshotInputs {
   inferenceRun?: StrategyInferenceRun | null;
   /** Injectable clock for the audit timestamp (tests). */
   now?: () => Date;
-}
-
-const STRATEGY_FIELDS: (keyof DynamicCreativeStrategy)[] = [
-  "audience",
-  "positioning",
-  "desiredIdentity",
-  "primaryCustomerDesires",
-  "purchaseMotivations",
-  "primaryAngles",
-  "secondaryAngles",
-  "objectionsToAddress",
-  "desiredEmotions",
-  "visualDirection",
-  "creativeOpportunities",
-];
-
-/** Hypothesis ids that actually entered the strategy (aiInference keeps the id as sourceRef). */
-function usedHypothesisIds(strategy: DynamicCreativeStrategy) {
-  const ids = STRATEGY_FIELDS.flatMap((k) => (strategy[k] as SourcedStatement[]).filter((s) => s.source === "ai_inference").map((s) => s.sourceRef ?? ""));
-  return [...new Set(ids.filter(Boolean))];
 }
 
 /**
@@ -109,15 +87,17 @@ export function buildStrategySnapshot({
   // Reviews only change reviewStatus/approvedByUser; guards only add restrictions. Origin stays ai_inference.
   const hypotheses = assessHypotheses(applyReviews(inferenceRun ? inferenceRun.hypotheses : project.hypotheses, reviews), brandStrategy);
 
-  const dynamicStrategy = deriveDynamicCreativeStrategy({
+  const { strategy: dynamicStrategy, usage } = deriveDynamicCreativeStrategyWithUsage({
     safeProfile,
     brandStrategy,
     hypotheses: inferenceStale ? [] : hypotheses,
     direction: batchDirection,
   });
+  // A stale run's hypotheses are kept for audit but never used.
+  const excludedHypotheses = inferenceStale ? hypotheses.map((h) => ({ hypothesisId: h.id, reason: "stale_run" as const })) : usage.excludedHypotheses;
+  const usedIds = usage.usedHypothesisIds;
 
   const hypothesisReviews = Object.fromEntries(hypotheses.filter((h) => h.reviewStatus !== "unreviewed").map((h) => [h.id, h.reviewStatus]));
-  const usedIds = usedHypothesisIds(dynamicStrategy);
   return {
     truthPack,
     review,
@@ -140,6 +120,7 @@ export function buildStrategySnapshot({
       inferenceStale,
       hypothesisReviews,
       usedHypothesisIds: usedIds,
+      excludedHypotheses,
     },
   };
 }

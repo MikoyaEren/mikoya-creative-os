@@ -10,7 +10,10 @@ import { GLOBAL_CREATIVE_CONSTITUTION } from "@/lib/prompts/global-creative-cons
 import { getRecipeForMechanism } from "@/lib/recipes";
 import { buildStrategySnapshot } from "./index";
 import { PRIORITY, effectivePriority, userInput } from "./provenance";
-import { assessHypothesis, coversTopic, withheldClaimLeak } from "./strategy-guards";
+import { assessHypothesis, coversTopic, isSensitiveHypothesis, withheldClaimLeak } from "./strategy-guards";
+import { buildProductReview, classifyRisk } from "./claims";
+import { deriveDynamicCreativeStrategy, restates } from "./dynamic-creative-strategy";
+import { deriveCreativeSafeProfile } from "./safe-profile";
 import { hypothesisUsage } from "./strategy-hypotheses";
 
 const product = MIKOYA_PROJECT.exampleProduct;
@@ -77,6 +80,16 @@ describe("explicit brand strategy overrides AI inference", () => {
     const s = snapshotWith([restated]);
     expect(statements(s.dynamicStrategy.objectionsToAddress)).toEqual(statements(MIKOYA_PROJECT.brandStrategy.primaryObjections));
     expect(s.dynamicStrategy.rationale).not.toMatch(/\.\./);
+  });
+
+  it("treats only near-restatements as duplicates, not AI items that merely share a word", () => {
+    // Observed in the live Mikoya run: a one-word brand priority swallowed full AI angles.
+    expect(restates("Taste-first reassurance: mild, smooth, easy to love in any variation", "Taste")).toBe(false);
+    expect(restates("Daily matcha may feel too expensive, so value framing per ritual matters", "Too expensive for a daily drink")).toBe(false);
+    expect(restates("Bright green powder and matte black pouch against cream backgrounds with generous whitespace", "Cream backgrounds, deep green, lots of whitespace")).toBe(false);
+    expect(restates("Fear that matcha tastes bitter or grassy keeps people from trying it", "Matcha tastes bitter or grassy")).toBe(true);
+    const angle = hyp("messaging_angle", "Taste-first reassurance: mild, smooth, easy to love in any variation", { confidence: 0.75 });
+    expect(snapshotWith([angle]).audit.usedHypothesisIds).toEqual([angle.id]);
   });
 
   it("uses AI audience when the brand has none", () => {
@@ -158,13 +171,6 @@ describe("provenance and review", () => {
 });
 
 describe("product facts and claims", () => {
-  it("uses reviewed safe-profile claims as supporting proof", () => {
-    const s = snapshotWith([]);
-    const proof = statements(s.dynamicStrategy.supportingProof);
-    expect(proof).toEqual(expect.arrayContaining(["30-day satisfaction guarantee", "4.8/5 average rating"]));
-    expect(s.dynamicStrategy.supportingProof.every((p) => p.source !== "ai_inference")).toBe(true);
-  });
-
   it("never lets withheld or blocked claims back in through a hypothesis", () => {
     const profile = { excluded: [{ id: "claim_benefits_1", field: "benefits" as const, value: "calm, focused energy", reason: "unapproved_high_risk" as const }] };
     expect(withheldClaimLeak("Calm focused energy all day", profile)).toMatch(/withheld/);
@@ -249,5 +255,137 @@ describe("product-agnostic", () => {
         .map((f) => `${dir}/${f}`),
     );
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("sensitive wording in hypotheses (context, not keywords)", () => {
+  it("does not flag ordinary emotional or identity language", () => {
+    for (const statement of ["Wants a calm, considered routine", "They want their mornings to feel peaceful and relaxed", "Möchte eine ruhige, bewusste Morgenroutine"]) {
+      expect(isSensitiveHypothesis(statement)).toBe(false);
+    }
+  });
+
+  it("still flags hypotheses that state or imply a product effect", () => {
+    for (const statement of ["The product reduces stress and keeps you calm", "Helps them stay calm and sleep better", "Energy without the afternoon crash"]) {
+      expect(isSensitiveHypothesis(statement)).toBe(true);
+    }
+  });
+
+  it("leaves Phase 2 product-claim risk unchanged", () => {
+    expect(classifyRisk("reduces stress and keeps you calm")).toBe("health");
+    expect(classifyRisk("calm, focused energy")).not.toBe("general");
+  });
+
+  it("uses a calm-routine hypothesis automatically but holds back an effect claim", () => {
+    const routine = hyp("customer_desire", "Wants a calm, considered routine", { confidence: 0.7 });
+    const effect = hyp("customer_desire", "Keeps you calm and reduces stress", { confidence: 0.9 });
+    const s = snapshotWith([routine, effect]);
+    expect(s.audit.usedHypothesisIds).toContain(routine.id);
+    expect(s.audit.excludedHypotheses).toContainEqual({ hypothesisId: effect.id, reason: "requires_review" });
+  });
+});
+
+describe("deterministic hypothesis usage result", () => {
+  const reasonOf = (s: ReturnType<typeof snapshotWith>, id: string) => s.audit.excludedHypotheses.find((e) => e.hypothesisId === id)?.reason;
+
+  it("reports eligible hypotheses cut by a category limit as not used", () => {
+    // Objections: 2 explicit brand objections + cap of 3 → room for exactly one AI objection.
+    const first = hyp("objection", "Unsure how to fit it into a busy morning", { confidence: 0.9 });
+    const second = hyp("objection", "Doubts it will arrive quickly", { confidence: 0.8 });
+    const s = snapshotWith([first, second]);
+    expect(s.audit.usedHypothesisIds).toContain(first.id);
+    expect(s.audit.usedHypothesisIds).not.toContain(second.id);
+    expect(reasonOf(s, second.id)).toBe("category_limit");
+    expect(statements(s.dynamicStrategy.objectionsToAddress)).not.toContain(second.statement);
+    expect(s.dynamicStrategy.rationale).toMatch(/1 eligible hypothesis\(es\) not used: category limit reached/);
+  });
+
+  it("gives every hypothesis exactly one outcome, with the right reason", () => {
+    const hs = {
+      used: hyp("purchase_motivation", "Wants a daily ritual", { confidence: 0.9 }),
+      rejected: hyp("visual_opportunity", "Rejected visual", { confidence: 0.9 }),
+      low: hyp("creative_opportunity", "Speculative idea", { confidence: 0.4 }),
+      sensitive: hyp("customer_desire", "Boosts energy and focus", { confidence: 0.9 }),
+      override: hyp("audience", "Night-shift nurses", { confidence: 0.9 }),
+      conflict: hyp("emotional_driver", "Fear of missing out", { reviewStatus: "accepted", brandConflicts: ["Desired emotion: Calm"] }),
+      forbidden: hyp("messaging_angle", "Medical or weight-loss claims angle", { confidence: 0.9 }),
+      duplicate: hyp("objection", "Matcha tastes too bitter or grassy for many", { confidence: 0.9 }),
+    };
+    const s = snapshotWith(Object.values(hs), { [hs.rejected.id]: "rejected" });
+    expect(s.audit.usedHypothesisIds).toEqual([hs.used.id]);
+    expect(Object.fromEntries(Object.entries(hs).filter(([k]) => k !== "used").map(([k, h]) => [k, reasonOf(s, h.id)]))).toEqual({
+      rejected: "rejected",
+      low: "below_confidence",
+      sensitive: "requires_review",
+      override: "brand_override",
+      conflict: "brand_conflict",
+      forbidden: "forbidden_topic",
+      duplicate: "duplicate",
+    });
+    const all = [...s.audit.usedHypothesisIds, ...s.audit.excludedHypotheses.map((e) => e.hypothesisId)];
+    expect(all.sort()).toEqual(Object.values(hs).map((h) => h.id).sort());
+  });
+
+  it("matches the AI items that are actually in the strategy", () => {
+    const hs = [hyp("purchase_motivation", "Wants a daily ritual", { confidence: 0.9 }), hyp("visual_opportunity", "Close-up of the texture", { confidence: 0.8 })];
+    const s = snapshotWith(hs);
+    const inStrategy = Object.values(s.dynamicStrategy)
+      .filter(Array.isArray)
+      .flat()
+      .filter((x): x is { source: string; sourceRef: string } => typeof x === "object" && x !== null && "source" in x && x.source === "ai_inference")
+      .map((x) => x.sourceRef);
+    expect([...new Set(inStrategy)].sort()).toEqual([...s.audit.usedHypothesisIds].sort());
+  });
+
+  it("marks every hypothesis of a stale run as stale_run", () => {
+    const h = hyp("purchase_motivation", "Wants a daily ritual", { confidence: 0.9 });
+    const s = buildStrategySnapshot({ project: MIKOYA_PROJECT, product, brand, inferenceRun: { ...runFor([h]), inputKey: "in_old" } });
+    expect(s.audit.usedHypothesisIds).toEqual([]);
+    expect(s.audit.excludedHypotheses).toEqual([{ hypothesisId: h.id, reason: "stale_run" }]);
+  });
+});
+
+describe("social proof as supporting proof", () => {
+  const pack = MIKOYA_PROJECT.truthPacks[0];
+  const bundle = buildProductReview(pack);
+  const at = "2026-09-29T00:00:00.000Z";
+  const proofWith = (decisions: Parameters<typeof deriveCreativeSafeProfile>[2] = {}, p = pack, b = bundle) =>
+    statements(deriveDynamicCreativeStrategy({ safeProfile: deriveCreativeSafeProfile(p, b, decisions), brandStrategy: MIKOYA_PROJECT.brandStrategy, hypotheses: [] }).supportingProof);
+  const ratingId = bundle.claims.find((c) => c.field === "socialProof")!.id;
+
+  it("does not use unreviewed numerical social proof", () => {
+    expect(proofWith()).not.toContain("4.8/5 average rating");
+  });
+
+  it("uses social proof once the user approves it", () => {
+    expect(proofWith({ [ratingId]: { action: "accept", decidedAt: at } })).toContain("4.8/5 average rating");
+  });
+
+  it("never uses rejected social proof", () => {
+    expect(proofWith({ [ratingId]: { action: "reject", decidedAt: at } })).not.toContain("4.8/5 average rating");
+  });
+
+  it("still uses ordinary low-risk product claims and guarantees", () => {
+    expect(proofWith()).toEqual(expect.arrayContaining(["Ceremonial grade", "30-day satisfaction guarantee"]));
+  });
+
+  it("treats customer counts and testimonials as social proof in any claim field", () => {
+    const withCount = { ...pack, sourceClaims: [...pack.sourceClaims, { value: "Trusted by 10,000+ customers", source: "source_fact" as const, sourceRef: "product_page" }] };
+    const b = buildProductReview(withCount);
+    expect(proofWith({}, withCount, b)).not.toContain("Trusted by 10,000+ customers");
+  });
+
+  it("keeps unapproved social proof out of the concept prompt", () => {
+    const s = snapshotWith([]);
+    const prompt = buildConceptPrompt({
+      creativeSafeProfile: s.safeProfile,
+      brandStrategyProfile: s.brandStrategy,
+      strategyHypotheses: s.hypotheses,
+      dynamicCreativeStrategy: s.dynamicStrategy,
+      globalCreativeConstitution: GLOBAL_CREATIVE_CONSTITUTION,
+      recipe: getRecipeForMechanism("x_post"),
+    });
+    expect(prompt).not.toContain("4.8/5");
+    expect(prompt).toContain("Social proof (approved only): —");
   });
 });

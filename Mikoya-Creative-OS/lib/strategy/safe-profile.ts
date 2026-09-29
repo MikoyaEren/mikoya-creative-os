@@ -203,3 +203,20 @@ export function deriveCreativeSafeProfile(pack: ProductTruthPack, bundle: Produc
 /** Safe claims of the given fields, as plain statements. */
 export const safeClaimValues = (profile: CreativeSafeProductProfile, ...fields: ReviewField[]) =>
   profile.claims.filter((c) => fields.includes(c.field)).map((c) => c.value);
+
+/** Ratings, review counts, customer counts and testimonials, in any claim field. */
+const SOCIAL_PROOF_LIKE =
+  /(\b\d(?:[.,]\d)?\s?(?:\/|out of|von)\s?5\b|\b\d[\d.,]*\s?\+?\s*(?:reviews?|ratings?|customers?|kunden|bewertungen|rezensionen|sterne|stars?|users?|nutzer|buyers?|käufer)\b|\btrusted by\b|\btestimonials?\b|\btrustpilot\b|\bbest[- ]?sellers?\b|\bfive[- ]star\b|\b5[- ]star\b)/i;
+
+export const isSocialProofLike = (text: string) => SOCIAL_PROOF_LIKE.test(text);
+
+/**
+ * Whether a safe-profile claim may be used as SUPPORTING PROOF. Social proof
+ * (the socialProof field, or any claim that reads like a rating, review count,
+ * customer count or testimonial) needs explicit approval or a verified /
+ * user-approved status. Other low-risk claims stay usable as before.
+ */
+export function usableAsProof(c: SafeClaim) {
+  const socialProof = c.field === "socialProof" || isSocialProofLike(c.value);
+  return !socialProof || c.approved || c.claimType === "user_approved_claim" || c.claimType === "verified_claim";
+}
