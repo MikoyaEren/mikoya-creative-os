@@ -47,7 +47,7 @@ const RISK_PATTERNS: [Exclude<ClaimRiskCategory, "general">, RegExp][] = [
   ],
   [
     "comparative",
-    /\b(better than|besser als|best|beste[nrs]?|#1|number one|nr\.? ?1|than coffee|als kaffee|wie bei kaffee|compared|im vergleich|vs\.?|stronger than|unlike|superior)\b/i,
+    /\b(better than|besser als|best|beste[nrs]?|#1|number one|nr\.? ?1|compared|im vergleich|vs\.?|stronger than|unlike|superior)\b/i,
   ],
   ["guarantee", /\b(guarantee[ds]?|garantie|money[- ]back|geld[- ]zurück|refund|erstattung|warranty|gewährleistung)\b/i],
   ["pricing", /(€|\$|£|\b(price|preis|discount|rabatt|sale|% off|free shipping|kostenlos\w*|gratis|coupon|gutschein)\b)/i],
@@ -103,7 +103,8 @@ export const REVIEW_FIELD_LABELS: Record<ReviewField, string> = {
 
 const STOP = new Set(["with", "from", "that", "this", "your", "the", "and", "for", "und", "mit", "der", "die", "das", "printed", "pouch", "visible", "shown", "on", "auf"]);
 
-function tokens(s: string) {
+/** Significant lowercase tokens (≥4 chars or containing a digit), without stop words. */
+export function significantTokens(s: string) {
   return new Set(
     s
       .toLowerCase()
@@ -116,8 +117,8 @@ function tokens(s: string) {
 
 /** True when two statements plausibly express the same claim. */
 export function sameClaim(a: string, b: string) {
-  const ta = tokens(a);
-  const tb = tokens(b);
+  const ta = significantTokens(a);
+  const tb = significantTokens(b);
   const [small, large] = ta.size <= tb.size ? [ta, tb] : [tb, ta];
   if (small.size === 0) return false;
   const shared = [...small].filter((t) => large.has(t)).length;

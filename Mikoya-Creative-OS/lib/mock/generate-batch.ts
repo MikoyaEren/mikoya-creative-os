@@ -89,6 +89,7 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
     truthPack: request.truthPack,
     productReview: request.productReview,
     factDecisions: request.factDecisions,
+    inferenceRun: request.strategyRun,
   });
   // The concept writer only sees reviewed, creative-safe product information.
   const { safeProfile, dynamicStrategy } = snapshot;

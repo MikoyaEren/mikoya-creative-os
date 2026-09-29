@@ -9,7 +9,7 @@
  * An LLM returns `CreativeConceptDraft` JSON (see lib/pipeline/concept-schema.ts).
  */
 
-import type { CreativeDirectionInput, ProductTruthPack, ReviewStatus, StrategySnapshot } from "./strategy";
+import type { CreativeDirectionInput, ProductTruthPack, ReviewStatus, StrategyInferenceRun, StrategySnapshot } from "./strategy";
 import type { ProductReviewBundle, UserDecisions } from "./review";
 
 export * from "./strategy";
@@ -143,6 +143,8 @@ export interface GenerationRequest {
   /** Claims/conflicts for `truthPack` plus the user's fact decisions → CreativeSafeProductProfile. */
   productReview?: ProductReviewBundle;
   factDecisions?: UserDecisions;
+  /** AI strategy inference run whose hypotheses this batch uses (absent → workspace demo hypotheses). */
+  strategyRun?: StrategyInferenceRun;
   /** User reviews of AI hypotheses (accepted → high priority, origin kept; rejected → dropped). */
   hypothesisReviews?: Record<string, ReviewStatus>;
   product: ProductInput;

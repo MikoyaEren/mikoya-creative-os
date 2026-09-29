@@ -142,19 +142,26 @@ export function dynamicStrategyLayer(d: DynamicCreativeStrategy): PromptSection 
     key: "strategy",
     title: "DYNAMIC CREATIVE STRATEGY (this batch)",
     body: [
+      `Audience: ${list(d.audience)}`,
+      `Positioning: ${list(d.positioning)}`,
+      `Desired identity: ${list(d.desiredIdentity)}`,
       `Lead with: ${list(d.leadWith)}`,
       `Supporting proof: ${list(d.supportingProof)}`,
       `Avoid leading with: ${list(d.avoidLeadingWith)}`,
       `Primary angles: ${list(d.primaryAngles)}`,
       `Secondary angles: ${list(d.secondaryAngles)}`,
       `Customer desires: ${list(d.primaryCustomerDesires)}`,
+      `Purchase motivations: ${list(d.purchaseMotivations)}`,
       `Objections to address: ${list(d.objectionsToAddress)}`,
       `Desired emotions: ${list(d.desiredEmotions)}`,
       `Tone: ${list(d.tone)}`,
       `Visual direction: ${list(d.visualDirection)}`,
       `Creative opportunities: ${list(d.creativeOpportunities)}`,
+      d.brandConflicts.length ? `Accepted AI ideas that conflict with brand intent (do NOT use; brand wins): ${d.brandConflicts.map((c) => c.statement).join("; ")}` : null,
       `Rationale: ${d.rationale}`,
-    ].join("\n"),
+    ]
+      .filter(Boolean)
+      .join("\n"),
   };
 }
 

@@ -317,6 +317,54 @@ quote stay visible. The safe profile includes an item unless:
 
 Excluded items are listed with their reason.
 
+### Strategy inference (Phase 3)
+
+```
+CreativeSafeProductProfile + effective BrandStrategyProfile + assets + batch direction
+   ↓  buildStrategyInputs(): citable lines [fact:…] [brand:…] [asset:…] [review:…] + fingerprint
+   ↓  POST /api/infer-strategy  → ONE Claude call (compact tagged-list output)
+toHypotheses(): grounding, normalisation, caps, guards     lib/server/strategy/schema.ts
+   ↓  StrategyInferenceRun (stored as-is; reviews kept separately)
+UI review: Accept / Reject                                  AI inferences tab
+   ↓
+deriveDynamicCreativeStrategy()  → StrategySnapshot (+ audit)
+```
+
+- **Inputs:** only the safe profile reaches the model: no raw truth pack, no
+  withheld items. Withheld values are used only to drop hypotheses that
+  would restate them.
+- **Grounding:** every hypothesis must cite at least one provided input
+  reference. Ungrounded, unknown-category, duplicate and over-limit
+  hypotheses are dropped, with a reason (3 per category, 20 in total).
+- **Guards** (`lib/strategy/strategy-guards.ts`) never change a hypothesis's
+  origin or review status:
+  - A hypothesis restating a withheld or blocked claim is dropped.
+  - A hypothesis touching a brand "never mention" topic is never used, even
+    if accepted.
+  - A contradiction of explicit brand intent is recorded and never merged.
+  - Health, performance, comparative or regulated wording is never used
+    unless accepted.
+- **Brand override:** where the brand defines audience, positioning or
+  desired identity, unreviewed AI hypotheses of that category are not
+  merged. Accepted ones are added below the brand values. AI items that
+  restate an explicit item are dropped.
+- **Provenance:** hypotheses are always `source = ai_inference`. Accepting
+  one sets `reviewStatus = accepted` and `approvedByUser`; it never becomes
+  user input.
+- **Auditability:** each `StrategySnapshot` carries an `audit` record with
+  - the snapshot id and time
+  - the safe-profile and brand ids
+  - the input fingerprint
+  - the inference run id, model and time
+  - whether the run is stale
+  - every review decision
+  - the hypothesis ids that entered the strategy
+
+  A run whose input fingerprint no longer matches is **out of date**: its
+  hypotheses stay visible but are not used.
+- **Demo mode:** "Demo" returns the workspace's stored hypotheses through the
+  same guards. There is no network call and no AI.
+
 **Mock vs real analyzer.** Both implement `ProductAnalyzer`:
 
 | Analyzer | When | What it does |

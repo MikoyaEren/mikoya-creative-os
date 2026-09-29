@@ -25,6 +25,15 @@ export const AI_CONFIG = {
     /** SDK retries on 408/409/429/5xx/connection errors. */
     maxRetries: 2,
   },
+  strategyInference: {
+    /** Override with ANTHROPIC_STRATEGY_MODEL without touching code. */
+    model: process.env.ANTHROPIC_STRATEGY_MODEL || "claude-opus-5-5",
+    /** Interpretation task: medium effort, one call per explicit click. */
+    effort: effortFromEnv(process.env.ANTHROPIC_STRATEGY_EFFORT, "medium"),
+    maxTokens: 8000,
+    timeoutMs: 120_000,
+    maxRetries: 2,
+  },
 } as const;
 
 /** True when a key is configured. The real analyzer never runs without one. */

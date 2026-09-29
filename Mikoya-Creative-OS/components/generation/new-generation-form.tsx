@@ -19,6 +19,7 @@ import { CREATIVE_TYPE_ORDER, DEFAULT_PRESET, outputsFor, plural } from "@/lib/c
 import { DEFAULT_PROJECT_ID, PROJECTS, getProject } from "@/lib/projects";
 import { buildStrategySnapshot } from "@/lib/strategy";
 import { analysisInputKey, requestProductAnalysis } from "@/lib/analysis-client";
+import { requestStrategyInference } from "@/lib/strategy-client";
 import { ALL_MECHANISM_IDS, getMechanism } from "@/lib/recipes";
 import { planSlots } from "@/lib/mock/generate-batch";
 import { generationProvider } from "@/lib/pipeline/provider";
@@ -28,7 +29,7 @@ import { isValidUrl } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { SourceBadge } from "@/components/strategy/source-badge";
-import { CreativeStrategyPanel } from "@/components/strategy/creative-strategy-panel";
+import { CreativeStrategyPanel, type InferenceState } from "@/components/strategy/creative-strategy-panel";
 import { CollapsibleSection } from "@/components/strategy/creative-strategy-section";
 import { BrandContextSection } from "@/components/product/brand-context-section";
 import { ProductSection, type ProductErrors } from "@/components/product/product-section";
@@ -66,6 +67,9 @@ export function NewGenerationForm() {
   // Review-gate decisions for the current analysis. Kept apart from the raw result for audit.
   const [factDecisions, setFactDecisions] = useState<UserDecisions>({});
   const analysisAbort = useRef<AbortController | null>(null);
+  const [inference, setInference] = useState<InferenceState>({ status: "idle" });
+  const inferenceAbort = useRef<AbortController | null>(null);
+  const inferenceRun = inference.status === "success" ? inference.run : null;
 
   const currentInputKey = analysisInputKey(product, analysisContext);
   const analysisStale = analysis.status === "success" && analysis.inputKey !== currentInputKey;
@@ -116,11 +120,36 @@ export function NewGenerationForm() {
         truthPack: analyzedTruthPack,
         productReview: analyzedReview,
         factDecisions,
+        inferenceRun,
       }),
-    [project, product, brand, reviews, analyzedTruthPack, analyzedReview, factDecisions],
+    [project, product, brand, reviews, analyzedTruthPack, analyzedReview, factDecisions, inferenceRun],
   );
   const safeProfile = snapshot.safeProfile;
-  const inferredInUse = snapshot.hypotheses.filter((h) => h.reviewStatus !== "rejected").length;
+  const inferredInUse = snapshot.audit.usedHypothesisIds.length;
+  const acceptedInUse = snapshot.hypotheses.filter((h) => h.reviewStatus === "accepted" && snapshot.audit.usedHypothesisIds.includes(h.id)).length;
+
+  async function runInference(analyzer: "real" | "mock") {
+    inferenceAbort.current?.abort();
+    const controller = new AbortController();
+    inferenceAbort.current = controller;
+    setInference({ status: "running", analyzer });
+    try {
+      const response = await requestStrategyInference({
+        projectId: project.id,
+        analyzer,
+        // Only the creative-safe profile and explicit brand intent are sent — never raw product data.
+        safeProfile: snapshot.safeProfile,
+        brandStrategy: snapshot.brandStrategy,
+        direction: project.defaultDirection,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      if (response.ok) setReviews({});
+      setInference(response.ok ? { status: "success", run: response.run } : { status: "error", error: response.error, analyzer });
+    } catch {
+      // Aborted by the user or superseded by a newer request.
+    }
+  }
 
   function switchProject(id: string) {
     const next = getProject(id);
@@ -134,6 +163,8 @@ export function NewGenerationForm() {
     setAnalysisNotes("");
     setAnalysisContext(next.analysisContext ?? {});
     setFactDecisions({});
+    inferenceAbort.current?.abort();
+    setInference({ status: "idle" });
   }
 
   const formatError = submitted && mechanismIds.length === 0 ? "Select at least one creative mechanism." : undefined;
@@ -157,6 +188,7 @@ export function NewGenerationForm() {
       truthPack: analyzedTruthPack ?? undefined,
       productReview: analyzedReview ?? undefined,
       factDecisions,
+      strategyRun: inferenceRun && !snapshot.audit.inferenceStale ? inferenceRun : undefined,
       product: { ...product, name: product.name.trim(), url: product.url.trim() },
       brand,
       outputMix: mix,
@@ -238,6 +270,14 @@ export function NewGenerationForm() {
         <CreativeStrategyPanel
           snapshot={snapshot}
           onReview={(id, reviewStatus) => setReviews((r) => ({ ...r, [id]: reviewStatus }))}
+          inference={{
+            state: inference,
+            onGenerate: runInference,
+            onCancel: () => {
+              inferenceAbort.current?.abort();
+              setInference({ status: "idle" });
+            },
+          }}
         />
       </CollapsibleSection>
       <OutputMixSection
@@ -271,6 +311,15 @@ export function NewGenerationForm() {
               : analysisStale
                 ? "analysis out of date — not used"
                 : "not analysed yet — using entered or stored data"}
+          </p>
+          <p className="mt-1 text-[13px] text-cream/70">
+            Strategy:{" "}
+            {snapshot.audit.hypothesisSource === "ai" ? "AI hypotheses" : snapshot.audit.hypothesisSource === "mock" ? "demo hypotheses" : "workspace demo hypotheses"}
+            {snapshot.audit.inferenceStale
+              ? " out of date — not used"
+              : ` · ${acceptedInUse} accepted · ${inferredInUse - acceptedInUse} unreviewed in use${
+                  snapshot.dynamicStrategy.brandConflicts.length ? ` · ${snapshot.dynamicStrategy.brandConflicts.length} brand conflict(s)` : ""
+                }`}
           </p>
           <p className="mt-1.5 text-[13px] text-cream/60">
             {missing.length

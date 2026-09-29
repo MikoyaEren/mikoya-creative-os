@@ -10,7 +10,11 @@ import { aiInference } from "./provenance";
  *   accepted   → origin stays ai_inference; effective priority rises above
  *                source facts (below explicit user input)
  *   rejected   → never used
- *   unreviewed → lowest priority, ignored below the confidence threshold
+ *   unreviewed → lowest priority, ignored below the confidence threshold,
+ *                and never used when flagged as sensitive (requiresReview)
+ *
+ * Forbidden-topic hypotheses are never used, and hypotheses that contradict
+ * explicit brand intent are never merged (see strategy-guards.ts).
  */
 
 /** Hypotheses below this confidence are shown but not used unless accepted. */
@@ -25,7 +29,11 @@ export const HYPOTHESIS_CATEGORY_LABELS: Record<HypothesisCategory, string> = {
   messaging_angle: "Messaging angle",
   visual_opportunity: "Visual opportunity",
   creative_opportunity: "Creative opportunity",
+  desired_identity: "Desired identity",
+  emotional_driver: "Emotional driver",
 };
+
+export const HYPOTHESIS_CATEGORIES = Object.keys(HYPOTHESIS_CATEGORY_LABELS) as HypothesisCategory[];
 
 /** Apply user reviews without touching the hypotheses' origin. */
 export function applyReviews(
@@ -38,9 +46,28 @@ export function applyReviews(
   });
 }
 
+export type HypothesisUsage =
+  | "rejected"
+  | "forbidden"
+  | "brand_conflict"
+  | "accepted"
+  | "used_unreviewed"
+  | "needs_acceptance_sensitive"
+  | "needs_acceptance_low_confidence";
+
+/** Why a hypothesis is or isn't used. Rules are ordered from strictest to loosest. */
+export function hypothesisUsage(h: StrategyHypothesis): HypothesisUsage {
+  if (h.reviewStatus === "rejected") return "rejected";
+  if (h.forbidden) return "forbidden";
+  if (h.brandConflicts?.length) return "brand_conflict";
+  if (h.reviewStatus === "accepted") return "accepted";
+  if (h.requiresReview) return "needs_acceptance_sensitive";
+  return h.confidence >= MIN_HYPOTHESIS_CONFIDENCE ? "used_unreviewed" : "needs_acceptance_low_confidence";
+}
+
 export function isUsable(h: StrategyHypothesis) {
-  if (h.reviewStatus === "rejected") return false;
-  return h.reviewStatus === "accepted" || h.confidence >= MIN_HYPOTHESIS_CONFIDENCE;
+  const usage = hypothesisUsage(h);
+  return usage === "accepted" || usage === "used_unreviewed";
 }
 
 /** Hypotheses of the given categories as sourced statements, respecting reviews. Origin is preserved. */
