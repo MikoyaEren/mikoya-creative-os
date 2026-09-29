@@ -28,14 +28,14 @@ export const RENDERERS: Record<RendererType, RendererSpec> = {
   },
   image: {
     type: "image",
-    label: "IMAGE_MODEL",
-    description: "Image model with the product image as reference.",
+    label: "KnightVision",
+    description: "AI image model (KnightVision) with the product image as reference; text-free visuals, copy stays in the Creative OS.",
     instructions: [
       "Preserve product packaging exactly as in the reference image.",
       "No extra text rendered by the model; headline is composited afterwards.",
       "Photographic, natural light, editorial composition.",
     ],
-    providerEnvKey: "IMAGE_MODEL_API_KEY",
+    providerEnvKey: "KNIGHTVISION_API_KEY",
   },
   video: {
     type: "video",

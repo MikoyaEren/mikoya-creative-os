@@ -1,0 +1,504 @@
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import path from "node:path";
+import sharp from "sharp";
+import { describe, expect, it } from "vitest";
+import type { CreativeConcept, ImageRenderContext, MechanismId, RendererType } from "@/lib/types";
+import { MIKOYA_PROJECT } from "@/lib/projects/mikoya";
+import { buildStrategySnapshot } from "@/lib/strategy";
+import { TEMPLATE_MECHANISMS, templateFor } from "../html/template-registry";
+import { buildImageRenderContext, compileImageRenderBrief, MAX_REFERENCE_IMAGES, neutralizeNames, selectReferences, visualCompositionNote, type BriefConcept } from "./render-brief";
+import { IMAGE_MECHANISMS, routeFor } from "./router";
+import { renderImageToCompletion, type JobClock } from "./image-renderer";
+import { ImageProviderError, type ReferenceImage } from "./types";
+import { KnightVisionImageRenderer, knightVisionRequest } from "../knightvision/image-renderer";
+import { KNIGHTVISION_BASE_URL } from "../knightvision/config";
+import { PARTNER_JOB_ID } from "../knightvision/schemas";
+import type { RenderStore } from "../store/fs-store";
+import { MemoryImageJobStore } from "@/lib/server/render/image-jobs";
+import { pollImageJobs, startImageRender, type ImageRenderRequest } from "@/lib/server/render/image-service";
+
+// ---------------------------------------------------------------------------
+// Fixtures: real Mikoya image concepts (Full Drop) and the real safe context
+// ---------------------------------------------------------------------------
+
+interface Fixture {
+  concept: BriefConcept & { renderer: RendererType; hook: string; variants: { id: string; aspectRatio: "1:1" | "9:16" }[] };
+}
+const FIXTURES = JSON.parse(readFileSync(path.join(process.cwd(), "test", "fixtures", "image-concepts.json"), "utf8")) as Fixture[];
+const lifestyle = FIXTURES.find((f) => f.concept.mechanism === "lifestyle")!.concept;
+const pov = FIXTURES.find((f) => f.concept.mechanism === "pov")!.concept;
+const snapshot = buildStrategySnapshot({ project: MIKOYA_PROJECT, product: MIKOYA_PROJECT.exampleProduct, brand: MIKOYA_PROJECT.brandContext });
+const context: ImageRenderContext = buildImageRenderContext(snapshot, MIKOYA_PROJECT.brandContext.colors);
+const AVAILABLE = [
+  { assetId: "a".repeat(64), role: "main" as const },
+  { assetId: "b".repeat(64), role: "lifestyle" as const },
+  { assetId: "c".repeat(64), role: "bundle" as const },
+];
+const conceptOf = (mechanism: BriefConcept["mechanism"], over: Partial<BriefConcept> = {}): BriefConcept => ({ ...lifestyle, id: `c_${mechanism}`, mechanism, ...over });
+
+// ---------------------------------------------------------------------------
+// Fake provider (HTTP level) and fake store
+// ---------------------------------------------------------------------------
+
+const json = (status: number, body: unknown, headers: Record<string, string> = {}) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", ...headers } });
+let PNG_BYTES: Buffer;
+async function png() {
+  PNG_BYTES ??= await sharp({ create: { width: 64, height: 64, channels: 3, background: "#6a9" } }).png().toBuffer();
+  return PNG_BYTES;
+}
+
+interface Call {
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  body: unknown;
+}
+
+/** A fake KnightVision: `create` answers the submit, `status` answers polls in order (last one repeats). */
+function fakeKnightVision(opts: { create?: () => Response; status?: (() => Response)[]; download?: () => Response | Promise<Response> } = {}) {
+  const calls: Call[] = [];
+  let polls = 0;
+  const fetchImpl = (async (input: string | URL, init?: RequestInit) => {
+    const url = String(input);
+    calls.push({ url, method: init?.method ?? "GET", headers: (init?.headers ?? {}) as Record<string, string>, body: init?.body ? JSON.parse(String(init.body)) : undefined });
+    if (url.endsWith("/api/v1/partner/generate-image")) {
+      return (opts.create ?? (() => json(202, { request_id: "req1", generation_ids: [101], public_ids: ["kv-0a1b2c3d"], generation_id: 101, public_id: "kv-0a1b2c3d", credits_used: 17, credits_remaining: 83 })))();
+    }
+    if (url.includes("/api/v1/partner/image-status/")) {
+      const seq = opts.status ?? [() => json(200, { request_id: "req2", status: "success", generation_id: 101, image_url: "https://knightvision.tech/static/generated_images/gen_101.png", model: "Nano Banana Pro", aspect_ratio: "1:1", resolution: "2K" })];
+      return seq[Math.min(polls++, seq.length - 1)]();
+    }
+    if (url.startsWith("https://knightvision.tech/static/")) return opts.download ? opts.download() : new Response(new Uint8Array(await png()), { status: 200, headers: { "content-type": "image/png" } });
+    throw new Error(`unexpected URL ${url}`);
+  }) as typeof fetch;
+  return { fetchImpl, calls };
+}
+
+const pending = () => json(200, { request_id: "r", status: "pending", generation_id: 101 });
+const success = () => json(200, { request_id: "r", status: "success", generation_id: 101, image_url: "https://knightvision.tech/static/generated_images/gen_101.png", model: "Nano Banana Pro" });
+
+function memoryStore(): RenderStore & { files: Map<string, Buffer> } {
+  const files = new Map<string, Buffer>();
+  return {
+    files,
+    putRender: async (p, b) => void files.set(p, b),
+    readRender: async (p) => files.get(p) ?? null,
+    hasRender: async (p) => files.has(p),
+    putAsset: async () => {
+      throw new Error("n/a");
+    },
+    readAsset: async (hash) => (hash === "a".repeat(64) || hash === "c".repeat(64) ? { body: Buffer.from(`asset-${hash.slice(0, 4)}`), contentType: "image/webp" } : null),
+    assetMeta: async () => null,
+  };
+}
+
+const request = (concept: Fixture["concept"], formats: ("1:1" | "9:16")[] = ["1:1", "9:16"]): ImageRenderRequest => ({
+  batchId: "batch_t",
+  concept: { ...concept, layoutNotes: concept.layoutNotes ?? undefined, copyFields: concept.copyFields },
+  context,
+  assets: AVAILABLE.map((a) => ({ hash: a.assetId, role: a.role })),
+  formats,
+});
+
+const renderer = (fetchImpl: typeof fetch, apiKey: string | null = "kv_partner_test_key") => new KnightVisionImageRenderer({ apiKey, fetch: fetchImpl });
+
+function clock(): JobClock & { t: number } {
+  const c = { t: 0, now: () => c.t, sleep: async (ms: number) => void (c.t += ms) };
+  return c;
+}
+
+// ---------------------------------------------------------------------------
+// 1. ImageRenderBrief compilation
+// ---------------------------------------------------------------------------
+
+describe("ImageRenderBrief compilation (real Mikoya lifestyle concept)", () => {
+  const refs = selectReferences("lifestyle", lifestyle, AVAILABLE);
+  const b11 = compileImageRenderBrief({ concept: lifestyle, variant: lifestyle.variants[0], context, references: refs });
+
+  it("fills every brief field from the concept, the safe context and the mechanism grammar", () => {
+    for (const k of ["objective", "scene", "subject", "environment", "composition", "camera", "lighting", "mood", "visualStyle", "productRole"] as const) expect(b11[k].length, k).toBeGreaterThan(10);
+    expect(b11).toMatchObject({ conceptId: lifestyle.id, variantId: lifestyle.variants[0].id, mechanism: "lifestyle", aspectRatio: "1:1", textPolicy: "text_free" });
+    expect(b11.referenceAssets).toEqual([{ assetId: "a".repeat(64), role: "main", purpose: expect.stringMatching(/packaging shape/) }]);
+    expect(b11.productFidelityInstructions.join(" ")).toMatch(/do not redesign the product/i);
+    expect(b11.negativeInstructions.join(" ")).toMatch(/no added text anywhere in the image/);
+  });
+
+  it("is deterministic: the same inputs give the same brief and hash", () => {
+    expect(compileImageRenderBrief({ concept: lifestyle, variant: lifestyle.variants[0], context, references: refs })).toEqual(b11);
+  });
+
+  it("keeps copy, brand names and package text out of the visual brief", () => {
+    const all = JSON.stringify(b11);
+    for (const f of lifestyle.copyFields ?? []) if (f.text) expect(all, f.key).not.toContain(f.text);
+    expect(all).not.toContain(lifestyle.hook);
+    expect(all).not.toMatch(/MIKOYA|JPN|100%|30g/);
+    expect(b11.composition).not.toMatch(/overlay|caption|cta|headline/i);
+    expect(b11.visualStyle).not.toMatch(/serif|headline/i);
+    expect(neutralizeNames("the black BRANDX pouch next to Acme tea", ["Acme"])).toBe("the black pouch next to tea");
+    expect(visualCompositionNote("Caption bar top; overhead scene fills the square; pouch lower right; overlay small above the bowl.")).toBe("overhead scene fills the square; pouch lower right");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 2–7. Routing and pairing
+// ---------------------------------------------------------------------------
+
+describe("renderer routing (mechanism-driven)", () => {
+  it.each(["lifestyle", "pov", "product_hero", "choose_your_fighter"] as const)("routes %s image concepts to the image renderer", (m) => {
+    expect(routeFor({ mechanism: m, renderer: "image" })).toEqual({ route: "image", mechanism: m });
+  });
+
+  it("never routes other mechanisms or renderers to the image provider", () => {
+    const all: MechanismId[] = ["x_post", "imessage", "starter_pack", "warning_label", "claymation", "ai_ugc", "review", "us_vs_them"];
+    for (const m of all) expect(routeFor({ mechanism: m, renderer: "image" }).route, m).toBe("none");
+    expect(routeFor({ mechanism: "claymation", renderer: "video" }).route).toBe("none");
+    expect(routeFor({ mechanism: "ai_ugc", renderer: "ugc_video" }).route).toBe("none");
+    // An image mechanism written for the HTML renderer (no template) is not silently sent to the image provider.
+    expect(routeFor({ mechanism: "choose_your_fighter", renderer: "html" })).toEqual({ route: "none", reason: "HTML template not available yet" });
+    expect(IMAGE_MECHANISMS.some((m) => TEMPLATE_MECHANISMS.includes(m))).toBe(false);
+  });
+
+  it("rejects an unsupported mechanism at the service: no provider call, auditable failure", async () => {
+    const kv = fakeKnightVision();
+    const jobs = new MemoryImageJobStore();
+    const out = await startImageRender(request({ ...lifestyle, mechanism: "starter_pack" as never }), { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs });
+    expect(kv.calls).toEqual([]);
+    expect(out["1:1"]!.record).toMatchObject({ status: "failed", renderer: "image", error: { code: "no_image_route" } });
+  });
+
+  it("keeps 1:1 and 9:16 paired under one concept: same idea, format-specific composition only", async () => {
+    const kv = fakeKnightVision();
+    const out = await startImageRender(request(lifestyle), { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() });
+    const [a, b] = [out["1:1"]!.record.image!.brief, out["9:16"]!.record.image!.brief];
+    expect(kv.calls.filter((c) => c.url.endsWith("/generate-image"))).toHaveLength(2);
+    expect([a.conceptId, b.conceptId]).toEqual([lifestyle.id, lifestyle.id]);
+    for (const k of ["objective", "scene", "subject", "environment", "lighting", "mood", "visualStyle", "productRole"] as const) expect(a[k], k).toBe(b[k]);
+    expect(a.composition).not.toBe(b.composition);
+    expect(a.camera).not.toBe(b.camera);
+    expect([a.variantId, b.variantId]).toEqual(lifestyle.variants.map((v) => v.id));
+    expect(kv.calls.filter((c) => c.url.endsWith("/generate-image")).map((c) => (c.body as { aspect_ratio: string }).aspect_ratio)).toEqual(["1:1", "9:16"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8–10. KnightVision request, references
+// ---------------------------------------------------------------------------
+
+describe("KnightVision request (documented Partner API v1)", () => {
+  const brief = compileImageRenderBrief({ concept: lifestyle, variant: lifestyle.variants[1], context, references: selectReferences("lifestyle", lifestyle, AVAILABLE) });
+  const ref: ReferenceImage = { assetId: "a".repeat(64), mime: "image/webp", data: Buffer.from("product-bytes") };
+
+  it("POSTs exactly the documented body with Bearer auth", async () => {
+    const kv = fakeKnightVision();
+    const r = renderer(kv.fetchImpl);
+    const prompt = r.prompt(brief);
+    await r.submit({ brief, prompt, references: [ref], partnerJobId: "cos-1234abcd-k1" });
+    const call = kv.calls[0];
+    expect(call.url).toBe(`${KNIGHTVISION_BASE_URL}/api/v1/partner/generate-image`);
+    expect(call.method).toBe("POST");
+    expect(call.headers.Authorization).toBe("Bearer kv_partner_test_key");
+    expect(call.body).toEqual({
+      prompt,
+      model: "nano-banana-pro",
+      aspect_ratio: "9:16",
+      quality: "2K",
+      quantity: 1,
+      ref_images: [{ base64: Buffer.from("product-bytes").toString("base64"), mime_type: "image/webp" }],
+      partner_job_id: "cos-1234abcd-k1",
+    });
+    expect(PARTNER_JOB_ID.test("cos-1234abcd-k1")).toBe(true);
+  });
+
+  it("converts product references to base64 ref_images and never sends more than 5", () => {
+    const many = Array.from({ length: 7 }, (_, i) => ({ ...ref, assetId: String(i).repeat(64) }));
+    const body = knightVisionRequest({ brief, prompt: "p", references: many, partnerJobId: "cos-x" }, { model: "nano-banana-pro", quality: "2K" });
+    expect(body.ref_images).toHaveLength(5);
+    expect(selectReferences("product_hero", { productRole: "hero with the full set", visualDescription: "the bundle on marble" }, [...AVAILABLE, ...AVAILABLE]).length).toBeLessThanOrEqual(MAX_REFERENCE_IMAGES);
+  });
+
+  it("forwards the product reference when the concept shows the product, and only relevant references", async () => {
+    const kv = fakeKnightVision();
+    await startImageRender(request(lifestyle, ["1:1"]), { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() });
+    const sent = (kv.calls[0].body as { ref_images: { base64: string; mime_type: string }[] }).ref_images;
+    expect(sent).toEqual([{ base64: Buffer.from(`asset-aaaa`).toString("base64"), mime_type: "image/webp" }]);
+    // Scene photos are never references; a bundle only when the concept shows a set; none when the product is kept out.
+    expect(selectReferences("lifestyle", { productRole: "supporting", visualDescription: "a quiet desk" }, AVAILABLE).map((r) => r.role)).toEqual(["main"]);
+    expect(selectReferences("pov", { productRole: "the full set in view", visualDescription: "tools laid out" }, AVAILABLE).map((r) => r.role)).toEqual(["main", "bundle"]);
+    expect(selectReferences("pov", { productRole: "none — product not shown", visualDescription: "a sunrise" }, AVAILABLE)).toEqual([]);
+  });
+
+  it("requires a product reference for a product hero (no invented package)", async () => {
+    const kv = fakeKnightVision();
+    const req = { ...request({ ...lifestyle, mechanism: "product_hero" }), assets: [] };
+    const out = await startImageRender(req, { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() });
+    expect(kv.calls).toEqual([]);
+    expect(out["1:1"]!.record.error?.code).toBe("missing_required_asset");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 11–22. Provider failures and polling
+// ---------------------------------------------------------------------------
+
+describe("KnightVision failures, polling and timeouts", () => {
+  const input = { brief: compileImageRenderBrief({ concept: pov, variant: pov.variants[0], context, references: [] }), references: [], partnerJobId: "cos-test" };
+
+  it("fails clearly without KNIGHTVISION_API_KEY and makes no request", async () => {
+    const kv = fakeKnightVision();
+    const out = await renderImageToCompletion(renderer(kv.fetchImpl, null), input, { clock: clock() });
+    expect(out).toMatchObject({ state: "failed", error: { code: "missing_api_key" } });
+    expect(kv.calls).toEqual([]);
+  });
+
+  it("rejects a malformed creation response", async () => {
+    for (const create of [() => json(202, { ok: true }), () => new Response("<html>", { status: 202 })]) {
+      const out = await renderImageToCompletion(renderer(fakeKnightVision({ create }).fetchImpl), input, { clock: clock() });
+      expect(out).toMatchObject({ state: "failed", error: { code: "provider_malformed" } });
+    }
+  });
+
+  it("polls pending → pending → success, every ~4 s, submitting once", async () => {
+    const kv = fakeKnightVision({ status: [pending, pending, success] });
+    const c = clock();
+    const out = await renderImageToCompletion(renderer(kv.fetchImpl), input, { clock: c });
+    expect(out).toMatchObject({ state: "success", imageUrl: "https://knightvision.tech/static/generated_images/gen_101.png", providerModel: "Nano Banana Pro", polls: 3 });
+    expect(kv.calls.filter((x) => x.url.endsWith("/generate-image"))).toHaveLength(1);
+    expect(kv.calls.filter((x) => x.url.includes("/image-status/kv-0a1b2c3d"))).toHaveLength(3);
+    expect(c.t).toBe(12_000);
+  });
+
+  it("reports a failed provider job", async () => {
+    const out = await renderImageToCompletion(renderer(fakeKnightVision({ status: [pending, () => json(200, { status: "failed", error: "Generation failed" })] }).fetchImpl), input, { clock: clock() });
+    expect(out).toMatchObject({ state: "failed", error: { code: "provider_failed", message: expect.stringMatching(/Generation failed/) } });
+  });
+
+  it("rejects a malformed status response", async () => {
+    const out = await renderImageToCompletion(renderer(fakeKnightVision({ status: [() => json(200, { status: "success" })] }).fetchImpl), input, { clock: clock() });
+    expect(out).toMatchObject({ state: "failed", error: { code: "provider_malformed" } });
+  });
+
+  it("times out without resubmitting (generation is not idempotent)", async () => {
+    const kv = fakeKnightVision({ status: [pending] });
+    const out = await renderImageToCompletion(renderer(kv.fetchImpl), input, { clock: clock(), deadlineMs: 60_000 });
+    expect(out).toMatchObject({ state: "failed", error: { code: "timeout", message: expect.stringMatching(/kv-0a1b2c3d.*not resubmitted/) } });
+    expect(kv.calls.filter((x) => x.url.endsWith("/generate-image"))).toHaveLength(1);
+  });
+
+  it.each([
+    [400, "provider_rejected"],
+    [401, "provider_auth"],
+    [402, "provider_credits"],
+    [403, "provider_auth"],
+    [429, "provider_rate_limited"],
+    [500, "provider_unavailable"],
+    [503, "provider_unavailable"],
+  ] as const)("maps HTTP %i on submit to %s, with the provider's message and never the key", async (status, code) => {
+    const kv = fakeKnightVision({ create: () => json(status, { error: `problem ${status}` }) });
+    const out = await renderImageToCompletion(renderer(kv.fetchImpl), input, { clock: clock() });
+    expect(out.state).toBe("failed");
+    if (out.state !== "failed") return;
+    expect(out.error.code).toBe(code);
+    expect(out.error.message).toContain(`problem ${status}`);
+    expect(out.error.message).not.toContain("kv_partner_test_key");
+    if (status === 429) expect(out.error.detail?.retryAfterMs).toBeGreaterThanOrEqual(10_000);
+    expect(kv.calls.filter((x) => x.url.endsWith("/generate-image"))).toHaveLength(1);
+  });
+
+  it("waits at least 10 s after a rate-limited poll, then continues", async () => {
+    const c = clock();
+    const kv = fakeKnightVision({ status: [() => json(429, { error: "Rate limited" }), success] });
+    const out = await renderImageToCompletion(renderer(kv.fetchImpl), input, { clock: c });
+    expect(out.state).toBe("success");
+    expect(c.t).toBeGreaterThanOrEqual(4000 + 10_000 + 4000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Server lifecycle: jobs, polling, storage
+// ---------------------------------------------------------------------------
+
+describe("image render service (submit → poll → stored result)", () => {
+  it("stores the finished image as a render record with full provider metadata", async () => {
+    const kv = fakeKnightVision({ status: [pending, success] });
+    const store = memoryStore();
+    const jobs = new MemoryImageJobStore();
+    let t = 1_000_000;
+    const deps = { renderer: renderer(kv.fetchImpl), store, jobs, now: () => t };
+    const started = await startImageRender(request(lifestyle, ["1:1"]), deps);
+    const { jobId, record } = started["1:1"]!;
+    expect(record).toMatchObject({ status: "rendering", renderer: "image", rendererVersion: "image-renderer@1", renderedFields: [] });
+    expect(record.warnings.join(" ")).toMatch(/product_fidelity_unverified/);
+    t += 4000;
+    expect((await pollImageJobs([jobId], deps))[jobId].status).toBe("rendering");
+    t += 4000;
+    const done = (await pollImageJobs([jobId], deps))[jobId];
+    expect(done).toMatchObject({ status: "complete", width: 64, height: 64, mime: "image/png", outputUrl: expect.stringMatching(/^\/api\/renders\/batch_t\/batch_c759ebc4_c04_1x1-[0-9a-f]{8}\.png$/) });
+    expect(done.image).toMatchObject({
+      provider: "knightvision",
+      providerModel: "Nano Banana Pro",
+      quality: "2K",
+      providerGenerationId: "101",
+      providerPublicId: "kv-0a1b2c3d",
+      providerRequestId: "r",
+      providerImageUrl: "https://knightvision.tech/static/generated_images/gen_101.png",
+      creditsUsed: 17,
+      referenceAssetIds: ["a".repeat(64)],
+      partnerJobId: expect.stringMatching(/^cos-[0-9a-f]{8}-[0-9a-z]+$/),
+    });
+    expect(done.image!.finalProviderPrompt).toContain("A square 1:1 lifestyle photograph");
+    expect(store.files.size).toBe(1);
+    // Terminal jobs are returned as stored: no further provider calls.
+    const before = kv.calls.length;
+    await pollImageJobs([jobId], deps);
+    expect(kv.calls.length).toBe(before);
+  });
+
+  it("keeps a job rendering through transient status errors and 429s, fails it at the deadline without resubmitting", async () => {
+    const kv = fakeKnightVision({ status: [() => json(503, { error: "busy" }), () => json(429, { error: "slow down" }), pending] });
+    const jobs = new MemoryImageJobStore();
+    let t = 0;
+    const deps = { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs, now: () => t, deadlineMs: 60_000 };
+    const { jobId } = (await startImageRender(request(pov, ["9:16"]), deps))["9:16"]!;
+    t += 4000;
+    expect((await pollImageJobs([jobId], deps))[jobId]).toMatchObject({ status: "rendering", warnings: expect.arrayContaining([expect.stringMatching(/status_read_failed/)]) });
+    t += 10_000;
+    expect((await pollImageJobs([jobId], deps))[jobId].status).toBe("rendering"); // 429 → wait ≥ 10 s
+    t += 5000;
+    const skipped = kv.calls.length;
+    await pollImageJobs([jobId], deps); // inside the 429 wait: no provider call
+    expect(kv.calls.length).toBe(skipped);
+    t += 61_000;
+    const failed = (await pollImageJobs([jobId], deps))[jobId];
+    expect(failed).toMatchObject({ status: "failed", error: { code: "timeout" } });
+    expect(kv.calls.filter((c) => c.url.endsWith("/generate-image"))).toHaveLength(1);
+  });
+
+  it("records a submit failure (e.g. HTTP 402) as a failed render with its brief and prompt", async () => {
+    const kv = fakeKnightVision({ create: () => json(402, { error: "Insufficient credits. Need 17 credits." }) });
+    const out = await startImageRender(request(lifestyle, ["1:1"]), { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() });
+    expect(out["1:1"]!.record).toMatchObject({ status: "failed", error: { code: "provider_credits" }, image: { finalProviderPrompt: expect.any(String), providerPublicId: null } });
+  });
+
+  it("keeps the provider URL when the finished image cannot be copied (the image was paid for)", async () => {
+    const kv = fakeKnightVision({ download: () => new Response("", { status: 403 }) });
+    let t = 0;
+    const deps = { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore(), now: () => t };
+    const { jobId } = (await startImageRender(request(lifestyle, ["1:1"]), deps))["1:1"]!;
+    t += 4000;
+    const r = (await pollImageJobs([jobId], deps))[jobId];
+    expect(r).toMatchObject({ status: "complete", outputUrl: "https://knightvision.tech/static/generated_images/gen_101.png" });
+    expect(r.warnings.join(" ")).toMatch(/output_remote/);
+  });
+
+  it("sends the API key only to the KnightVision host when downloading", async () => {
+    const kv = fakeKnightVision();
+    const r = renderer(kv.fetchImpl);
+    await r.fetchImage("https://knightvision.tech/static/generated_images/gen_101.png");
+    expect(kv.calls[0].headers.Authorization).toBe("Bearer kv_partner_test_key");
+    const other = fakeKnightVision();
+    const calls: Call[] = [];
+    const cdn = (async (u: string | URL, init?: RequestInit) => {
+      calls.push({ url: String(u), method: "GET", headers: (init?.headers ?? {}) as Record<string, string>, body: undefined });
+      return new Response(new Uint8Array(await png()), { status: 200 });
+    }) as typeof fetch;
+    await new KnightVisionImageRenderer({ apiKey: "kv_partner_test_key", fetch: cdn }).fetchImage("https://cdn.example.com/x.png");
+    expect(calls[0].headers).toEqual({});
+    expect(other.calls).toEqual([]);
+    await expect(r.fetchImage("http://knightvision.tech/x.png")).rejects.toBeInstanceOf(ImageProviderError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Mechanism grammar
+// ---------------------------------------------------------------------------
+
+describe("mechanism behaviour in the prompt", () => {
+  const promptFor = (c: BriefConcept, refs = selectReferences(c.mechanism, c, AVAILABLE)) => new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: c, variant: { id: "v", aspectRatio: "1:1" }, context, references: refs }));
+
+  it("POV asks for a first-person view and guards anatomy", () => {
+    const p = promptFor(pov);
+    expect(p).toMatch(/first-person/i);
+    expect(p).toMatch(/no extra or missing fingers/);
+    expect(p).toMatch(/no duplicated objects/);
+  });
+
+  it("product hero is premium campaign photography, not plain e-commerce", () => {
+    const p = promptFor(conceptOf("product_hero", { visualDescription: "the pouch on a stone plinth with morning shadows", productRole: "hero" }));
+    expect(p).toMatch(/premium editorial campaign photography/);
+    expect(p).toMatch(/no plain white e-commerce background/);
+  });
+
+  it("choose your fighter depicts only the concept's options, unlabelled, with no competitors", () => {
+    const c = conceptOf("choose_your_fighter", {
+      visualDescription: "four ways to take it, side by side",
+      copyFields: [{ key: "header", text: "Choose your fighter", rows: [] }, { key: "fighters", text: "", rows: [{ label: "Iced latte", text: "for slow afternoons", note: "" }, { label: "Hot bowl", text: "for early mornings", note: "" }] }],
+    });
+    const p = promptFor(c);
+    expect(p).toMatch(/Options to show, each as its own distinct visual choice without any labels: Iced latte — for slow afternoons; Hot bowl — for early mornings/);
+    expect(p).toMatch(/no competitor products or other brands/);
+    expect(p).not.toContain("Choose your fighter");
+  });
+
+  it("lifestyle keeps the product in the scene, not a catalogue shot", () => {
+    expect(promptFor(lifestyle)).toMatch(/not a staged catalogue shot/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 23–25. HTML untouched, secrets, safe inputs
+// ---------------------------------------------------------------------------
+
+describe("isolation and safety", () => {
+  it("leaves the HTML renderer and its 18 templates unchanged", () => {
+    expect(TEMPLATE_MECHANISMS).toHaveLength(18);
+    expect(routeFor({ mechanism: "imessage", renderer: "html" })).toEqual({ route: "html" });
+    expect(templateFor("lifestyle")).toBeNull();
+  });
+
+  it("never gives tests a real KnightVision key (no test can spend credits)", async () => {
+    expect(process.env.KNIGHTVISION_API_KEY ?? "").toBe("");
+    const out = await renderImageToCompletion(new KnightVisionImageRenderer(), { brief: compileImageRenderBrief({ concept: pov, variant: pov.variants[0], context, references: [] }), references: [], partnerJobId: "cos-env" }, { clock: clock() });
+    expect(out).toMatchObject({ state: "failed", error: { code: "missing_api_key" } });
+  });
+
+  it("keeps the KnightVision key and provider code out of client code", () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir).flatMap((f) => {
+        const p = path.join(dir, f);
+        return statSync(p).isDirectory() ? walk(p) : [p];
+      });
+    const files = ["app", "components", "lib"].flatMap((d) => walk(path.join(process.cwd(), d))).filter((f) => /\.tsx?$/.test(f) && !f.endsWith(".test.ts"));
+    const client = files.filter((f) => /^["']use client["']/.test(readFileSync(f, "utf8").trimStart()));
+    expect(client.length).toBeGreaterThan(5);
+    for (const f of client) {
+      const src = readFileSync(f, "utf8");
+      expect(src, f).not.toMatch(/KNIGHTVISION_API_KEY|knightvision\/(config|client|image-renderer)|server\/render\//);
+    }
+    // The key is read in exactly one server module.
+    const readers = files.filter((f) => readFileSync(f, "utf8").includes("process.env[KNIGHTVISION_ENV_KEY]"));
+    expect(readers.map((f) => path.relative(process.cwd(), f))).toEqual(["lib/renderers/knightvision/config.ts"]);
+  });
+
+  it("gives the image renderer only safe, visual inputs — never claims, prices, offers, reviews or raw truth-pack data", () => {
+    const s = snapshot.safeProfile;
+    expect(Object.keys(context).sort()).toEqual(["brandColors", "brandName", "category", "desiredEmotions", "packagingDescription", "physicalAppearance", "productName", "tone", "visualDirection"]);
+    const prompts = FIXTURES.flatMap((f) =>
+      f.concept.variants.map((v) => new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: f.concept, variant: v, context, references: selectReferences(f.concept.mechanism, f.concept, AVAILABLE) }))),
+    ).join("\n");
+    for (const c of s.claims) expect(prompts, c.value).not.toContain(c.value);
+    for (const f of [s.price, ...s.offers, ...s.shipping]) if (f) expect(prompts).not.toContain(f.value);
+    for (const r of s.reviews) expect(prompts).not.toContain(r.quote);
+    for (const x of s.excluded) expect(prompts).not.toContain((x as { value?: string; statement?: string }).value ?? (x as { statement?: string }).statement ?? "\u0000");
+    expect(prompts).not.toContain(s.productName);
+    expect(prompts).not.toContain(snapshot.brandStrategy.brandName);
+  });
+
+  it("image records use the same lifecycle and record type as HTML renders", async () => {
+    const kv = fakeKnightVision();
+    const out = await startImageRender(request(lifestyle, ["1:1"]), { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() });
+    const rec = out["1:1"]!.record;
+    const statuses: CreativeConcept["variants"][number]["status"][] = ["queued", "rendering", "complete", "failed"];
+    expect(statuses).toContain(rec.status);
+    expect(Object.keys(rec)).toEqual(expect.arrayContaining(["status", "renderer", "format", "outputUrl", "warnings", "fontSizes", "renderedFields"]));
+  });
+});

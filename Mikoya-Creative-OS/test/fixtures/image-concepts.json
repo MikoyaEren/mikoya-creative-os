@@ -1,0 +1,82 @@
+[
+  {
+    "source": "Real Mikoya Full Drop batch_c759ebc4 (2026-09-29T19:33:15.059Z)",
+    "concept": {
+      "id": "batch_c759ebc4_c01",
+      "mechanism": "pov",
+      "renderer": "image",
+      "objective": "Stop the scroll with instant identity recognition",
+      "angle": "The ritual as self-portrait: your morning finally matches who you are.",
+      "visualDescription": "First-person view looking down at your own hands whisking bright green matcha in a light blue ribbed bowl on a cream table, bamboo scoop and sieve nearby, the black MIKOYA pouch at the edge of frame. Soft morning light.",
+      "productRole": "supporting: pouch and set in the scene, the moment leads",
+      "tone": "Calm, personal, social-native",
+      "layoutNotes": {
+        "1:1": "Caption bar top; overhead hands-and-bowl scene fills the square; pouch lower right; overlay small above the bowl.",
+        "9:16": "Caption upper third under safe zone; tall overhead scene with bowl mid-frame, pouch lower; overlay just below the caption."
+      },
+      "copyFields": [
+        {
+          "key": "caption",
+          "text": "POV: your morning finally looks like you",
+          "rows": []
+        },
+        {
+          "key": "overlay",
+          "text": "sift, water, whisk. then sit for a second.",
+          "rows": []
+        }
+      ],
+      "hook": "POV: your morning finally looks like you",
+      "variants": [
+        {
+          "id": "batch_c759ebc4_c01_1x1",
+          "aspectRatio": "1:1"
+        },
+        {
+          "id": "batch_c759ebc4_c01_9x16",
+          "aspectRatio": "9:16"
+        }
+      ]
+    }
+  },
+  {
+    "source": "Real Mikoya Full Drop batch_c759ebc4 (2026-09-29T19:33:15.059Z)",
+    "concept": {
+      "id": "batch_c759ebc4_c04",
+      "mechanism": "lifestyle",
+      "renderer": "image",
+      "objective": "Make the viewer want to be in the moment",
+      "angle": "The ritual as something personal, not a habit.",
+      "visualDescription": "Hand holding a glass of iced green matcha with a glass straw beside the black MIKOYA pouch on a pink-and-white checkered blanket, natural light, relaxed.",
+      "productRole": "supporting: pouch in context, drink in hand",
+      "tone": "Aspirational, calm",
+      "layoutNotes": {
+        "1:1": "Drink and pouch on the right third, overlay in the negative space top-left, CTA small bottom-left.",
+        "9:16": "Overlay upper third under safe zone, drink and pouch mid-frame, CTA low above safe zone."
+      },
+      "copyFields": [
+        {
+          "key": "overlay",
+          "text": "Not a habit. A little ritual that's mine.",
+          "rows": []
+        },
+        {
+          "key": "cta",
+          "text": "Make it yours",
+          "rows": []
+        }
+      ],
+      "hook": "Not a habit. A little ritual that's mine.",
+      "variants": [
+        {
+          "id": "batch_c759ebc4_c04_1x1",
+          "aspectRatio": "1:1"
+        },
+        {
+          "id": "batch_c759ebc4_c04_9x16",
+          "aspectRatio": "9:16"
+        }
+      ]
+    }
+  }
+]

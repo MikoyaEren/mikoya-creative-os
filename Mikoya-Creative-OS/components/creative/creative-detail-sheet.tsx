@@ -100,6 +100,24 @@ function RenderInfo({ record }: { record: NonNullable<CreativeConcept["variants"
           </span>
         </Row>
       )}
+      {record.image && (
+        <>
+          <Row label="Image provider">
+            <span className="font-mono text-xs">
+              {record.image.provider} · {record.image.providerModel ?? "model pending"} · {record.image.quality}
+              {record.image.providerPublicId ? ` · ${record.image.providerPublicId}` : ""}
+              {record.image.creditsUsed !== null ? ` · ${record.image.creditsUsed} credits` : ""}
+            </span>
+          </Row>
+          <Row label="Product references">{record.image.referenceAssetIds.length ? record.image.brief.referenceAssets.map((r) => `${r.role} (${r.purpose})`).join(" · ") : "none"}</Row>
+          <Row label="Provider prompt">
+            <details>
+              <summary className="cursor-pointer text-xs text-muted">Brief {record.image.brief.briefHash} · show prompt</summary>
+              <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-ink-soft">{record.image.finalProviderPrompt}</pre>
+            </details>
+          </Row>
+        </>
+      )}
       {record.fontSizes.length > 0 && <Row label="Type sizes">{record.fontSizes.map((u) => `${u.unit} ${u.px}px (min ${u.minPx})`).join(" · ")}</Row>}
       <Row label="Drawn from concept">{record.renderedFields.join(", ") || "—"} · CTA {record.cta ? "burned in" : "not drawn"}</Row>
       {record.assets.length > 0 && <Row label="Product assets">{record.assets.map((a) => `${a.slot}: ${a.role} (${a.treatment}, ${a.fit})`).join(" · ")}</Row>}

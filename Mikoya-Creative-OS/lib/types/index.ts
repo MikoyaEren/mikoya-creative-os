@@ -12,11 +12,13 @@
 import type { CreativeDirectionInput, InformationSource, ProductTruthPack, ReviewStatus, StrategyInferenceRun, StrategySnapshot } from "./strategy";
 import type { ProductReviewBundle, UserDecisions } from "./review";
 import type { ConceptFocus, ConceptGenerationRun } from "./concepts";
+import type { ImageRenderMeta } from "./image-render";
 
 export * from "./strategy";
 export * from "./analysis";
 export * from "./review";
 export * from "./concepts";
+export * from "./image-render";
 
 // ---------------------------------------------------------------------------
 // Primitive unions
@@ -342,7 +344,18 @@ export type RenderErrorCode =
   | "asset_unreadable"
   | "browser_unavailable"
   | "timeout"
-  | "internal";
+  | "internal"
+  // Image renderer (provider-neutral codes; the provider's own status lives in the message / detail)
+  | "no_image_route"
+  | "missing_api_key"
+  | "provider_rejected"
+  | "provider_auth"
+  | "provider_credits"
+  | "provider_rate_limited"
+  | "provider_unavailable"
+  | "provider_failed"
+  | "provider_malformed"
+  | "output_unavailable";
 
 /** Final size of one fitted text unit (after deterministic step-down). */
 export interface RenderFitResult {
@@ -371,7 +384,7 @@ export type RenderAssetTreatment = "cutout" | "light_studio" | "photo";
 /** Audit of one render attempt of one variant. */
 export interface RenderRecord {
   status: VariantStatus;
-  renderer: "html";
+  renderer: "html" | "image";
   templateId: string | null;
   templateVersion: number | null;
   rendererVersion: string;
@@ -395,6 +408,8 @@ export interface RenderRecord {
   durationMs?: number;
   error?: { code: RenderErrorCode; message: string; detail?: string };
   warnings: string[];
+  /** Image renderer only: brief, final provider prompt and provider job audit. */
+  image?: ImageRenderMeta;
 }
 
 /**

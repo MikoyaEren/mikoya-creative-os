@@ -147,7 +147,7 @@ export function CreativeCard({ concept, productName, productImage, lifestyleImag
           <div className="flex">
             {eligibility.ok && (
               <ActionButton
-                label={busy ? "Rendering…" : failed.length ? `Retry ${failed.map((f) => f.aspectRatio).join(" + ")}` : rendered ? "Re-render 1:1 + 9:16" : "Render 1:1 + 9:16"}
+                label={`${busy ? "Rendering…" : failed.length ? `Retry ${failed.map((f) => f.aspectRatio).join(" + ")}` : rendered ? "Re-render 1:1 + 9:16" : "Render 1:1 + 9:16"}${concept.renderer === "image" && !busy ? ` · AI image, ${failed.length || 2} paid ${(failed.length || 2) === 1 ? "call" : "calls"}` : ""}`}
                 onClick={() => !busy && onRender(failed.length ? failed.map((f) => f.aspectRatio) : undefined)}
               >
                 {busy ? <LoaderCircle className="animate-spin" /> : <ImagePlay />}

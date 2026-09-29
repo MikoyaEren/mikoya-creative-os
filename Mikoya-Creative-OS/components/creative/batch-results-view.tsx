@@ -1,12 +1,13 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, CircleAlert, Download, FileQuestion, Plus, RefreshCw } from "lucide-react";
 import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, OUTPUT_PRESETS, batchOutputStats, plural } from "@/lib/constants";
 import { getProject } from "@/lib/projects";
 import { useBatch, useHydrated } from "@/lib/store/generations-store";
 import { setBatchRenderOptions, useBatchRenderOptions, useBatchWithRenders } from "@/lib/store/render-store";
-import { renderEligibility, renderTargets } from "@/lib/render-client";
+import { renderEligibility, renderRouteOf, renderTargets, resumeImageJobs } from "@/lib/render-client";
 import { toast } from "@/lib/store/toast-store";
 import type { CreativeBatch } from "@/lib/types";
 import { formatDateTime, formatRelativeDate } from "@/lib/utils";
@@ -181,25 +182,45 @@ function ResultsSkeleton() {
 /** How the concepts were produced: writer, plan, diversity, drops, unfilled slots, swaps. */
 /**
  * Batch rendering: explicit action, bounded concurrency (see render-client),
- * failures isolated and retryable. Only HTML-renderer concepts with a
- * template and structured copy are eligible; the rest are counted, not hidden.
+ * failures isolated and retryable. HTML concepts render with "Render batch";
+ * image concepts (paid provider calls) only with their own explicit action.
+ * Concepts no renderer supports yet are counted, not hidden.
  */
 function RenderBatchBar({ batch }: { batch: CreativeBatch }) {
   const options = useBatchRenderOptions(batch.id);
   const eligible = batch.concepts.filter((c) => renderEligibility(c).ok);
   const variants = eligible.flatMap((c) => c.variants);
+  const htmlEligible = eligible.filter((c) => renderRouteOf(c) === "html");
+  const imageEligible = eligible.filter((c) => renderRouteOf(c) === "image");
+  const imageTodo = imageEligible.flatMap((c) => c.variants.filter((v) => v.render?.status !== "complete" && v.status !== "rendering" && v.status !== "queued"));
+  const htmlVariants = htmlEligible.flatMap((c) => c.variants);
+  // Resume polling image jobs that were still rendering when the page was left (read-only; never resubmits).
+  useEffect(() => {
+    void resumeImageJobs(batch);
+    // Once per batch: resuming reads the jobs stored with the records; later changes need no new resume.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batch.id]);
   const ready = variants.filter((v) => v.render?.status === "complete" && v.status === "complete").length;
   const failed = variants.filter((v) => v.status === "failed");
   const busy = variants.filter((v) => v.status === "queued" || v.status === "rendering").length;
   const skipped = batch.concepts.length - eligible.length;
   const reasons = [...new Set(batch.concepts.map(renderEligibility).flatMap((e) => (e.ok ? [] : [e.reason])))];
+  const htmlFailed = htmlVariants.filter((v) => v.status === "failed");
   const run = (onlyFailed: boolean) =>
     void renderTargets(
       batch,
-      eligible
+      htmlEligible
         .map((c) => ({ concept: c, formats: c.variants.filter((v) => (onlyFailed ? v.status === "failed" : v.render?.status !== "complete")).map((v) => v.aspectRatio) }))
         .filter((t) => t.formats.length),
       options,
+      ["html"],
+    );
+  const runImages = () =>
+    void renderTargets(
+      batch,
+      imageEligible.map((c) => ({ concept: c, formats: c.variants.filter((v) => imageTodo.includes(v)).map((v) => v.aspectRatio) })).filter((t) => t.formats.length),
+      options,
+      ["image"],
     );
 
   return (
@@ -220,12 +241,17 @@ function RenderBatchBar({ batch }: { batch: CreativeBatch }) {
             <input type="checkbox" checked={options.cta} onChange={(e) => setBatchRenderOptions(batch.id, { cta: e.target.checked })} />
             Burn in CTA (optional templates)
           </label>
-          {failed.length > 0 && (
+          {htmlFailed.length > 0 && (
             <Button size="sm" disabled={busy > 0} onClick={() => run(true)}>
               <RefreshCw /> Retry failed
             </Button>
           )}
-          <Button size="sm" variant="primary" disabled={busy > 0 || ready === variants.length || !variants.length} onClick={() => run(false)}>
+          {imageTodo.length > 0 && (
+            <Button size="sm" disabled={busy > 0} onClick={runImages} title="AI images: one paid provider call per format, never repeated automatically.">
+              Render images · {imageTodo.length} paid {imageTodo.length === 1 ? "call" : "calls"}
+            </Button>
+          )}
+          <Button size="sm" variant="primary" disabled={busy > 0 || htmlVariants.every((v) => v.render?.status === "complete") || !htmlVariants.length} onClick={() => run(false)}>
             {busy > 0 ? "Rendering…" : "Render batch"}
           </Button>
         </div>
