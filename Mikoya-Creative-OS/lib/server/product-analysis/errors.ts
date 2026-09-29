@@ -19,7 +19,9 @@ export type AnalysisErrorCode =
   | "ai_unavailable"
   | "ai_error"
   | "ai_refused"
-  | "invalid_ai_output";
+  | "invalid_ai_output"
+  | "strategy_stale"
+  | "no_eligible_mechanisms";
 
 const DEFAULTS: Record<AnalysisErrorCode, { status: number; message: string }> = {
   invalid_request: { status: 400, message: "The analysis request is incomplete or malformed." },
@@ -38,6 +40,8 @@ const DEFAULTS: Record<AnalysisErrorCode, { status: number; message: string }> =
   ai_error: { status: 502, message: "The AI analysis failed." },
   ai_refused: { status: 422, message: "The AI declined to analyse this content." },
   invalid_ai_output: { status: 502, message: "The AI returned an analysis that did not pass validation. Nothing was saved." },
+  strategy_stale: { status: 409, message: "The AI strategy is out of date for the current inputs. Regenerate or review the hypotheses first." },
+  no_eligible_mechanisms: { status: 422, message: "None of the selected mechanisms can be used for image concepts with the current inputs." },
 };
 
 export class AnalysisError extends Error {

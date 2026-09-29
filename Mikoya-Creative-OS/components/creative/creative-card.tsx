@@ -86,10 +86,17 @@ export function CreativeCard({ concept, productName, productImage, lifestyleImag
       <div className="flex flex-1 flex-col px-4 pt-3.5 pb-3">
         <div className="flex items-baseline justify-between gap-2">
           <h3 className="text-[14px] font-semibold">{concept.name}</h3>
-          <span className="text-[11px] font-medium tracking-[0.08em] text-faint uppercase">{CREATIVE_TYPE_LABELS[concept.type]}</span>
+          <span className="text-[11px] font-medium tracking-[0.08em] text-faint uppercase">
+            {CREATIVE_TYPE_LABELS[concept.type]} · {concept.renderer}
+          </span>
         </div>
-        <p className="mt-0.5 text-[13px] text-ink-soft">{mechanism.name}</p>
-        <p className="mt-1 line-clamp-1 text-xs text-muted">{concept.angle}</p>
+        <p className="mt-0.5 text-[13px] text-ink-soft">
+          {mechanism.name}
+          {concept.title && !concept.title.endsWith("· demo") && <span className="text-muted"> · {concept.title}</span>}
+        </p>
+        <p className="mt-1 line-clamp-1 text-xs text-muted" title={concept.angle}>Angle: {concept.angle}</p>
+        <p className="mt-1 line-clamp-2 text-[12.5px] leading-snug font-medium text-ink">“{concept.hook}”</p>
+        {concept.rationale && <p className="mt-1 line-clamp-2 text-[11.5px] leading-snug text-muted" title={concept.rationale}>Why: {concept.rationale}</p>}
         <p
           className={cn(
             "mt-2.5 inline-flex items-center gap-1.5 self-start text-xs font-medium",

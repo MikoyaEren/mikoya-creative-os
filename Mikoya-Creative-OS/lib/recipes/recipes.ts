@@ -1,5 +1,6 @@
 import type { CreativeRecipe, MechanismId } from "@/lib/types";
 import { MECHANISMS } from "./mechanisms";
+import { MORE_RECIPES } from "./recipes-more";
 
 /**
  * Hand-authored recipe definitions. These are the seeds of the future prompt
@@ -258,8 +259,9 @@ export const RECIPES: CreativeRecipe[] = [
     description: "A creator-style talking-head video with a hook, story and soft CTA.",
     type: "ugc",
     renderer: "ugc_video",
+    // Prepared for a later video phase; motion is not part of image concept generation.
     status: "planned",
-    version: 0,
+    version: 1,
     structure: {
       layout: "Selfie framing, burned-in captions, product appears in hand by second 4.",
       copySlots: [
@@ -285,8 +287,9 @@ export const RECIPES: CreativeRecipe[] = [
     description: "A 6–10 second stop-motion clay scene built around one visual metaphor.",
     type: "video",
     renderer: "video",
+    // Prepared for a later video phase; motion is not part of image concept generation.
     status: "planned",
-    version: 0,
+    version: 1,
     structure: {
       layout: "Single tabletop set, 2–3 beats, product reveal at the end.",
       copySlots: [
@@ -305,6 +308,7 @@ export const RECIPES: CreativeRecipe[] = [
       "End on a clean product reveal",
     ],
   },
+  ...MORE_RECIPES,
 ];
 
 /** Generic composition used by mechanisms without an authored recipe. */

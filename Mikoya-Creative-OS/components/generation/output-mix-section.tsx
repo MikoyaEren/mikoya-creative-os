@@ -2,7 +2,7 @@
 
 import { Clapperboard, FlaskConical, Image as ImageIcon, Minus, Plus, UserRound, type LucideIcon } from "lucide-react";
 import type { CreativeType, OutputMix, OutputPresetId } from "@/lib/types";
-import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, MAX_PER_TYPE, OUTPUT_PRESETS, outputsFor, plural, totalOf } from "@/lib/constants";
+import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, MAX_PER_TYPE, OUTPUT_PRESETS, isMotionType, outputsFor, plural, totalOf } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { SectionCard } from "@/components/ui/section-card";
 
@@ -25,7 +25,7 @@ export function OutputMixSection({ mix, presetId, onChange, uncoveredTypes }: Ou
   const total = totalOf(mix);
 
   function setCount(type: CreativeType, next: number) {
-    const value = Math.max(0, Math.min(MAX_PER_TYPE, Number.isFinite(next) ? Math.round(next) : 0));
+    const value = isMotionType(type) ? 0 : Math.max(0, Math.min(MAX_PER_TYPE, Number.isFinite(next) ? Math.round(next) : 0));
     const nextMix = { ...mix, [type]: value };
     const match = OUTPUT_PRESETS.find((p) => CREATIVE_TYPE_ORDER.every((t) => p.mix[t] === nextMix[t]));
     onChange(nextMix, match?.id ?? "custom");
@@ -86,8 +86,9 @@ export function OutputMixSection({ mix, presetId, onChange, uncoveredTypes }: Ou
         {CREATIVE_TYPE_ORDER.map((type) => {
           const { icon: Icon, hint } = TYPE_META[type];
           const uncovered = uncoveredTypes.includes(type);
+          const motion = isMotionType(type);
           return (
-            <div key={type} className={cn("rounded-xl border bg-cream/50 p-4", uncovered ? "border-[#e5cf95]" : "border-line")}>
+            <div key={type} className={cn("rounded-xl border bg-cream/50 p-4", uncovered ? "border-[#e5cf95]" : "border-line", motion && "opacity-60")}>
               <div className="flex items-center gap-2">
                 <Icon className="size-4 text-muted" />
                 <span className="text-[13px] font-medium">{CREATIVE_TYPE_LABELS[type]} concepts</span>
@@ -108,6 +109,7 @@ export function OutputMixSection({ mix, presetId, onChange, uncoveredTypes }: Ou
                   min={0}
                   max={MAX_PER_TYPE}
                   value={mix[type]}
+                  disabled={motion}
                   onChange={(e) => setCount(type, e.target.valueAsNumber)}
                   aria-label={`${CREATIVE_TYPE_LABELS[type]} concepts`}
                   className="w-12 bg-transparent text-center text-[15px] font-medium tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
@@ -115,14 +117,14 @@ export function OutputMixSection({ mix, presetId, onChange, uncoveredTypes }: Ou
                 <button
                   type="button"
                   onClick={() => setCount(type, mix[type] + 1)}
-                  disabled={mix[type] >= MAX_PER_TYPE}
+                  disabled={motion || mix[type] >= MAX_PER_TYPE}
                   aria-label={`More ${type} concepts`}
                   className="flex size-8 items-center justify-center rounded-md text-ink-soft hover:bg-sand disabled:opacity-30"
                 >
                   <Plus className="size-3.5" />
                 </button>
               </div>
-              <p className="mt-2 text-[11px] text-faint">→ {plural(outputsFor(mix[type]), "output")}</p>
+              <p className="mt-2 text-[11px] text-faint">{motion ? "Motion concepts — coming in a later phase" : `→ ${plural(outputsFor(mix[type]), "output")}`}</p>
               {uncovered && <p className="mt-2 text-[11px] leading-snug text-[#8a6212]">No {CREATIVE_TYPE_LABELS[type].toLowerCase()} format selected — these concepts will be skipped.</p>}
             </div>
           );

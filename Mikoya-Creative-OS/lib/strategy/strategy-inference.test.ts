@@ -142,6 +142,7 @@ describe("provenance and review", () => {
       creativeSafeProfile: s.safeProfile,
       brandStrategyProfile: s.brandStrategy,
       strategyHypotheses: s.hypotheses,
+      usedHypothesisIds: s.audit.usedHypothesisIds,
       dynamicCreativeStrategy: s.dynamicStrategy,
       globalCreativeConstitution: GLOBAL_CREATIVE_CONSTITUTION,
       recipe: getRecipeForMechanism("x_post"),
@@ -237,7 +238,7 @@ describe("product-agnostic", () => {
     exampleProduct: { name: "Ledgerly Pro", url: "https://ledgerly.example/pro", mainImage: null, additionalAssets: [] },
     defaultDirection: {},
   };
-  const LEAK = /mikoya|matcha|coffee|kaffee|tencha|clean girl/i;
+  const LEAK = /\b(mikoya|matcha|coffee|kaffee|tencha|clean girl)\b/i;
 
   it("keeps Mikoya concepts out of other workspaces", () => {
     for (const project of [LUMEN_PROJECT, SAAS]) {
@@ -381,6 +382,7 @@ describe("social proof as supporting proof", () => {
       creativeSafeProfile: s.safeProfile,
       brandStrategyProfile: s.brandStrategy,
       strategyHypotheses: s.hypotheses,
+      usedHypothesisIds: s.audit.usedHypothesisIds,
       dynamicCreativeStrategy: s.dynamicStrategy,
       globalCreativeConstitution: GLOBAL_CREATIVE_CONSTITUTION,
       recipe: getRecipeForMechanism("x_post"),

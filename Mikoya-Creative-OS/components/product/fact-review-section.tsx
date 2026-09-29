@@ -25,6 +25,7 @@ const REASON_TEXT = {
   rejected: "Rejected by you — never used",
   blocked: "Blocked — medical or disease claim",
   unresolved_conflict: "Conflicting sources — resolve first",
+  contains_unresolved_conflict: "Quotes a conflicted value — edit it to use",
   unapproved_high_risk: "High-risk claim — needs your approval",
   unrelated_review: "Not about this product",
 } as const;

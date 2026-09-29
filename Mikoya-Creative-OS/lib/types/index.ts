@@ -9,12 +9,14 @@
  * An LLM returns `CreativeConceptDraft` JSON (see lib/pipeline/concept-schema.ts).
  */
 
-import type { CreativeDirectionInput, ProductTruthPack, ReviewStatus, StrategyInferenceRun, StrategySnapshot } from "./strategy";
+import type { CreativeDirectionInput, InformationSource, ProductTruthPack, ReviewStatus, StrategyInferenceRun, StrategySnapshot } from "./strategy";
 import type { ProductReviewBundle, UserDecisions } from "./review";
+import type { ConceptFocus, ConceptGenerationRun } from "./concepts";
 
 export * from "./strategy";
 export * from "./analysis";
 export * from "./review";
+export * from "./concepts";
 
 // ---------------------------------------------------------------------------
 // Primitive unions
@@ -168,6 +170,26 @@ export interface CreativeMechanism {
   defaultRenderer: RendererType;
 }
 
+/** What a mechanism is good at carrying. Generic, product-agnostic. */
+export type MechanismFit = "objection" | "identity" | "desire" | "proof" | "offer" | "habit" | "reveal" | "social" | "product";
+
+/**
+ * Capabilities and requirements of a mechanism. A mechanism is only excluded
+ * when a REQUIRED input is missing; "prefers" only affects ranking.
+ */
+export interface MechanismTraits {
+  fits: MechanismFit[];
+  /** Allowed renderer types, default first. The concept layer may only pick from these. */
+  renderers: RendererType[];
+  requiresProductAsset?: boolean;
+  prefersProductAsset?: boolean;
+  /** Presents real customer words (review / testimonial): needs approved real social proof. */
+  requiresApprovedSocialProof?: boolean;
+  prefersOffer?: boolean;
+  /** Compares options, personas or behaviours — never competitor products or product claims. */
+  supportsComparison?: boolean;
+}
+
 export interface RecipeCopySlot {
   key: string;
   label: string;
@@ -234,38 +256,64 @@ export interface CreativeVariant {
  * A single creative idea. Shared across both format variants: mechanism,
  * angle, hook, subheadline, visual idea and offer.
  */
-export interface CreativeConcept {
-  id: string;
-  /** Sequential position in the batch, 1-based ("Concept 01"). */
-  index: number;
-  name: string;
-  recipeId: string;
-  mechanism: MechanismId;
-  type: CreativeType;
-  renderer: RendererType;
-  angle: string;
-  hook: string;
-  subheadline: string;
-  visualDescription: string;
-  cta: string;
-  /** Always exactly one variant per OutputFormat, in OUTPUT_FORMATS order. */
-  variants: CreativeVariant[];
-  createdAt: string;
+/** A proof reference resolved to its approved statement (for display and audit). */
+export interface ConceptProofRef {
+  ref: string;
+  statement: string;
+  source: InformationSource;
 }
 
 /**
- * What the concept-writer model returns. Shared copy plus optional
- * per-format layout notes; the system adds the two variants.
+ * The shared core of one creative idea: mechanism, angle, hook, message,
+ * copy, product/offer role. Written once (by the concept writer or the
+ * demo templates); the system adds exactly one variant per OutputFormat.
  */
 export interface CreativeConceptDraft {
   recipeId: string;
   mechanism: MechanismId;
+  /** Internal concept name. */
+  title: string;
+  /** Strategic angle (kept as `angle` for renderers and previews). */
   angle: string;
+  objective: string;
+  /** The desire, motivation or objection it targets. */
+  addresses: string;
   hook: string;
+  /** Core message (kept as `subheadline` for renderers and previews). */
   subheadline: string;
+  /** All on-canvas copy as "field: text" lines. */
+  copy: string;
   visualDescription: string;
   cta: string;
+  supportingProof: ConceptProofRef[];
+  productRole: string;
+  offerRole: string;
+  tone: string;
+  rationale: string;
+  /** Input references the concept is built on. */
+  basis: string[];
+  /** 0–1, the writer's own confidence (demo concepts: null). */
+  confidence: number | null;
+  presentedAsRealCustomer: boolean;
+  /** Slot of the allocation plan it fills. */
+  slotId: string;
+  focus: ConceptFocus;
+  /** Composition notes per format — never copy. */
   layoutNotes?: Partial<Record<OutputFormat, string>>;
+}
+
+export interface CreativeConcept extends CreativeConceptDraft {
+  id: string;
+  /** Sequential position in the batch, 1-based ("Concept 01"). */
+  index: number;
+  name: string;
+  type: CreativeType;
+  renderer: RendererType;
+  /** Always exactly one variant per OutputFormat, in OUTPUT_FORMATS order. */
+  variants: CreativeVariant[];
+  /** Concept generation run that produced it. */
+  runId: string;
+  createdAt: string;
 }
 
 export interface CreativeBatch {
@@ -279,6 +327,8 @@ export interface CreativeBatch {
   presetId: OutputPresetId;
   mechanismIds: MechanismId[];
   concepts: CreativeConcept[];
+  /** How the concepts were produced: slot plan, drops, unfilled slots, model usage. */
+  conceptRun: ConceptGenerationRun;
   status: BatchStatus;
   createdAt: string;
   completedAt?: string;

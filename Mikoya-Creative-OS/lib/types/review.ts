@@ -181,13 +181,22 @@ export interface SafeClaim extends SafeFact {
   riskCategory: ClaimRiskCategory;
 }
 
-export type ExclusionReason = "rejected" | "blocked" | "unapproved_high_risk" | "unresolved_conflict" | "unrelated_review";
+export type ExclusionReason =
+  | "rejected"
+  | "blocked"
+  | "unapproved_high_risk"
+  | "unresolved_conflict"
+  /** Item of another field that embeds a value of a conflicted field (e.g. an offer quoting a conflicted price). */
+  | "contains_unresolved_conflict"
+  | "unrelated_review";
 
 export interface ExcludedItem {
   id: string;
   field: ReviewField;
   value: string;
   reason: ExclusionReason;
+  /** For contains_unresolved_conflict: the conflicted fields whose values it embeds. */
+  conflictFields?: ReviewField[];
 }
 
 /**
