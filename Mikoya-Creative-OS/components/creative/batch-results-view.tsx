@@ -3,11 +3,12 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, CircleAlert, Download, FileQuestion, Plus, RefreshCw } from "lucide-react";
-import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, OUTPUT_PRESETS, batchOutputStats, plural } from "@/lib/constants";
+import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, OUTPUT_PRESETS, batchOutputStats, plural, renderSummary, renderSummaryText } from "@/lib/constants";
 import { getProject } from "@/lib/projects";
 import { useBatch, useHydrated } from "@/lib/store/generations-store";
 import { setBatchRenderOptions, useBatchRenderOptions, useBatchWithRenders } from "@/lib/store/render-store";
 import { renderEligibility, renderRouteOf, renderTargets, resumeImageJobs } from "@/lib/render-client";
+import { imageConceptControls } from "@/lib/renderers/image/lifecycle";
 import { toast } from "@/lib/store/toast-store";
 import type { CreativeBatch } from "@/lib/types";
 import { formatDateTime, formatRelativeDate } from "@/lib/utils";
@@ -48,6 +49,7 @@ export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) 
 
   const preset = OUTPUT_PRESETS.find((p) => p.id === batch.presetId);
   const stats = batchOutputStats(batch);
+  const renders = renderSummary(batch.concepts);
   const counts = CREATIVE_TYPE_ORDER.map((t) => ({ t, n: batch.concepts.filter((c) => c.type === t).length })).filter((x) => x.n);
 
   return (
@@ -67,18 +69,21 @@ export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) 
               <span className="font-medium text-ink">
                 {plural(stats.concepts, "concept")} · {plural(stats.outputs, "output")}
               </span>
-              {stats.outputs > 0 && stats.ready < stats.outputs && (
-                <>
-                  <span aria-hidden>·</span>
-                  <span>{stats.ready}/{stats.outputs} ready</span>
-                </>
-              )}
               <span aria-hidden>·</span>
               <span title={formatDateTime(batch.createdAt)} suppressHydrationWarning>
                 Generated {isNew ? "just now" : formatRelativeDate(batch.createdAt).toLowerCase()}
               </span>
               <span aria-hidden>·</span>
-              <span className="inline-flex items-center gap-1.5">Status: <StatusPill status={batch.status} /></span>
+              {/* Concept generation and asset rendering are separate: concepts can be complete while renders are pending or failed. */}
+              <span className="inline-flex items-center gap-1.5" data-testid="concept-generation-status">Concept generation: <StatusPill status={batch.status} /></span>
+              {stats.outputs > 0 && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span data-testid="rendered-assets-status" className={renders.failed ? "text-danger" : renders.providerPending || renders.inProgress ? "text-[#8a6212]" : undefined}>
+                    Rendered assets: {renderSummaryText(renders)}
+                  </span>
+                </>
+              )}
               {preset && (
                 <>
                   <span aria-hidden>·</span>
@@ -192,7 +197,9 @@ function RenderBatchBar({ batch }: { batch: CreativeBatch }) {
   const variants = eligible.flatMap((c) => c.variants);
   const htmlEligible = eligible.filter((c) => renderRouteOf(c) === "html");
   const imageEligible = eligible.filter((c) => renderRouteOf(c) === "image");
-  const imageTodo = imageEligible.flatMap((c) => c.variants.filter((v) => v.render?.status !== "complete" && v.status !== "rendering" && v.status !== "queued"));
+  // Only first renders: replacements (failed, ambiguous, unresolved) are per concept, labelled NEW PAID GENERATION.
+  const imageFirst = imageEligible.map((c) => ({ concept: c, formats: imageConceptControls(c.variants).render?.formats ?? [] })).filter((t) => t.formats.length);
+  const imageTodo = imageFirst.reduce((n, t) => n + t.formats.length, 0);
   const htmlVariants = htmlEligible.flatMap((c) => c.variants);
   // Resume polling image jobs that were still rendering when the page was left (read-only; never resubmits).
   useEffect(() => {
@@ -202,6 +209,7 @@ function RenderBatchBar({ batch }: { batch: CreativeBatch }) {
   }, [batch.id]);
   const ready = variants.filter((v) => v.render?.status === "complete" && v.status === "complete").length;
   const failed = variants.filter((v) => v.status === "failed");
+  const providerPending = variants.filter((v) => v.status === "provider_pending").length;
   const busy = variants.filter((v) => v.status === "queued" || v.status === "rendering").length;
   const skipped = batch.concepts.length - eligible.length;
   const reasons = [...new Set(batch.concepts.map(renderEligibility).flatMap((e) => (e.ok ? [] : [e.reason])))];
@@ -215,13 +223,7 @@ function RenderBatchBar({ batch }: { batch: CreativeBatch }) {
       options,
       ["html"],
     );
-  const runImages = () =>
-    void renderTargets(
-      batch,
-      imageEligible.map((c) => ({ concept: c, formats: c.variants.filter((v) => imageTodo.includes(v)).map((v) => v.aspectRatio) })).filter((t) => t.formats.length),
-      options,
-      ["image"],
-    );
+  const runImages = () => void renderTargets(batch, imageFirst, options, ["image"]);
 
   return (
     <div className="mb-5 rounded-[var(--radius-card)] border border-line bg-paper px-5 py-4">
@@ -230,6 +232,11 @@ function RenderBatchBar({ batch }: { batch: CreativeBatch }) {
           <span className="font-medium text-ink">Rendered files · {ready}/{variants.length} ready</span>
           {failed.length > 0 && <span className="ml-2 text-danger">· {failed.length} failed</span>}
           {busy > 0 && <span className="ml-2 text-ink-soft">· {busy} in progress</span>}
+          {providerPending > 0 && (
+            <span className="ml-2 text-[#8a6212]" title="The image provider has not finished these jobs yet. They are checked again automatically and were not resubmitted.">
+              · {providerPending} provider pending
+            </span>
+          )}
           {skipped > 0 && (
             <span className="ml-2 text-muted" title={reasons.join(" · ")}>
               · {skipped} {skipped === 1 ? "concept" : "concepts"} not renderable here ({reasons.join("; ")})
@@ -246,9 +253,9 @@ function RenderBatchBar({ batch }: { batch: CreativeBatch }) {
               <RefreshCw /> Retry failed
             </Button>
           )}
-          {imageTodo.length > 0 && (
-            <Button size="sm" disabled={busy > 0} onClick={runImages} title="AI images: one paid provider call per format, never repeated automatically.">
-              Render images · {imageTodo.length} paid {imageTodo.length === 1 ? "call" : "calls"}
+          {imageTodo > 0 && (
+            <Button size="sm" disabled={busy > 0} onClick={runImages} title="AI images not rendered yet: one paid provider call per format, never repeated automatically.">
+              Render images · {imageTodo} paid {imageTodo === 1 ? "call" : "calls"}
             </Button>
           )}
           <Button size="sm" variant="primary" disabled={busy > 0 || htmlVariants.every((v) => v.render?.status === "complete") || !htmlVariants.length} onClick={() => run(false)}>
@@ -260,6 +267,7 @@ function RenderBatchBar({ batch }: { batch: CreativeBatch }) {
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-sand" aria-hidden>
           <div className="flex h-full">
             <div className="bg-forest transition-[width]" style={{ width: `${(ready / variants.length) * 100}%` }} />
+            <div className="bg-[#e5cf95] transition-[width]" style={{ width: `${(providerPending / variants.length) * 100}%` }} />
             <div className="bg-danger transition-[width]" style={{ width: `${(failed.length / variants.length) * 100}%` }} />
           </div>
         </div>

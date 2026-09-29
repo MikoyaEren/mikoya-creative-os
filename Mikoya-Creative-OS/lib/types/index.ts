@@ -36,8 +36,12 @@ export type OutputFormat = "1:1" | "9:16";
 /** Whether a mechanism produces a still or a moving creative. */
 export type CreativeMedium = "still" | "motion";
 
-/** Render state of a single format variant. */
-export type VariantStatus = "planned" | "queued" | "rendering" | "complete" | "failed";
+/**
+ * Render state of a single format variant. "provider_pending" is image-only:
+ * the local wait ended while the provider job is still unresolved. It is not
+ * terminal — later status checks resume the same provider job.
+ */
+export type VariantStatus = "planned" | "queued" | "rendering" | "provider_pending" | "complete" | "failed";
 
 export type BatchStatus = "draft" | "queued" | "generating" | "complete" | "failed";
 

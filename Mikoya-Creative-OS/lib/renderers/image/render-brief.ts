@@ -101,8 +101,8 @@ const GRAMMAR: Record<ImageMechanismId, MechanismGrammar> = {
       "9:16": "eye-level, 35 mm look, vertical frame with foreground-to-background depth",
     },
     composition: {
-      "1:1": "square frame; the moment fills the frame, product on one third; calm negative space on the opposite side",
-      "9:16": "vertical frame; the scene builds from foreground to background, product in the middle third; calm negative space in the upper third",
+      "1:1": "square frame; the moment fills the frame, product on one third; the opposite side is a quieter, uncluttered part of the same scene",
+      "9:16": "vertical frame; the scene builds from foreground to background, product in the middle third; the upper third is still the photographed room or setting, calmer and less busy",
     },
     lighting: "soft natural light, gentle shadows",
     style: "authentic social-media photography, candid and warm, not a staged catalogue shot",
@@ -115,8 +115,8 @@ const GRAMMAR: Record<ImageMechanismId, MechanismGrammar> = {
       "9:16": "first-person viewpoint, looking down the vertical frame, 24 mm look, immersive",
     },
     composition: {
-      "1:1": "square frame from the viewer's eyes; the action in the centre, product in the lower half when present; calm space along the top edge",
-      "9:16": "vertical frame from the viewer's eyes; the action in the lower two thirds, product mid-to-lower frame when present; calm space in the upper third",
+      "1:1": "square frame from the viewer's eyes; the action in the centre, product in the lower half when present; the scene continues calmly along the top edge",
+      "9:16": "vertical frame from the viewer's eyes; the action in the lower two thirds, product mid-to-lower frame when present; the upper third is still part of the scene, calm and uncluttered",
     },
     lighting: "natural available light of the scene",
     style: "native social-content photography, believable and unstaged",
@@ -129,8 +129,8 @@ const GRAMMAR: Record<ImageMechanismId, MechanismGrammar> = {
       "9:16": "product-level camera, 85 mm look, product centred at about half the frame height",
     },
     composition: {
-      "1:1": "square frame; product slightly off-centre on an editorial set with interesting surfaces; calm negative space on one side",
-      "9:16": "vertical frame; product centred in the middle of the frame on an editorial set; calm negative space in the upper third and lower quarter",
+      "1:1": "square frame; product slightly off-centre on an editorial set with interesting surfaces; one side is a calm, uncluttered stretch of the same set",
+      "9:16": "vertical frame; product centred in the middle of the frame on an editorial set; the set continues, calm and uncluttered, into the upper third and lower quarter",
     },
     lighting: "directional studio light with sculpted highlights and soft, realistic shadows",
     style: "premium editorial campaign photography with deliberate set design — not plain e-commerce on white",
@@ -143,8 +143,8 @@ const GRAMMAR: Record<ImageMechanismId, MechanismGrammar> = {
       "9:16": "frontal camera, all options equally sharp, vertical arrangement",
     },
     composition: {
-      "1:1": "square frame; the options side by side or in a 2×2 grid with equal size and spacing; calm space along the top edge",
-      "9:16": "vertical frame; the options stacked or in a 2×2 grid with equal size and spacing; calm space in the upper third",
+      "1:1": "square frame; the options side by side or in a 2×2 grid with equal size and spacing; the setting continues calmly along the top edge",
+      "9:16": "vertical frame; the options stacked or in a 2×2 grid with equal size and spacing; the setting continues calmly into the upper third",
     },
     lighting: "even, clean light so every option reads equally",
     style: "bold, graphic yet photographic selection-screen composition",
@@ -164,14 +164,26 @@ const NO_PRODUCT = ["Do not show a branded product or package (the concept keeps
 
 const NEGATIVE_COMMON = [
   "no added text anywhere in the image: no words, letters, numbers, captions, headlines, prices, badges or UI (the product's own packaging keeps only the branding shown in the reference)",
+  "no blank, flat, solid-colour, artificial or graphic bands, panels or empty areas: the photographed scene fills the whole frame edge to edge",
   "no added logos or watermarks",
   "no distorted or melted objects",
 ];
 
+/**
+ * Room for the later copy overlay is part of the photograph, never an empty
+ * graphic area: a real 9:16 render once answered "negative space in the upper
+ * third" with a flat cream band across the top fifth.
+ */
 const TEXT_FREE = [
   "The image carries no advertising copy; copy is overlaid later by the Creative OS",
-  "Keep the negative-space area calm and uncluttered for that overlay",
+  "Leave subtle uncluttered breathing room naturally within the photographed environment for future copy placement",
+  "The real scene must continue across the entire frame",
+  "Do not create blank, flat, solid-colour, artificial or graphic bands for text",
 ];
+
+/** Brand direction about space or background colours is expressed through the real scene, not as empty areas. */
+const SPACE_WORDS = /\b(white ?space|negative space|empty|minimal(?:ist)?|background)s?\b/i;
+const asScene = (d: string) => (SPACE_WORDS.test(d) ? `${d} (through the real scene's surfaces, light and props, never as empty or flat areas)` : d);
 
 // ---------------------------------------------------------------------------
 // Compilation
@@ -273,7 +285,7 @@ export function compileImageRenderBrief(args: {
     camera: g.camera[format],
     lighting: g.lighting,
     mood: mood.join("; "),
-    visualStyle: [g.style, ...direction, `palette hints: ${context.brandColors.dark} and ${context.brandColors.accent}`].join("; "),
+    visualStyle: [g.style, ...direction.map(asScene), `palette hints: ${context.brandColors.dark} and ${context.brandColors.accent}`].join("; "),
     productRole: [neutralizeNames(concept.productRole, names), references.length && looks ? `Product appearance: ${neutralizeNames(looks, names)}` : ""].filter(Boolean).join(". "),
     referenceAssets: references,
     productFidelityInstructions: references.length ? FIDELITY : NO_PRODUCT,

@@ -17,6 +17,16 @@ export const KNIGHTVISION_PATHS = {
 /** Phase 5B defaults: Nano Banana Pro (photoreal, product mockups) at 2K, one image per format. */
 export const KNIGHTVISION_IMAGE_DEFAULTS = { model: "nano-banana-pro", quality: "2K", quantity: 1 } as const;
 
+/**
+ * Documented list prices per image (GET /api/v1/partner/credits → costs.image_models).
+ * An ESTIMATE only: the account's pricing tier can differ (a real run charged 17
+ * for a listed 15), so the actual charge is always the submit's `credits_used`.
+ */
+export const KNIGHTVISION_LIST_CREDITS: Record<string, Record<string, number>> = {
+  "nano-banana-pro": { "2K": 15, "4K": 22 },
+  "gpt-image-2": { "1K": 19, "2K": 24, "4K": 29 },
+};
+
 /** Documented limits: up to 5 references, ~20 MB each, ~72 MB combined. */
 export const KNIGHTVISION_REFERENCE_LIMITS = { count: 5, eachBytes: 20 * 1024 * 1024, totalBytes: 72 * 1024 * 1024 } as const;
 

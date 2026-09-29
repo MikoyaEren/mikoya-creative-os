@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { Check, Copy, Download, ImagePlay, LoaderCircle, PenLine, RefreshCw, Sparkles } from "lucide-react";
+import { Check, Copy, Download, ImagePlay, LoaderCircle, PenLine, RefreshCw, RotateCw, Sparkles } from "lucide-react";
 import type { BrandColors, CreativeConcept, OutputFormat, StrategySnapshot } from "@/lib/types";
 import { GLOBAL_CREATIVE_CONSTITUTION } from "@/lib/prompts/global-creative-constitution";
 import { buildConceptPrompt } from "@/lib/prompts/prompt-builder";
@@ -18,6 +18,8 @@ import { creativeActions } from "./creative-actions";
 import { MechanismIcon } from "./mechanism-icon";
 import { StatusPill } from "./status-pill";
 import { renderEligibility } from "@/lib/render-client";
+import { actualCreditsOf, imageConceptControls, unresolvedReplacement } from "@/lib/renderers/image/lifecycle";
+import { runReplacement } from "./creative-card";
 
 interface CreativeDetailSheetProps {
   concept: CreativeConcept | null;
@@ -30,7 +32,9 @@ interface CreativeDetailSheetProps {
   /** Strategy layers the batch was written from (for the shared concept prompt). */
   strategy: StrategySnapshot;
   colors: BrandColors;
-  onRender: (formats?: OutputFormat[]) => void;
+  onRender: (formats?: OutputFormat[], opts?: { confirmNewPaidGeneration?: boolean }) => void;
+  /** Read the existing provider jobs again (image concepts); never submits. */
+  onCheckStatus: () => void;
   onClose: () => void;
 }
 
@@ -106,9 +110,32 @@ function RenderInfo({ record }: { record: NonNullable<CreativeConcept["variants"
             <span className="font-mono text-xs">
               {record.image.provider} · {record.image.providerModel ?? "model pending"} · {record.image.quality}
               {record.image.providerPublicId ? ` · ${record.image.providerPublicId}` : ""}
-              {record.image.creditsUsed !== null ? ` · ${record.image.creditsUsed} credits` : ""}
             </span>
           </Row>
+          <Row label="Provider job">
+            <span className="font-mono text-xs">
+              {record.image.providerStatus ?? "—"}
+              {record.image.statusChecks ? ` · ${record.image.statusChecks} status checks` : ""}
+              {record.image.lastCheckedAt ? ` · last checked ${record.image.lastCheckedAt}` : ""}
+              {record.image.localWaitEndedAt ? ` · local wait ended ${record.image.localWaitEndedAt}` : ""}
+            </span>
+          </Row>
+          <Row label="Credits">
+            <span className="font-mono text-xs">
+              actual {actualCreditsOf(record.image) ?? "not reported"}
+              {record.image.estimatedCredits != null ? ` · estimate ${record.image.estimatedCredits} (list price)` : ""}
+            </span>
+          </Row>
+          {record.image.normalization && (
+            <Row label="Output fitting">
+              <span className="font-mono text-xs">
+                provider {record.image.normalization.providerOriginalWidth}×{record.image.normalization.providerOriginalHeight} → {record.image.normalization.normalizationOperation} → {record.image.normalization.normalizedWidth}×{record.image.normalization.normalizedHeight}
+                {record.image.normalization.crop ? ` · crop at ${record.image.normalization.crop.left},${record.image.normalization.crop.top}` : ""}
+                {" · "}
+                <a href={record.image.normalization.providerOriginalUrl} className="text-forest underline" target="_blank" rel="noreferrer">provider original</a>
+              </span>
+            </Row>
+          )}
           <Row label="Product references">{record.image.referenceAssetIds.length ? record.image.brief.referenceAssets.map((r) => `${r.role} (${r.purpose})`).join(" · ") : "none"}</Row>
           <Row label="Provider prompt">
             <details>
@@ -126,6 +153,43 @@ function RenderInfo({ record }: { record: NonNullable<CreativeConcept["variants"
   );
 }
 
+/** Image variant actions: check an unresolved job, first render, or a labelled NEW PAID GENERATION replacement. */
+function ImageVariantButtons({ variant, onRender, onCheckStatus }: { variant: CreativeConcept["variants"][number]; onRender: CreativeDetailSheetProps["onRender"]; onCheckStatus: () => void }) {
+  const c = imageConceptControls([variant]);
+  const replaceUnresolved = unresolvedReplacement(variant);
+  if (c.busy && !c.check) {
+    return (
+      <Button variant="primary" disabled>
+        <LoaderCircle className="animate-spin" /> Rendering…
+      </Button>
+    );
+  }
+  return (
+    <>
+      {c.check && (
+        <Button variant="primary" onClick={onCheckStatus} title={c.check.label}>
+          <RotateCw /> Check status
+        </Button>
+      )}
+      {c.render && (
+        <Button variant="primary" onClick={() => onRender(c.render!.formats)}>
+          <ImagePlay /> {c.render.label}
+        </Button>
+      )}
+      {c.replace && (
+        <Button variant="primary" onClick={() => runReplacement(c.replace!, onRender)}>
+          <ImagePlay /> {c.replace.label}
+        </Button>
+      )}
+      {replaceUnresolved && (
+        <Button variant="ghost" onClick={() => runReplacement(replaceUnresolved, onRender)}>
+          {replaceUnresolved.label}
+        </Button>
+      )}
+    </>
+  );
+}
+
 export function CreativeDetailSheet({
   concept,
   format,
@@ -137,6 +201,7 @@ export function CreativeDetailSheet({
   strategy,
   colors,
   onRender,
+  onCheckStatus,
   onClose,
 }: CreativeDetailSheetProps) {
   const variant = concept?.variants.find((v) => v.aspectRatio === format) ?? concept?.variants[0];
@@ -284,7 +349,8 @@ export function CreativeDetailSheet({
             </div>
 
             <div className="flex flex-wrap gap-2 border-t border-line bg-paper px-6 py-4 sm:px-8">
-              {renderEligibility(concept).ok && (
+              {renderEligibility(concept).ok && concept.renderer === "image" && <ImageVariantButtons variant={variant} onRender={onRender} onCheckStatus={onCheckStatus} />}
+              {renderEligibility(concept).ok && concept.renderer !== "image" && (
                 <Button
                   variant="primary"
                   disabled={variant.status === "queued" || variant.status === "rendering"}

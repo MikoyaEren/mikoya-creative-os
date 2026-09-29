@@ -1,7 +1,7 @@
 import type { ImageRenderBrief } from "@/lib/types";
 import { ImageProviderError, type ImagePollResult, type ImageRenderer, type ImageSubmitInput, type ImageSubmitResult } from "../image/types";
 import { KnightVisionClient, type KnightVisionClientOptions } from "./client";
-import { KNIGHTVISION_IMAGE_DEFAULTS, KNIGHTVISION_REFERENCE_LIMITS, knightVisionApiKey } from "./config";
+import { KNIGHTVISION_IMAGE_DEFAULTS, KNIGHTVISION_LIST_CREDITS, KNIGHTVISION_REFERENCE_LIMITS, knightVisionApiKey } from "./config";
 import { knightVisionPrompt } from "./prompt";
 import type { KnightVisionImageRequest } from "./schemas";
 
@@ -44,6 +44,10 @@ export class KnightVisionImageRenderer implements ImageRenderer {
 
   prompt(brief: ImageRenderBrief): string {
     return knightVisionPrompt(brief);
+  }
+
+  estimateCredits(): number | null {
+    return KNIGHTVISION_LIST_CREDITS[this.model]?.[this.quality] ?? null;
   }
 
   async submit(input: ImageSubmitInput): Promise<ImageSubmitResult> {

@@ -83,29 +83,31 @@ export function useBatchRenderOptions(batchId: string) {
   return useRenderState().options[batchId] ?? { cta: false };
 }
 
+/** A batch with each variant's latest render state merged in (status, outputUrl, record). */
+export function mergeRenders(batch: CreativeBatch, s: RenderState): CreativeBatch {
+  return {
+    ...batch,
+    concepts: batch.concepts.map((c) => ({
+      ...c,
+      variants: c.variants.map((v) => {
+        const pending = s.pending[v.id];
+        const record = s.records[v.id];
+        if (!pending && !record) return v;
+        const status: VariantStatus = pending ?? record!.status;
+        return {
+          ...v,
+          status,
+          render: record ?? v.render,
+          outputUrl: !pending && record?.status === "complete" ? record.outputUrl : v.outputUrl,
+          error: record?.error ? `${record.error.code}: ${record.error.message}` : undefined,
+        };
+      }),
+    })),
+  };
+}
+
 /** The batch with each variant's latest render state merged in (status, outputUrl, record). */
 export function useBatchWithRenders(batch: CreativeBatch | null): CreativeBatch | null {
   const s = useRenderState();
-  return useMemo(() => {
-    if (!batch) return null;
-    return {
-      ...batch,
-      concepts: batch.concepts.map((c) => ({
-        ...c,
-        variants: c.variants.map((v) => {
-          const pending = s.pending[v.id];
-          const record = s.records[v.id];
-          if (!pending && !record) return v;
-          const status: VariantStatus = pending ?? record!.status;
-          return {
-            ...v,
-            status,
-            render: record ?? v.render,
-            outputUrl: !pending && record?.status === "complete" ? record.outputUrl : v.outputUrl,
-            error: record?.error ? `${record.error.code}: ${record.error.message}` : undefined,
-          };
-        }),
-      })),
-    };
-  }, [batch, s]);
+  return useMemo(() => (batch ? mergeRenders(batch, s) : null), [batch, s]);
 }

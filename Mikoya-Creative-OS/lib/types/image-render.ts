@@ -67,7 +67,7 @@ export interface ImageRenderBrief {
   productFidelityInstructions: string[];
   negativeInstructions: string[];
   textPolicy: ImageTextPolicy;
-  /** Text-free visual instructions (e.g. keep negative space where copy is overlaid later). */
+  /** Text-free visual instructions (breathing room for the later copy overlay stays inside the photographed scene). */
   textFreeInstructions: string[];
   /** Mechanism choices depicted without labels (choose_your_fighter). */
   choices: string[];
@@ -90,7 +90,43 @@ export interface ImageRenderMeta {
   providerPublicId: string | null;
   /** The provider's own image URL (the rendered file is copied into the render store). */
   providerImageUrl: string | null;
-  creditsUsed: number | null;
+  /** What the provider actually charged (its `credits_used` response); null until known. Billing uses this. */
+  actualCredits: number | null;
+  /** Documented list price for the model / quality, for display before submission only. Never used as the actual cost. */
+  estimatedCredits: number | null;
+  /** @deprecated Records written before actual / estimated credits were split. Read as `actualCredits`. */
+  creditsUsed?: number | null;
+  /** Last provider job state seen: submitted → pending → success | failed (success and failed are terminal). */
+  providerStatus: ImageProviderStatus;
+  /** Provider status reads made for this job. */
+  statusChecks?: number;
+  lastCheckedAt?: string;
+  /** When the local waiting window ended with the provider job still unresolved (the render became provider_pending). */
+  localWaitEndedAt?: string;
+  /** How the stored output was fitted to the exact format (the provider's own file is kept alongside). */
+  normalization?: ImageNormalization;
   submittedAt: string;
   completedAt?: string;
 }
+
+export type ImageProviderStatus = "submitted" | "pending" | "success" | "failed";
+
+/**
+ * Exact-ratio fitting of a provider image. The provider file is preserved
+ * unchanged; the normalised file (exact 1:1 or 9:16, never stretched) is
+ * the one displayed and exported.
+ */
+export interface ImageNormalization {
+  providerOriginalWidth: number;
+  providerOriginalHeight: number;
+  /** Render-store URL of the untouched provider file. */
+  providerOriginalUrl: string;
+  normalizedWidth: number;
+  normalizedHeight: number;
+  normalizationOperation: "none" | "crop" | "pad";
+  /** Pixels kept from the provider image (crop), in provider-image coordinates. */
+  crop?: { left: number; top: number; width: number; height: number };
+  /** Pixels added on each side (pad), with the fill colour. */
+  pad?: { top: number; right: number; bottom: number; left: number; color: string };
+}
+

@@ -71,7 +71,7 @@ const FORMAT_ASPECT: Record<OutputFormat, number> = { "1:1": 1, "9:16": 9 / 16 }
  * detail. Returned as CSS object-position percentages; 50% when the photo
  * already has the format's aspect ratio along that axis.
  */
-async function focusFor(body: Buffer, width: number, height: number): Promise<Partial<Record<OutputFormat, [number, number]>>> {
+export async function focusFor(body: Buffer, width: number, height: number): Promise<Partial<Record<OutputFormat, [number, number]>>> {
   const N = 96;
   // Blur first so fine texture (fabric, patterns) counts less than objects and edges.
   const { data } = await sharp(body).greyscale().resize(N, N, { fit: "fill" }).blur(2).raw().toBuffer({ resolveWithObject: true });

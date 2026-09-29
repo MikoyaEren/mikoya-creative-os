@@ -73,6 +73,47 @@ export function batchOutputStats(batch: CreativeBatch) {
   return { concepts: batch.concepts.length, outputs, ready };
 }
 
+/**
+ * Asset-render state of a batch, kept apart from concept generation: a batch
+ * whose concepts are complete can still have renders in progress, pending at
+ * the image provider, failed or not rendered yet.
+ */
+export interface RenderSummary {
+  outputs: number;
+  ready: number;
+  /** Queued or rendering now. */
+  inProgress: number;
+  /** Image jobs still unresolved at the provider after the local wait (not failed). */
+  providerPending: number;
+  failed: number;
+  notRendered: number;
+}
+
+export function renderSummary(concepts: CreativeBatch["concepts"]): RenderSummary {
+  const variants = concepts.flatMap((c) => c.variants);
+  const count = (f: (v: (typeof variants)[number]) => boolean) => variants.filter(f).length;
+  return {
+    outputs: variants.length,
+    ready: count((v) => v.status === "complete" && (!v.render || v.render.status === "complete")),
+    inProgress: count((v) => v.status === "queued" || v.status === "rendering"),
+    providerPending: count((v) => v.status === "provider_pending"),
+    failed: count((v) => v.status === "failed"),
+    notRendered: count((v) => v.status === "planned"),
+  };
+}
+
+/** "1/2 ready · 1 provider pending" — the rendered-asset line shown next to the concept-generation status. */
+export function renderSummaryText(s: RenderSummary): string {
+  return [
+    `${s.ready}/${s.outputs} ready`,
+    s.inProgress ? `${s.inProgress} rendering` : "",
+    s.providerPending ? `${s.providerPending} provider pending` : "",
+    s.failed ? `${s.failed} failed` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 export const CREATIVE_TYPE_LABELS: Record<CreativeType, string> = {
   static: "Static",
   video: "Video",

@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowUpRight, History, Search } from "lucide-react";
-import { OUTPUT_PRESETS, batchOutputStats } from "@/lib/constants";
+import { OUTPUT_PRESETS, batchOutputStats, renderSummary, renderSummaryText } from "@/lib/constants";
 import { getProject } from "@/lib/projects";
+import type { CreativeBatch } from "@/lib/types";
 import { useBatches } from "@/lib/store/generations-store";
+import { mergeRenders, useRenderState } from "@/lib/store/render-store";
 import { formatDateTime, formatRelativeDate } from "@/lib/utils";
 import { buttonClasses } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -14,6 +16,7 @@ import { StatusPill } from "@/components/creative/status-pill";
 
 export function GenerationsList() {
   const batches = useBatches();
+  const renderState = useRenderState();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(
@@ -67,7 +70,7 @@ export function GenerationsList() {
             <span>Product</span>
             <span>Date</span>
             <span>Concepts · Outputs</span>
-            <span>Status</span>
+            <span>Concept generation</span>
             <span />
           </div>
           <ul>
@@ -100,8 +103,9 @@ export function GenerationsList() {
                       <span className="text-muted"> outputs</span>
                       {preset && <span className="block text-xs text-faint">{preset.label}</span>}
                     </span>
-                    <span className="justify-self-end md:justify-self-start">
+                    <span className="flex flex-col items-end gap-1 justify-self-end md:items-start md:justify-self-start">
                       <StatusPill status={b.status} />
+                      <RenderLine batch={mergeRenders(b, renderState)} />
                     </span>
                     <span className="hidden size-8 items-center justify-center rounded-lg text-faint transition-colors group-hover:bg-paper group-hover:text-ink md:flex">
                       <ArrowUpRight className="size-4" />
@@ -118,4 +122,11 @@ export function GenerationsList() {
       )}
     </div>
   );
+}
+
+/** Rendered-asset state, shown under the concept-generation status once anything was rendered. */
+function RenderLine({ batch }: { batch: CreativeBatch }) {
+  const r = renderSummary(batch.concepts);
+  if (r.ready + r.inProgress + r.providerPending + r.failed === 0) return null;
+  return <span className="text-[11.5px] text-muted">Assets: {renderSummaryText(r)}</span>;
 }

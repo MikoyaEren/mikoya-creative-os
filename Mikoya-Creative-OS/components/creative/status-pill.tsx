@@ -1,4 +1,4 @@
-import { CircleAlert, LoaderCircle } from "lucide-react";
+import { CircleAlert, Hourglass, LoaderCircle } from "lucide-react";
 import type { BatchStatus, VariantStatus } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 
@@ -8,6 +8,7 @@ const LABELS: Record<BatchStatus | VariantStatus, string> = {
   queued: "Queued",
   generating: "Generating",
   rendering: "Rendering",
+  provider_pending: "Provider pending",
   complete: "Complete",
   failed: "Failed",
 };
@@ -25,6 +26,14 @@ export function StatusPill({ status }: { status: BatchStatus | VariantStatus }) 
     return (
       <Badge tone="danger">
         <CircleAlert />
+        {LABELS[status]}
+      </Badge>
+    );
+  }
+  if (status === "provider_pending") {
+    return (
+      <Badge tone="warning">
+        <Hourglass />
         {LABELS[status]}
       </Badge>
     );

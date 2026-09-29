@@ -1,4 +1,5 @@
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, rmSync, statSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { describe, expect, it } from "vitest";
@@ -14,7 +15,12 @@ import { KnightVisionImageRenderer, knightVisionRequest } from "../knightvision/
 import { KNIGHTVISION_BASE_URL } from "../knightvision/config";
 import { PARTNER_JOB_ID } from "../knightvision/schemas";
 import type { RenderStore } from "../store/fs-store";
-import { MemoryImageJobStore } from "@/lib/server/render/image-jobs";
+import { FsImageJobStore, MemoryImageJobStore } from "@/lib/server/render/image-jobs";
+import { imageConceptControls, imageVariantAction, isUnresolvedImageJob, NEW_PAID_GENERATION, replacementNeedsConfirmation, unresolvedReplacement } from "./lifecycle";
+import { normalizeToFormat } from "./normalize";
+import { renderSummary, renderSummaryText } from "@/lib/constants";
+import { knightVisionPrompt } from "../knightvision/prompt";
+import type { RenderRecord } from "@/lib/types";
 import { pollImageJobs, startImageRender, type ImageRenderRequest } from "@/lib/server/render/image-service";
 
 // ---------------------------------------------------------------------------
@@ -277,10 +283,10 @@ describe("KnightVision failures, polling and timeouts", () => {
     expect(out).toMatchObject({ state: "failed", error: { code: "provider_malformed" } });
   });
 
-  it("times out without resubmitting (generation is not idempotent)", async () => {
+  it("ends the local wait as pending (not failed), with the provider job to resume and no resubmission", async () => {
     const kv = fakeKnightVision({ status: [pending] });
-    const out = await renderImageToCompletion(renderer(kv.fetchImpl), input, { clock: clock(), deadlineMs: 60_000 });
-    expect(out).toMatchObject({ state: "failed", error: { code: "timeout", message: expect.stringMatching(/kv-0a1b2c3d.*not resubmitted/) } });
+    const out = await renderImageToCompletion(renderer(kv.fetchImpl), input, { clock: clock(), localWaitMs: 60_000 });
+    expect(out).toMatchObject({ state: "pending", submit: { providerJobId: "kv-0a1b2c3d" } });
     expect(kv.calls.filter((x) => x.url.endsWith("/generate-image"))).toHaveLength(1);
   });
 
@@ -326,7 +332,7 @@ describe("image render service (submit → poll → stored result)", () => {
     const deps = { renderer: renderer(kv.fetchImpl), store, jobs, now: () => t };
     const started = await startImageRender(request(lifestyle, ["1:1"]), deps);
     const { jobId, record } = started["1:1"]!;
-    expect(record).toMatchObject({ status: "rendering", renderer: "image", rendererVersion: "image-renderer@1", renderedFields: [] });
+    expect(record).toMatchObject({ status: "rendering", renderer: "image", rendererVersion: "image-renderer@2", renderedFields: [] });
     expect(record.warnings.join(" ")).toMatch(/product_fidelity_unverified/);
     t += 4000;
     expect((await pollImageJobs([jobId], deps))[jobId].status).toBe("rendering");
@@ -341,23 +347,27 @@ describe("image render service (submit → poll → stored result)", () => {
       providerPublicId: "kv-0a1b2c3d",
       providerRequestId: "r",
       providerImageUrl: "https://knightvision.tech/static/generated_images/gen_101.png",
-      creditsUsed: 17,
+      actualCredits: 17,
+      estimatedCredits: 15,
+      providerStatus: "success",
       referenceAssetIds: ["a".repeat(64)],
       partnerJobId: expect.stringMatching(/^cos-[0-9a-f]{8}-[0-9a-z]+$/),
     });
     expect(done.image!.finalProviderPrompt).toContain("A square 1:1 lifestyle photograph");
-    expect(store.files.size).toBe(1);
+    // The provider file is kept next to the normalised output (64×64 is already exact 1:1).
+    expect([...store.files.keys()].sort()).toEqual([expect.stringMatching(/1x1-[0-9a-f]{8}\.png$/), expect.stringMatching(/1x1-[0-9a-f]{8}\.provider\.png$/)]);
+    expect(done.image!.normalization).toMatchObject({ providerOriginalWidth: 64, providerOriginalHeight: 64, normalizedWidth: 64, normalizedHeight: 64, normalizationOperation: "none" });
     // Terminal jobs are returned as stored: no further provider calls.
     const before = kv.calls.length;
     await pollImageJobs([jobId], deps);
     expect(kv.calls.length).toBe(before);
   });
 
-  it("keeps a job rendering through transient status errors and 429s, fails it at the deadline without resubmitting", async () => {
+  it("keeps a job unresolved through transient status errors and 429s, and past the local wait, without resubmitting", async () => {
     const kv = fakeKnightVision({ status: [() => json(503, { error: "busy" }), () => json(429, { error: "slow down" }), pending] });
     const jobs = new MemoryImageJobStore();
     let t = 0;
-    const deps = { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs, now: () => t, deadlineMs: 60_000 };
+    const deps = { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs, now: () => t, localWaitMs: 60_000 };
     const { jobId } = (await startImageRender(request(pov, ["9:16"]), deps))["9:16"]!;
     t += 4000;
     expect((await pollImageJobs([jobId], deps))[jobId]).toMatchObject({ status: "rendering", warnings: expect.arrayContaining([expect.stringMatching(/status_read_failed/)]) });
@@ -368,8 +378,9 @@ describe("image render service (submit → poll → stored result)", () => {
     await pollImageJobs([jobId], deps); // inside the 429 wait: no provider call
     expect(kv.calls.length).toBe(skipped);
     t += 61_000;
-    const failed = (await pollImageJobs([jobId], deps))[jobId];
-    expect(failed).toMatchObject({ status: "failed", error: { code: "timeout" } });
+    const after = (await pollImageJobs([jobId], deps))[jobId];
+    expect(after).toMatchObject({ status: "provider_pending", image: { providerStatus: "pending" } });
+    expect(after.error).toBeUndefined();
     expect(kv.calls.filter((c) => c.url.endsWith("/generate-image"))).toHaveLength(1);
   });
 
@@ -500,5 +511,322 @@ describe("isolation and safety", () => {
     const statuses: CreativeConcept["variants"][number]["status"][] = ["queued", "rendering", "complete", "failed"];
     expect(statuses).toContain(rec.status);
     expect(Object.keys(rec)).toEqual(expect.arrayContaining(["status", "renderer", "format", "outputUrl", "warnings", "fontSizes", "renderedFields"]));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Production lifecycle (regressions from the first real KnightVision run:
+// a 1:1 job stayed pending ~21 min and finished after our local wait)
+// ---------------------------------------------------------------------------
+
+const MIN = 60_000;
+const generateCalls = (calls: Call[]) => calls.filter((c) => c.url.endsWith("/generate-image")).length;
+
+/** Submit one lifestyle 1:1 job and run it past the local wait while the provider still says pending. */
+async function pendingPastLocalWait(opts: { status: (() => Response)[]; jobs?: MemoryImageJobStore | FsImageJobStore; download?: () => Response | Promise<Response> }) {
+  const kv = fakeKnightVision({ status: opts.status, download: opts.download });
+  const clockRef = { t: 1_000_000 };
+  const deps = { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: opts.jobs ?? new MemoryImageJobStore(), now: () => clockRef.t, localWaitMs: 10 * MIN };
+  const { jobId } = (await startImageRender(request(lifestyle, ["1:1"]), deps))["1:1"]!;
+  clockRef.t += 4000;
+  expect((await pollImageJobs([jobId], deps))[jobId].status).toBe("rendering");
+  clockRef.t += 10 * MIN;
+  const record = (await pollImageJobs([jobId], deps))[jobId];
+  return { kv, deps, jobId, record, clockRef };
+}
+
+describe("image lifecycle: the local wait is not terminal", () => {
+  it("keeps a job that is still pending past the local wait as provider_pending (recoverable, not failed)", async () => {
+    const { record } = await pendingPastLocalWait({ status: [pending] });
+    expect(record).toMatchObject({ status: "provider_pending", image: { providerStatus: "pending", providerPublicId: "kv-0a1b2c3d", localWaitEndedAt: expect.any(String) } });
+    expect(record.error).toBeUndefined();
+    expect(record.warnings.join(" ")).toMatch(/provider_pending: .*kv-0a1b2c3d.*not resubmitted/);
+    expect(isUnresolvedImageJob(record)).toBe(true);
+  });
+
+  it("never submits a second generation for an unresolved job (polling or a repeated render request)", async () => {
+    const { kv, deps, jobId, clockRef } = await pendingPastLocalWait({ status: [pending] });
+    for (let i = 0; i < 5; i++) {
+      clockRef.t += MIN;
+      await pollImageJobs([jobId], deps);
+    }
+    const again = await startImageRender(request(lifestyle, ["1:1"]), deps);
+    expect(again["1:1"]).toMatchObject({ jobId, notSubmitted: "confirmation_required", record: { status: "provider_pending" } });
+    expect(generateCalls(kv.calls)).toBe(1);
+    expect(kv.calls.filter((c) => c.url.includes("/image-status/kv-0a1b2c3d")).length).toBeGreaterThan(5);
+  });
+
+  it("recovers a late success: ingests the existing result, marks it ready, records late_result_recovered", async () => {
+    const { kv, deps, jobId, clockRef } = await pendingPastLocalWait({ status: [pending, pending, pending, success] });
+    clockRef.t += 5 * MIN;
+    expect((await pollImageJobs([jobId], deps))[jobId].status).toBe("provider_pending");
+    clockRef.t += 6 * MIN;
+    const done = (await pollImageJobs([jobId], deps))[jobId];
+    expect(done).toMatchObject({ status: "complete", outputUrl: expect.stringMatching(/^\/api\/renders\/batch_t\/.+\.png$/), image: { providerStatus: "success", providerPublicId: "kv-0a1b2c3d" } });
+    expect(done.error).toBeUndefined();
+    expect(done.warnings.join(" ")).toMatch(/late_result_recovered: provider job kv-0a1b2c3d .*no new generation was submitted/);
+    expect(done.warnings.join(" ")).not.toMatch(/provider_pending:/);
+    expect((deps.store as ReturnType<typeof memoryStore>).files.size).toBe(2);
+    expect(generateCalls(kv.calls)).toBe(1);
+  });
+
+  it("recovers after a server restart: a new job store and renderer resume the persisted provider job", async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), "cos-jobs-"));
+    try {
+      const { jobId, clockRef, kv } = await pendingPastLocalWait({ status: [pending], jobs: new FsImageJobStore(dir) });
+      // "Restart": fresh store instance, fresh provider client; only the files on disk remain.
+      const kv2 = fakeKnightVision({ status: [success] });
+      const deps2 = { renderer: renderer(kv2.fetchImpl), store: memoryStore(), jobs: new FsImageJobStore(dir), now: () => clockRef.t + 11 * MIN, localWaitMs: 10 * MIN };
+      const done = (await pollImageJobs([jobId], deps2))[jobId];
+      expect(done).toMatchObject({ status: "complete", image: { providerStatus: "success" } });
+      expect(done.warnings.join(" ")).toMatch(/late_result_recovered/);
+      expect(generateCalls(kv.calls) + generateCalls(kv2.calls)).toBe(1);
+      expect((await new FsImageJobStore(dir).get(jobId))!.record.status).toBe("complete");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("recovers a legacy record that was failed only by the old local timeout", async () => {
+    const jobs = new MemoryImageJobStore();
+    const { jobId, clockRef } = await pendingPastLocalWait({ status: [pending], jobs });
+    const job = (await jobs.get(jobId))!;
+    job.record = { ...job.record, status: "failed", error: { code: "timeout", message: "No result within 600 s." } };
+    job.nextPollAtMs = 0;
+    await jobs.put(job);
+    expect(imageVariantAction({ status: "failed", render: job.record })).toMatchObject({ kind: "check_status", providerJob: "kv-0a1b2c3d" });
+    const kv2 = fakeKnightVision({ status: [success] });
+    const done = (await pollImageJobs([jobId], { renderer: renderer(kv2.fetchImpl), store: memoryStore(), jobs, now: () => clockRef.t + 11 * MIN }))[jobId];
+    expect(done).toMatchObject({ status: "complete" });
+    expect(done.warnings.join(" ")).toMatch(/late_result_recovered/);
+    expect(generateCalls(kv2.calls)).toBe(0);
+  });
+
+  it("treats a provider failure as terminal: no further status reads, no automatic retry", async () => {
+    const { kv, deps, jobId, clockRef } = await pendingPastLocalWait({ status: [pending, pending, () => json(200, { status: "failed", error: "Generation failed" })] });
+    clockRef.t += MIN;
+    const failed = (await pollImageJobs([jobId], deps))[jobId];
+    expect(failed).toMatchObject({ status: "failed", error: { code: "provider_failed" }, image: { providerStatus: "failed" } });
+    expect(isUnresolvedImageJob(failed)).toBe(false);
+    const reads = kv.calls.length;
+    clockRef.t += MIN;
+    await pollImageJobs([jobId], deps);
+    expect(kv.calls.length).toBe(reads);
+    expect(generateCalls(kv.calls)).toBe(1);
+    // A replacement may be offered — labelled as a new paid generation.
+    expect(imageVariantAction({ status: "failed", render: failed })).toEqual({ kind: "replace", reason: "provider_failed", confirm: false });
+  });
+
+  it("keeps status-read failures (auth, 5xx) non-terminal: they say nothing about the provider job", async () => {
+    const { deps, jobId, clockRef } = await pendingPastLocalWait({ status: [pending, () => json(401, { error: "Invalid key" })] });
+    clockRef.t += MIN;
+    const r = (await pollImageJobs([jobId], deps))[jobId];
+    expect(r.status).toBe("provider_pending");
+    expect(r.warnings.join(" ")).toMatch(/status_read_failed: .*HTTP 401/);
+  });
+});
+
+const imageRecord = (over: Omit<Partial<RenderRecord>, "image"> & { image?: Partial<NonNullable<RenderRecord["image"]>> }): RenderRecord =>
+  ({
+    status: "rendering",
+    renderer: "image",
+    templateId: null,
+    templateVersion: null,
+    rendererVersion: "image-renderer@2",
+    format: "1:1",
+    width: 0,
+    height: 0,
+    mime: "image/png",
+    bytes: null,
+    outputUrl: null,
+    inputHash: "h",
+    renderedFields: [],
+    cta: false,
+    assets: [],
+    fontSizes: [],
+    warnings: [],
+    ...over,
+    image: { providerPublicId: "kv-17bc9811", providerGenerationId: "145268", providerStatus: "pending", jobId: "img_x_1", ...over.image },
+  }) as RenderRecord;
+
+describe("image actions: no ordinary retry for unresolved jobs, replacements are explicit paid generations", () => {
+  const pendingVariant = { aspectRatio: "1:1" as const, status: "provider_pending" as const, render: imageRecord({ status: "provider_pending" }) };
+  const doneVariant = { aspectRatio: "9:16" as const, status: "complete" as const, render: imageRecord({ status: "complete", format: "9:16", image: { providerStatus: "success" } }) };
+
+  it("offers only 'Check status' for an unresolved provider job — never a retry or a render", () => {
+    const c = imageConceptControls([pendingVariant]);
+    expect(c.check).toMatchObject({ formats: ["1:1"], providerJobs: ["kv-17bc9811"] });
+    expect(c.check!.label).toMatch(/Check status .*no new generation/);
+    expect(c.render).toBeNull();
+    expect(c.replace).toBeNull();
+    expect(JSON.stringify(c)).not.toMatch(/Retry/i);
+    // The server refuses to replace it without explicit confirmation.
+    expect(replacementNeedsConfirmation(pendingVariant.render)).toBe(true);
+  });
+
+  it("labels every replacement NEW PAID GENERATION and warns that the previous job may still complete", () => {
+    const r = unresolvedReplacement(pendingVariant)!;
+    expect(r.label).toContain(NEW_PAID_GENERATION);
+    expect(r.confirmText).toContain(NEW_PAID_GENERATION);
+    expect(r.confirmText).toMatch(/kv-17bc9811\) is still unresolved and may still complete/);
+    const replaceDone = imageConceptControls([doneVariant]).replace!;
+    expect(replaceDone.label).toBe(`${NEW_PAID_GENERATION} · Replace 9:16 · 1 paid call`);
+    expect(replaceDone.confirmText).toMatch(/already finished/);
+  });
+
+  it("requires confirmation when a failed submit is ambiguous (a provider job may exist); not for a proven refusal", () => {
+    const ambiguous = { aspectRatio: "1:1" as const, status: "failed" as const, render: imageRecord({ status: "failed", error: { code: "provider_unavailable", message: "no response" }, image: { providerPublicId: null, providerGenerationId: null, providerStatus: "submitted" } }) };
+    expect(imageVariantAction(ambiguous)).toEqual({ kind: "replace", reason: "ambiguous", confirm: true });
+    expect(imageConceptControls([ambiguous]).replace!.confirmText).toMatch(/may exist, may still complete/);
+    const refused = { ...ambiguous, render: imageRecord({ status: "failed", error: { code: "provider_credits", message: "402" }, image: { providerPublicId: null, providerGenerationId: null, providerStatus: "submitted" } }) };
+    expect(imageVariantAction(refused)).toEqual({ kind: "replace", reason: "submit_rejected", confirm: false });
+    expect(imageConceptControls([refused]).replace).toMatchObject({ label: expect.stringContaining(NEW_PAID_GENERATION), confirmText: null });
+  });
+
+  it("submits a replacement only with explicit confirmation", async () => {
+    const { kv, deps } = await pendingPastLocalWait({ status: [pending] });
+    await startImageRender(request(lifestyle, ["1:1"]), deps);
+    expect(generateCalls(kv.calls)).toBe(1);
+    const replaced = await startImageRender({ ...request(lifestyle, ["1:1"]), confirmNewPaidGeneration: true }, deps);
+    expect(replaced["1:1"]!.notSubmitted).toBeUndefined();
+    expect(generateCalls(kv.calls)).toBe(2);
+  });
+});
+
+describe("batch status: concept generation vs rendered assets", () => {
+  it("does not report a batch with a provider-pending render as simply complete", () => {
+    const concepts = [{ variants: [{ status: "complete" }, { status: "provider_pending" }] }] as unknown as CreativeConcept[];
+    const s = renderSummary(concepts);
+    expect(s).toMatchObject({ outputs: 2, ready: 1, providerPending: 1, failed: 0 });
+    expect(renderSummaryText(s)).toBe("1/2 ready · 1 provider pending");
+    const withFailure = renderSummary([{ variants: [{ status: "complete" }, { status: "failed" }] }] as unknown as CreativeConcept[]);
+    expect(renderSummaryText(withFailure)).toBe("1/2 ready · 1 failed");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Exact output ratios
+// ---------------------------------------------------------------------------
+
+/** A deterministic test photo: gradient plus a bright "subject" block. */
+async function photo(width: number, height: number) {
+  const data = Buffer.alloc(width * height * 3);
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 3;
+      data[i] = (x * 7) % 256;
+      data[i + 1] = (y * 3) % 256;
+      data[i + 2] = 90;
+    }
+  return sharp(data, { raw: { width, height, channels: 3 } }).png().toBuffer();
+}
+const raw = async (png: Buffer) => sharp(png).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+
+describe("exact-ratio normalisation", () => {
+  it("crops a slightly-off square to exact 1:1", async () => {
+    const out = await normalizeToFormat(await photo(206, 200), "1:1");
+    expect(out.normalization).toMatchObject({ providerOriginalWidth: 206, providerOriginalHeight: 200, normalizedWidth: 200, normalizedHeight: 200, normalizationOperation: "crop" });
+    const m = await sharp(out.body).metadata();
+    expect(m.width).toBe(m.height);
+  });
+
+  it("crops the real 1536×2752 provider size to exact 9:16 (1530×2720) with a minimal crop", async () => {
+    const out = await normalizeToFormat(await photo(1536, 2752), "9:16");
+    const n = out.normalization;
+    expect(n).toMatchObject({ providerOriginalWidth: 1536, providerOriginalHeight: 2752, normalizedWidth: 1530, normalizedHeight: 2720, normalizationOperation: "crop" });
+    expect(n.normalizedWidth * 16).toBe(n.normalizedHeight * 9);
+    expect(n.crop!.width).toBe(1530);
+    expect(n.crop!.left).toBeLessThanOrEqual(6);
+    expect(n.crop!.top).toBeLessThanOrEqual(32);
+    const m = await sharp(out.body).metadata();
+    expect([m.width, m.height]).toEqual([1530, 2720]);
+  });
+
+  it("leaves an exact image unchanged (2048×2048 stays 2048×2048, same bytes)", async () => {
+    const src = await photo(2048, 2048);
+    const out = await normalizeToFormat(src, "1:1");
+    expect(out.normalization.normalizationOperation).toBe("none");
+    expect(out.body.equals(src)).toBe(true);
+  });
+
+  it("never stretches: kept pixels are identical to the provider's (crop) or surrounded by padding (pad)", async () => {
+    const src = await photo(160, 290);
+    const cropped = await normalizeToFormat(src, "9:16");
+    const c = cropped.normalization.crop!;
+    const a = await raw(cropped.body);
+    const b = await raw(await sharp(src).extract(c).png().toBuffer());
+    expect(a.data.equals(b.data)).toBe(true);
+
+    const square = await photo(300, 300);
+    const padded = await normalizeToFormat(square, "9:16"); // cropping 300×300 to 9:16 would remove ~44 %: pad instead
+    const n = padded.normalization;
+    expect(n.normalizationOperation).toBe("pad");
+    expect(n.normalizedWidth * 16).toBe(n.normalizedHeight * 9);
+    const inner = await raw(await sharp(padded.body).extract({ left: n.pad!.left, top: n.pad!.top, width: 300, height: 300 }).png().toBuffer());
+    expect(inner.data.equals((await raw(square)).data)).toBe(true);
+  });
+
+  it("stores the normalised output and keeps the provider original and its dimensions in the record", async () => {
+    const provider = await photo(1536, 2752);
+    const kv = fakeKnightVision({ download: () => new Response(new Uint8Array(provider), { status: 200, headers: { "content-type": "image/png" } }) });
+    const store = memoryStore();
+    let t = 0;
+    const deps = { renderer: renderer(kv.fetchImpl), store, jobs: new MemoryImageJobStore(), now: () => t };
+    const { jobId } = (await startImageRender(request(lifestyle, ["9:16"]), deps))["9:16"]!;
+    t += 4000;
+    const r = (await pollImageJobs([jobId], deps))[jobId];
+    expect(r).toMatchObject({ status: "complete", width: 1530, height: 2720 });
+    expect(r.image!.normalization).toMatchObject({ providerOriginalWidth: 1536, providerOriginalHeight: 2752, normalizedWidth: 1530, normalizedHeight: 2720, normalizationOperation: "crop", providerOriginalUrl: expect.stringMatching(/\.provider\.png$/) });
+    const originalPath = r.image!.normalization!.providerOriginalUrl.replace("/api/renders/", "");
+    expect(store.files.get(originalPath)!.equals(provider)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Continuous scene (no blank bands) and credit accounting
+// ---------------------------------------------------------------------------
+
+describe("negative space stays part of the photographed scene", () => {
+  const prompts = (["lifestyle", "pov", "product_hero", "choose_your_fighter"] as const).flatMap((m) =>
+    (["1:1", "9:16"] as const).map((f) => knightVisionPrompt(compileImageRenderBrief({ concept: conceptOf(m), variant: { id: `v_${f}`, aspectRatio: f }, context, references: [{ assetId: "a".repeat(64), role: "main", purpose: "product appearance" }] }))),
+  );
+
+  it("asks for breathing room within the real scene, continuing across the whole frame", () => {
+    for (const p of prompts) {
+      expect(p).toContain("Leave subtle uncluttered breathing room naturally within the photographed environment for future copy placement");
+      expect(p).toContain("The real scene must continue across the entire frame");
+      expect(p).toContain("Do not create blank, flat, solid-colour, artificial or graphic bands for text");
+    }
+  });
+
+  it("never asks for a blank background band or an empty area", () => {
+    for (const p of prompts) {
+      expect(p).not.toMatch(/negative space|calm space|negative-space area/i);
+      // Any mention of bands, blank or empty areas is a prohibition.
+      for (const line of p.split("\n")) for (const m of line.matchAll(/[^.;]*\b(band|blank|empty)s?\b[^.;]*/gi)) expect(m[0]).toMatch(/\b(no|not|never|do not)\b/i);
+      // Brand direction about whitespace / background colours is tied to the real scene.
+      const style = p.split("\n").find((l) => l.startsWith("Style:"))!;
+      for (const m of style.matchAll(/[^;]*\b(whitespace|backgrounds?)\b[^;]*/gi)) expect(m[0]).toMatch(/through the real scene/);
+      expect(style).toMatch(/whitespace/i); // the Mikoya direction is present, only re-expressed
+    }
+  });
+
+  it("keeps the lifestyle concept itself unchanged", () => {
+    const p = prompts[1];
+    expect(p).toContain("Scene: Hand holding a glass of iced green matcha with a glass straw beside the black pouch on a pink-and-white checkered blanket");
+  });
+});
+
+describe("credit accounting", () => {
+  it("stores the provider's actual credits_used separately from the documented estimate", async () => {
+    const kv = fakeKnightVision();
+    const rec = (await startImageRender(request(lifestyle, ["1:1"]), { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() }))["1:1"]!.record;
+    expect(rec.image).toMatchObject({ actualCredits: 17, estimatedCredits: 15 });
+  });
+
+  it("never infers the actual cost from documentation when the provider does not report it", async () => {
+    const kv = fakeKnightVision({ create: () => json(202, { generation_ids: [7], public_ids: ["kv-00000007"] }) });
+    const rec = (await startImageRender(request(lifestyle, ["1:1"]), { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() }))["1:1"]!.record;
+    expect(rec.image).toMatchObject({ actualCredits: null, estimatedCredits: 15 });
   });
 });

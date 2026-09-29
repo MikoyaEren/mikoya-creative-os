@@ -12,7 +12,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { Select } from "@/components/ui/select";
 import { CreativeCard } from "./creative-card";
 import { CreativeDetailSheet } from "./creative-detail-sheet";
-import { renderEligibility, renderTargets } from "@/lib/render-client";
+import { checkImageJobs, renderEligibility, renderTargets } from "@/lib/render-client";
 import { useBatchRenderOptions } from "@/lib/store/render-store";
 
 type TypeFilter = "all" | CreativeType;
@@ -25,7 +25,8 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [openFormat, setOpenFormat] = useState<OutputFormat>("1:1");
   const renderOptions = useBatchRenderOptions(batch.id);
-  const renderConcept = (concept: (typeof batch.concepts)[number], formats?: OutputFormat[]) => void renderTargets(batch, [{ concept, formats }], renderOptions);
+  const renderConcept = (concept: (typeof batch.concepts)[number], formats?: OutputFormat[], opts: { confirmNewPaidGeneration?: boolean } = {}) =>
+    void renderTargets(batch, [{ concept, formats }], renderOptions, undefined, opts);
 
   const { concepts } = batch;
   const productImage = batch.product.mainImage?.previewUrl ?? null;
@@ -105,7 +106,8 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
                 setOpenFormat(format ?? "1:1");
                 setOpenId(c.id);
               }}
-              onRender={(formats) => renderConcept(c, formats)}
+              onRender={(formats, opts) => renderConcept(c, formats, opts)}
+              onCheckStatus={() => void checkImageJobs(c)}
               eligibility={renderEligibility(c)}
             />
           ))}
@@ -136,7 +138,8 @@ export function CreativeGallery({ batch }: { batch: CreativeBatch }) {
         brandName={batch.brand.brandName}
         strategy={batch.strategy}
         colors={batch.brand.colors}
-        onRender={(formats) => openConcept && renderConcept(openConcept, formats)}
+        onRender={(formats, opts) => openConcept && renderConcept(openConcept, formats, opts)}
+        onCheckStatus={() => openConcept && void checkImageJobs(openConcept)}
         onClose={() => setOpenId(null)}
       />
     </>

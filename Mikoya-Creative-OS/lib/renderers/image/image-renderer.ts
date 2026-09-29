@@ -2,23 +2,33 @@ import type { ImageRenderBrief } from "@/lib/types";
 import { ImageProviderError, type ImagePollResult, type ImageRenderer, type ImageSubmitResult, type ReferenceImage } from "./types";
 
 /**
- * IMAGE RENDER JOB — submit once, then poll until a terminal state.
+ * IMAGE RENDER JOB — submit once, then poll until the provider resolves it.
  *
  * Provider-neutral. Used directly by tests and scripts; the server splits
  * the same two steps across requests (submit on "render", one poll per
  * status call) so no HTTP request has to wait for a slow generation.
- * A submission is never repeated automatically: an ambiguous timeout is a
- * failure that names the provider job, because generation is not idempotent.
+ * A submission is never repeated automatically (generation is not
+ * idempotent). Only the provider ends a job: "success" and "failed" are
+ * terminal; our local waiting window is not — when it ends the job is
+ * still pending and can be resumed with the same provider id.
  */
 export const POLL_INTERVAL_MS = 4000;
-/** Our own deadline for one image (the provider documents no server-side timeout). */
-export const IMAGE_DEADLINE_MS = 10 * 60 * 1000;
+/**
+ * How long we actively wait for one image before handing it over as
+ * "provider pending" (not a failure: the provider documents no job timeout,
+ * and real jobs have taken ~21 minutes).
+ */
+export const IMAGE_LOCAL_WAIT_MS = 10 * 60 * 1000;
+/** Minimum gap between provider status reads once a job is provider-pending. */
+export const PROVIDER_PENDING_RECHECK_MS = 15_000;
 /** Documented minimum wait after HTTP 429. */
 export const RATE_LIMIT_WAIT_MS = 10_000;
 
 export type ImageJobOutcome =
   | { state: "success"; submit: ImageSubmitResult; imageUrl: string; providerModel: string | null; polls: number }
-  | { state: "failed"; submit: ImageSubmitResult | null; error: ImageProviderError; polls: number };
+  | { state: "failed"; submit: ImageSubmitResult | null; error: ImageProviderError; polls: number }
+  /** The local wait ended with the provider job unresolved: resume it later with `submit.providerJobId`. */
+  | { state: "pending"; submit: ImageSubmitResult; polls: number };
 
 export interface JobClock {
   now(): number;
@@ -40,11 +50,11 @@ export async function pollOnce(renderer: ImageRenderer, providerJobId: string): 
 export async function renderImageToCompletion(
   renderer: ImageRenderer,
   input: { brief: ImageRenderBrief; references: ReferenceImage[]; partnerJobId: string },
-  opts: { clock?: JobClock; pollIntervalMs?: number; deadlineMs?: number } = {},
+  opts: { clock?: JobClock; pollIntervalMs?: number; localWaitMs?: number } = {},
 ): Promise<ImageJobOutcome> {
   const clock = opts.clock ?? realClock;
   const interval = opts.pollIntervalMs ?? POLL_INTERVAL_MS;
-  const deadline = clock.now() + (opts.deadlineMs ?? IMAGE_DEADLINE_MS);
+  const waitUntil = clock.now() + (opts.localWaitMs ?? IMAGE_LOCAL_WAIT_MS);
   let submit: ImageSubmitResult;
   try {
     submit = await renderer.submit({ ...input, prompt: renderer.prompt(input.brief) });
@@ -53,7 +63,7 @@ export async function renderImageToCompletion(
   }
   let polls = 0;
   for (;;) {
-    if (clock.now() >= deadline) return { state: "failed", submit, error: timeoutError(submit, opts.deadlineMs ?? IMAGE_DEADLINE_MS), polls };
+    if (clock.now() >= waitUntil) return { state: "pending", submit, polls };
     await clock.sleep(interval);
     polls += 1;
     let r: Awaited<ReturnType<typeof pollOnce>>;
@@ -68,11 +78,9 @@ export async function renderImageToCompletion(
   }
 }
 
-export function timeoutError(submit: ImageSubmitResult, deadlineMs = IMAGE_DEADLINE_MS) {
-  return new ImageProviderError(
-    "timeout",
-    `No result within ${Math.round(deadlineMs / 1000)} s. The provider job (${submit.providerPublicId ?? submit.providerJobId}) may still finish; it was not resubmitted because image generation is not idempotent.`,
-  );
+/** Audit note when the local wait ends with the provider job still unresolved. */
+export function providerPendingNote(providerJob: string, localWaitMs = IMAGE_LOCAL_WAIT_MS) {
+  return `provider_pending: no result within the ${Math.round(localWaitMs / 60_000)}-minute local wait; provider job ${providerJob} is still unresolved. Its status is checked again later; it was not resubmitted (image generation is not idempotent).`;
 }
 
 export function asProviderError(err: unknown): ImageProviderError {

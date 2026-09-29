@@ -1,12 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { CircleAlert, Clock, Copy, Download, Eye, ImagePlay, LoaderCircle, PenLine, RefreshCw } from "lucide-react";
+import { CircleAlert, Clock, Copy, Download, Eye, Hourglass, ImagePlay, LoaderCircle, PenLine, RefreshCw, RotateCw } from "lucide-react";
 import type { BrandColors, CreativeConcept, CreativeVariant, OutputFormat } from "@/lib/types";
 import { CREATIVE_TYPE_LABELS, readyOutputs } from "@/lib/constants";
 import { getMechanism } from "@/lib/recipes";
 import { cn } from "@/lib/utils";
 import type { Eligibility } from "@/lib/render-client";
+import { imageConceptControls, type ImageControl } from "@/lib/renderers/image/lifecycle";
 import { CreativePreview } from "./creative-preview";
 import { creativeActions } from "./creative-actions";
 
@@ -18,8 +19,10 @@ interface CreativeCardProps {
   brandName: string;
   colors: BrandColors;
   onOpen: (format?: OutputFormat) => void;
-  /** Explicit render action (both formats, or one). */
-  onRender: (formats?: OutputFormat[]) => void;
+  /** Explicit render action (both formats, or one). `confirmNewPaidGeneration` only after the user confirmed a replacement. */
+  onRender: (formats?: OutputFormat[], opts?: { confirmNewPaidGeneration?: boolean }) => void;
+  /** Read the existing provider jobs again (image concepts); never submits. */
+  onCheckStatus: () => void;
   eligibility: Eligibility;
 }
 
@@ -43,6 +46,17 @@ function ActionButton({ label, onClick, children }: { label: string; onClick: ()
 function VariantStatusOverlay({ variant }: { variant: CreativeVariant }) {
   // Not rendered yet ("planned") shows the concept preview without an overlay.
   if (variant.status === "complete" || variant.status === "planned") return null;
+  if (variant.status === "provider_pending") {
+    const job = variant.render?.image?.providerPublicId;
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-paper/80 px-2 text-center backdrop-blur-[2px]">
+        <Hourglass className="size-4 text-[#8a6212]" />
+        <span className="text-[11px] font-medium text-ink-soft" title={`Provider job ${job ?? ""} is still unresolved; it is checked again automatically and was not resubmitted.`}>
+          Provider pending
+        </span>
+      </div>
+    );
+  }
   const failed = variant.status === "failed";
   const queued = variant.status === "queued";
   return (
@@ -66,14 +80,26 @@ function VariantImage(props: { variant: CreativeVariant } & Omit<Parameters<type
   return <CreativePreview {...rest} format={variant.aspectRatio} className="w-full" />;
 }
 
+/**
+ * A replacement image job is a NEW PAID GENERATION: when the previous job may
+ * still exist (unresolved, ambiguous) or already succeeded, the user confirms
+ * explicitly and only then is the confirmation sent to the server.
+ */
+export function runReplacement(control: ImageControl, onRender: CreativeCardProps["onRender"]) {
+  if (control.confirmText && !window.confirm(control.confirmText)) return;
+  onRender(control.formats, { confirmNewPaidGeneration: control.confirmText !== null });
+}
+
 /** One concept = one card, showing its mandatory 1:1 and 9:16 variants side by side. */
-export function CreativeCard({ concept, productName, productImage, lifestyleImage, brandName, colors, onOpen, onRender, eligibility }: CreativeCardProps) {
+export function CreativeCard({ concept, productName, productImage, lifestyleImage, brandName, colors, onOpen, onRender, onCheckStatus, eligibility }: CreativeCardProps) {
   const mechanism = getMechanism(concept.mechanism);
   const ready = readyOutputs(concept);
   const total = concept.variants.length;
   const busy = concept.variants.some((v) => v.status === "queued" || v.status === "rendering");
   const failed = concept.variants.filter((v) => v.status === "failed");
   const rendered = concept.variants.some((v) => v.render);
+  const image = concept.renderer === "image" ? imageConceptControls(concept.variants) : null;
+  const pending = concept.variants.filter((v) => v.status === "provider_pending").length;
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-paper transition-[border-color,box-shadow] hover:border-line-strong hover:shadow-[0_8px_24px_-12px_rgba(20,20,19,0.18)]">
@@ -124,7 +150,7 @@ export function CreativeCard({ concept, productName, productImage, lifestyleImag
         <p
           className={cn(
             "mt-2.5 inline-flex items-center gap-1.5 self-start text-xs font-medium",
-            ready === total ? "text-forest" : concept.variants.some((v) => v.status === "failed") ? "text-danger" : "text-[#8a6212]",
+            ready === total ? "text-forest" : failed.length ? "text-danger" : "text-[#8a6212]",
           )}
         >
           <span className="flex gap-0.5" aria-hidden>
@@ -132,7 +158,7 @@ export function CreativeCard({ concept, productName, productImage, lifestyleImag
               <span key={v.id} className={cn("h-1.5 w-3 rounded-full", v.status === "complete" ? "bg-forest" : v.status === "failed" ? "bg-danger" : "bg-[#e5cf95]")} />
             ))}
           </span>
-          {ready}/{total} outputs ready
+          {ready}/{total} outputs ready{pending ? ` · ${pending} provider pending` : ""}
         </p>
         {!eligibility.ok && <p className="mt-1 text-[11.5px] text-muted">{eligibility.reason}</p>}
 
@@ -145,9 +171,33 @@ export function CreativeCard({ concept, productName, productImage, lifestyleImag
             <Eye className="size-[15px]" /> Preview
           </button>
           <div className="flex">
-            {eligibility.ok && (
+            {eligibility.ok && image && (
+              <>
+                {image.check && (
+                  <ActionButton label={image.check.label} onClick={onCheckStatus}>
+                    <RotateCw />
+                  </ActionButton>
+                )}
+                {image.busy && !image.check && (
+                  <ActionButton label="Rendering…" onClick={() => {}}>
+                    <LoaderCircle className="animate-spin" />
+                  </ActionButton>
+                )}
+                {!image.busy && image.render && (
+                  <ActionButton label={image.render.label} onClick={() => onRender(image.render!.formats)}>
+                    <ImagePlay />
+                  </ActionButton>
+                )}
+                {!image.busy && image.replace && (
+                  <ActionButton label={image.replace.label} onClick={() => runReplacement(image.replace!, onRender)}>
+                    <ImagePlay />
+                  </ActionButton>
+                )}
+              </>
+            )}
+            {eligibility.ok && !image && (
               <ActionButton
-                label={`${busy ? "Rendering…" : failed.length ? `Retry ${failed.map((f) => f.aspectRatio).join(" + ")}` : rendered ? "Re-render 1:1 + 9:16" : "Render 1:1 + 9:16"}${concept.renderer === "image" && !busy ? ` · AI image, ${failed.length || 2} paid ${(failed.length || 2) === 1 ? "call" : "calls"}` : ""}`}
+                label={busy ? "Rendering…" : failed.length ? `Retry ${failed.map((f) => f.aspectRatio).join(" + ")}` : rendered ? "Re-render 1:1 + 9:16" : "Render 1:1 + 9:16"}
                 onClick={() => !busy && onRender(failed.length ? failed.map((f) => f.aspectRatio) : undefined)}
               >
                 {busy ? <LoaderCircle className="animate-spin" /> : <ImagePlay />}

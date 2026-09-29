@@ -30,6 +30,7 @@ export interface ImageSubmitResult {
   providerRequestId: string | null;
   providerGenerationId: string | null;
   providerPublicId: string | null;
+  /** The provider's actual charge for this job (`credits_used`), when it reports one. */
   creditsUsed: number | null;
 }
 
@@ -47,6 +48,8 @@ export interface ImageRenderer {
   prompt(brief: ImageRenderBrief): string;
   submit(input: ImageSubmitInput): Promise<ImageSubmitResult>;
   poll(providerJobId: string): Promise<ImagePollResult>;
+  /** Documented list price of one image at the renderer's model / quality (an estimate; the submit response carries the actual charge). */
+  estimateCredits?(): number | null;
   /** Download a finished image from the provider. */
   fetchImage(url: string): Promise<{ body: Buffer; contentType: string }>;
 }

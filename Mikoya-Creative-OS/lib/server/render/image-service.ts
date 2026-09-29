@@ -5,7 +5,9 @@ import { OUTPUT_FORMATS } from "@/lib/pipeline/formats";
 import { fingerprint } from "@/lib/strategy/strategy-inputs";
 import { compileImageRenderBrief, selectReferences, type BriefConcept } from "@/lib/renderers/image/render-brief";
 import { routeFor } from "@/lib/renderers/image/router";
-import { IMAGE_DEADLINE_MS, RATE_LIMIT_WAIT_MS, asProviderError, pollOnce, timeoutError } from "@/lib/renderers/image/image-renderer";
+import { IMAGE_LOCAL_WAIT_MS, PROVIDER_PENDING_RECHECK_MS, RATE_LIMIT_WAIT_MS, asProviderError, pollOnce, providerPendingNote } from "@/lib/renderers/image/image-renderer";
+import { isUnresolvedImageJob, replacementNeedsConfirmation } from "@/lib/renderers/image/lifecycle";
+import { normalizeToFormat } from "@/lib/renderers/image/normalize";
 import type { ImageRenderer, ReferenceImage } from "@/lib/renderers/image/types";
 import type { RenderStore } from "@/lib/renderers/store/fs-store";
 import type { ImageJob, ImageJobStore } from "./image-jobs";
@@ -15,14 +17,20 @@ import type { ImageJob, ImageJobStore } from "./image-jobs";
  * request waits on a slow generation:
  *
  *   startImageRender   route check → references → brief → prompt → ONE provider
- *                      submit per format → job saved as "rendering"
+ *                      submit per format → job saved as "rendering". A variant
+ *                      whose latest job is unresolved, ambiguous or complete is
+ *                      only resubmitted with explicit confirmation of a new
+ *                      paid generation.
  *   pollImageJobs      at most one provider status read per job per call;
- *                      success → image copied into the render store → "complete";
- *                      provider failure / deadline → "failed" (never resubmitted)
+ *                      success → provider file kept, exact-ratio copy stored → "complete";
+ *                      provider failure → "failed" (terminal, never resubmitted);
+ *                      still pending after the local wait → "provider_pending"
+ *                      (NOT terminal: later calls keep checking the same job and
+ *                      recover a late result)
  *
  * Every outcome is a RenderRecord on the variant, exactly like HTML renders.
  */
-export const IMAGE_RENDERER_VERSION = "image-renderer@1";
+export const IMAGE_RENDERER_VERSION = "image-renderer@2";
 
 const Id = z.string().regex(/^[A-Za-z0-9_-]{1,120}$/);
 const Text = (n: number) => z.string().max(n);
@@ -56,6 +64,8 @@ export const ImageRenderRequestSchema = z.object({
   }),
   assets: z.array(z.object({ hash: z.string().regex(/^[a-f0-9]{64}$/), role: z.enum(["main", "lifestyle", "bundle", "closeup", "packaging", "other"]) })).max(12),
   formats: z.array(z.enum(["1:1", "9:16"])).min(1).max(2),
+  /** Required to replace a variant whose latest job is unresolved, ambiguous or complete (a NEW PAID GENERATION). */
+  confirmNewPaidGeneration: z.boolean().optional(),
 });
 
 export type ImageRenderRequest = z.infer<typeof ImageRenderRequestSchema>;
@@ -69,6 +79,8 @@ export interface ImageServiceDeps {
 
 const FIDELITY_WARNING =
   "product_fidelity_unverified: the product reference is followed by reference conditioning, which does not guarantee exact packaging, colours or branding — review before use (Creative QA).";
+
+const iso = (t: number) => new Date(t).toISOString();
 
 function baseRecord(format: OutputFormat, now: number): RenderRecord {
   return {
@@ -89,7 +101,7 @@ function baseRecord(format: OutputFormat, now: number): RenderRecord {
     cta: false,
     assets: [],
     fontSizes: [],
-    queuedAt: new Date(now).toISOString(),
+    queuedAt: iso(now),
     warnings: [],
   };
 }
@@ -101,14 +113,27 @@ const fail = (record: RenderRecord, code: RenderErrorCode, message: string, now:
   durationMs: Math.max(0, now - started),
 });
 
-/** Submit one image job per requested format. Returns the jobs (rendering or already failed). */
-export async function startImageRender(req: ImageRenderRequest, deps: ImageServiceDeps): Promise<Partial<Record<OutputFormat, { jobId: string; record: RenderRecord }>>> {
+export type StartedImageJob = {
+  jobId: string;
+  record: RenderRecord;
+  /** Set when no submit was made because the variant's latest job needs confirmation to be replaced (that job is returned). */
+  notSubmitted?: "confirmation_required";
+};
+
+/** Submit one image job per requested format. Returns the jobs (rendering, already failed, or the existing job when confirmation is missing). */
+export async function startImageRender(req: ImageRenderRequest, deps: ImageServiceDeps): Promise<Partial<Record<OutputFormat, StartedImageJob>>> {
   const now = deps.now ?? Date.now;
-  const out: Partial<Record<OutputFormat, { jobId: string; record: RenderRecord }>> = {};
+  const out: Partial<Record<OutputFormat, StartedImageJob>> = {};
   const route = routeFor({ mechanism: req.concept.mechanism as never, renderer: req.concept.renderer as never });
   for (const format of OUTPUT_FORMATS.filter((f) => req.formats.includes(f))) {
-    const started = now();
     const variant = req.concept.variants.find((v) => v.aspectRatio === format)!;
+    // No silent resubmission: an unresolved / ambiguous / finished job is only replaced on explicit confirmation.
+    const previous = await deps.jobs.latestForVariant(variant.id);
+    if (previous && replacementNeedsConfirmation(previous.record) && !req.confirmNewPaidGeneration) {
+      out[format] = { jobId: previous.jobId, record: previous.record, notSubmitted: "confirmation_required" };
+      continue;
+    }
+    const started = now();
     const jobId = `img_${variant.id}_${started.toString(36)}`.slice(0, 104);
     let record = baseRecord(format, started);
     const save = async (providerJobId: string | null) => {
@@ -145,8 +170,10 @@ export async function startImageRender(req: ImageRenderRequest, deps: ImageServi
       providerGenerationId: null,
       providerPublicId: null,
       providerImageUrl: null,
-      creditsUsed: null,
-      submittedAt: new Date(started).toISOString(),
+      actualCredits: null,
+      estimatedCredits: deps.renderer.estimateCredits?.() ?? null,
+      providerStatus: "submitted",
+      submittedAt: iso(started),
     };
     record = { ...record, inputHash: brief.briefHash, image: meta, warnings: usable.length ? [FIDELITY_WARNING] : [] };
     if (route.mechanism === "product_hero" && !usable.length) {
@@ -158,7 +185,8 @@ export async function startImageRender(req: ImageRenderRequest, deps: ImageServi
       const s = await deps.renderer.submit({ brief, prompt, references, partnerJobId });
       record = {
         ...record,
-        image: { ...meta, providerRequestId: s.providerRequestId, providerGenerationId: s.providerGenerationId, providerPublicId: s.providerPublicId, creditsUsed: s.creditsUsed },
+        // The actual charge is what the provider reports for this job, never the list price.
+        image: { ...meta, providerRequestId: s.providerRequestId, providerGenerationId: s.providerGenerationId, providerPublicId: s.providerPublicId, actualCredits: s.creditsUsed },
       };
       await save(s.providerJobId);
     } catch (err) {
@@ -171,84 +199,108 @@ export async function startImageRender(req: ImageRenderRequest, deps: ImageServi
 }
 
 /** Advance the given jobs by at most one provider status read each. Terminal jobs are returned as stored. */
-export async function pollImageJobs(jobIds: string[], deps: ImageServiceDeps & { deadlineMs?: number }): Promise<Record<string, RenderRecord>> {
+export async function pollImageJobs(jobIds: string[], deps: ImageServiceDeps & { localWaitMs?: number }): Promise<Record<string, RenderRecord>> {
   const now = deps.now ?? Date.now;
-  const deadlineMs = deps.deadlineMs ?? IMAGE_DEADLINE_MS;
+  const localWaitMs = deps.localWaitMs ?? IMAGE_LOCAL_WAIT_MS;
   const out: Record<string, RenderRecord> = {};
   for (const jobId of jobIds) {
     const job = await deps.jobs.get(jobId);
     if (!job) continue;
-    out[jobId] = await advance(job, deps, now, deadlineMs);
+    out[jobId] = await advance(job, deps, now, localWaitMs);
   }
   return out;
 }
 
-async function advance(job: ImageJob, deps: ImageServiceDeps, now: () => number, deadlineMs: number): Promise<RenderRecord> {
-  if (job.record.status !== "rendering" || !job.providerJobId) return job.record;
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+async function advance(job: ImageJob, deps: ImageServiceDeps, now: () => number, localWaitMs: number): Promise<RenderRecord> {
+  // Only the provider resolves a job: anything unresolved (including legacy local "timeout" failures) is checked again.
+  if (!job.providerJobId || !isUnresolvedImageJob(job.record)) return job.record;
   const t = now();
   if (t < job.nextPollAtMs) return job.record;
+  const providerJob = job.providerJobId;
   const meta = job.record.image!;
+  const waitOver = t - job.submittedAtMs > localWaitMs;
+  const late = waitOver || job.record.status !== "rendering";
+  job.polls += 1;
+  const checked = { statusChecks: (meta.statusChecks ?? 0) + 1, lastCheckedAt: iso(t) };
   const finish = async (record: RenderRecord) => {
-    job.record = { ...record, durationMs: Math.max(0, now() - job.submittedAtMs), image: { ...record.image!, completedAt: new Date(now()).toISOString() } };
+    job.record = { ...record, durationMs: Math.max(0, now() - job.submittedAtMs), image: { ...record.image!, completedAt: iso(now()) } };
     await deps.jobs.put(job);
     return job.record;
   };
-  if (t - job.submittedAtMs > deadlineMs) {
-    const e = timeoutError({ providerJobId: job.providerJobId, providerPublicId: meta.providerPublicId, providerGenerationId: meta.providerGenerationId, providerRequestId: meta.providerRequestId, creditsUsed: meta.creditsUsed }, deadlineMs);
-    return finish({ ...job.record, status: "failed", error: { code: e.code, message: e.message } });
-  }
-  job.polls += 1;
-  let r: Awaited<ReturnType<typeof pollOnce>>;
-  try {
-    r = await pollOnce(deps.renderer, job.providerJobId);
-  } catch (err) {
-    const e = asProviderError(err);
-    // A transient status-read failure (network, 5xx, no answer) is not a failed job: keep polling until the deadline.
-    if (e.code === "provider_unavailable" || e.code === "timeout") {
-      job.record = { ...job.record, warnings: [...job.record.warnings.filter((w) => !w.startsWith("status_read_failed")), `status_read_failed: ${e.message}`] };
-      job.nextPollAtMs = t + RATE_LIMIT_WAIT_MS;
-      await deps.jobs.put(job);
-      return job.record;
-    }
-    return finish({ ...job.record, status: "failed", error: { code: e.code, message: e.message } });
-  }
-  if (r.state === "rate_limited" || r.state === "pending") {
-    job.nextPollAtMs = r.state === "rate_limited" ? t + r.waitMs : t;
+  const clearedWarnings = (keepPending: boolean) => job.record.warnings.filter((w) => !w.startsWith("status_read_failed") && (keepPending || !w.startsWith("provider_pending")));
+
+  /** Still unresolved: "rendering" inside the local wait, "provider_pending" after it. Never failed, never resubmitted. */
+  const unresolved = async (providerStatus: ImageRenderMeta["providerStatus"], note: string | null, waitMs: number) => {
+    const warnings = clearedWarnings(true);
+    if (note) warnings.push(note);
+    if (late && !warnings.some((w) => w.startsWith("provider_pending"))) warnings.push(providerPendingNote(providerJob, localWaitMs));
+    job.record = {
+      ...job.record,
+      status: late ? "provider_pending" : "rendering",
+      error: undefined,
+      warnings,
+      image: { ...meta, ...checked, providerStatus, ...(late ? { localWaitEndedAt: meta.localWaitEndedAt ?? iso(t) } : {}) },
+    };
+    job.nextPollAtMs = t + Math.max(waitMs, late ? PROVIDER_PENDING_RECHECK_MS : 0);
     await deps.jobs.put(job);
     return job.record;
-  }
-  const image = { ...meta, providerRequestId: r.providerRequestId ?? meta.providerRequestId };
-  if (r.state === "failed") return finish({ ...job.record, image, status: "failed", error: { code: "provider_failed", message: r.message } });
+  };
 
-  // Success: copy the finished image into the render store (served like every other render).
-  const withUrl = { ...image, providerModel: r.providerModel, providerImageUrl: r.imageUrl };
+  let r: Awaited<ReturnType<typeof pollOnce>>;
+  try {
+    r = await pollOnce(deps.renderer, providerJob);
+  } catch (err) {
+    // A status read that fails (network, 5xx, auth, malformed) says nothing about the job itself: it stays unresolved.
+    return unresolved(meta.providerStatus, `status_read_failed: ${asProviderError(err).message}`, RATE_LIMIT_WAIT_MS);
+  }
+  if (r.state === "rate_limited") return unresolved(meta.providerStatus, null, r.waitMs);
+  if (r.state === "pending") return unresolved("pending", null, 0);
+
+  const image: ImageRenderMeta = { ...meta, ...checked, providerRequestId: r.providerRequestId ?? meta.providerRequestId };
+  if (r.state === "failed") {
+    return finish({ ...job.record, image: { ...image, providerStatus: "failed" }, warnings: clearedWarnings(false), status: "failed", error: { code: "provider_failed", message: r.message } });
+  }
+
+  // Success: ingest the existing provider result (no new generation).
+  const warnings = clearedWarnings(false);
+  if (late) {
+    const minutes = Math.round((t - job.submittedAtMs) / 60_000);
+    warnings.push(`late_result_recovered: provider job ${providerJob} finished after the local wait (~${minutes} min after submission); its existing result was ingested — no new generation was submitted.`);
+  }
+  const done: ImageRenderMeta = { ...image, providerStatus: "success", providerModel: r.providerModel, providerImageUrl: r.imageUrl };
   try {
     const file = await deps.renderer.fetchImage(r.imageUrl);
-    const png = await sharp(file.body).png().toBuffer();
-    const meta2 = await sharp(png).metadata();
-    const relPath = `${job.batchId}/${job.variantId}-${fingerprint(job.jobId)}.png`;
-    await deps.store.putRender(relPath, png);
+    // The provider file is preserved byte-for-byte (PNG); other formats are kept losslessly as PNG.
+    const original = file.body.subarray(0, 8).equals(PNG_SIGNATURE) ? file.body : await sharp(file.body).png().toBuffer();
+    const { body, normalization } = await normalizeToFormat(original, job.record.format);
+    const stem = `${job.batchId}/${job.variantId}-${fingerprint(job.jobId)}`;
+    await deps.store.putRender(`${stem}.provider.png`, original);
+    await deps.store.putRender(`${stem}.png`, body);
     return finish({
       ...job.record,
-      image: withUrl,
+      image: { ...done, normalization: { ...normalization, providerOriginalUrl: `/api/renders/${stem}.provider.png` } },
       status: "complete",
-      width: meta2.width ?? 0,
-      height: meta2.height ?? 0,
-      bytes: png.length,
-      outputUrl: `/api/renders/${relPath}`,
-      renderedAt: new Date(now()).toISOString(),
+      width: normalization.normalizedWidth,
+      height: normalization.normalizedHeight,
+      bytes: body.length,
+      outputUrl: `/api/renders/${stem}.png`,
+      renderedAt: iso(now()),
       error: undefined,
+      warnings,
     });
   } catch (err) {
     // The provider produced the image (and charged for it); keep its URL rather than failing the render.
     const reason = err instanceof Error ? err.message : "download failed";
     return finish({
       ...job.record,
-      image: withUrl,
+      image: done,
       status: "complete",
       outputUrl: r.imageUrl,
-      renderedAt: new Date(now()).toISOString(),
-      warnings: [...job.record.warnings, `output_remote: the image could not be copied into the render store (${reason}); it is shown from the provider URL.`],
+      renderedAt: iso(now()),
+      error: undefined,
+      warnings: [...warnings, `output_remote: the image could not be copied into the render store (${reason}); it is shown from the provider URL.`],
     });
   }
 }
