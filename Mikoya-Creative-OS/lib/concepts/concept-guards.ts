@@ -16,7 +16,7 @@ import { sameClaim, significantTokens } from "@/lib/strategy/claims";
 import { coversTopic, isSensitiveHypothesis, withheldClaimLeak } from "@/lib/strategy/strategy-guards";
 import type { CreativeSafeProductProfile } from "@/lib/types";
 import type { ConceptInputs } from "./concept-inputs";
-import { copyFieldsCanvasText, copyFieldsToText, validateCopyFields } from "./copy-fields";
+import { copyFieldsCanvasText, copyFieldsToText, fieldRows, fieldText, validateCopyFields } from "./copy-fields";
 import { isComparativeClaim, unsupportedOfferWording, medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
 
 /**
@@ -154,6 +154,62 @@ function cleanLayoutNote(note: string, d: RawConceptDraft): string | null {
   return text;
 }
 
+/**
+ * COMPARISON GROUNDING (us_vs_them). Every row must resolve to an approved /
+ * safe input reference that states the compared attribute for our side;
+ * comparative wording needs the cited line to use it; the other side is a
+ * generic category or behaviour, never a named brand. Deterministic floor —
+ * the semantic truth of each row is Creative QA's job.
+ */
+const COMPARATIVE_WORD =
+  /\b(better|best|cheaper|stronger|healthier|faster|cleaner|purer|fresher|smoother|richer|tastier|safer|superior|inferior|worse|weaker|more|fewer|less|higher|lower|besser|stärker|gesünder|schneller|reiner|mehr|weniger)\b/giu;
+const GENERIC_SIDE =
+  /\b(typical|usual|regular|standard|ordinary|conventional|generic|average|other|others|most|many|old|older|previous|before|after|new|mass[- ]market|store[- ]bought|supermarket|everyday|them|they|us|ours|this|that|way)\b/i;
+const tokenStems = (s: string) => new Set([...significantTokens(s)].map((t) => (t.length > 4 ? t.replace(/(es|s)$/, "") : t)));
+
+function basisAllowed(ref: string, inputs: ConceptInputs, safeProfile: CreativeSafeProductProfile): boolean {
+  const line = inputs.byRef.get(ref);
+  if (!line) return false;
+  if (line.kind === "fact" || line.kind === "brand" || line.kind === "proof") return true;
+  if (line.kind === "claim") {
+    const claim = safeProfile.claims.find((c) => `fact:${c.id}` === ref);
+    return Boolean(claim && (claim.approved || ["product_fact", "verified_claim", "user_approved_claim"].includes(claim.claimType)));
+  }
+  // Reviewed strategy lines only: an unreviewed AI hypothesis is never a basis for a comparison.
+  if (line.kind === "strategy") return !line.text.endsWith("(AI inferred, unreviewed)");
+  return false;
+}
+
+/** Looks like a named brand: a trademark sign, or capitalised words that are neither generic nor in the inputs. */
+function namedBrand(text: string, groundText: string): boolean {
+  if (/[®™©]/.test(text)) return true;
+  if (GENERIC_SIDE.test(text)) return false;
+  const ground = groundText.toLowerCase();
+  const words = text.split(/\s+/).filter(Boolean);
+  return words.some((w, i) => (i > 0 || words.length === 1) && /^\p{Lu}/u.test(w) && !ground.includes(w.toLowerCase().replace(/[^\p{L}\p{N}'’-]/gu, "")));
+}
+
+export function comparisonIssue(fields: CopyField[], inputs: ConceptInputs, safeProfile: CreativeSafeProductProfile): string | null {
+  const left = fieldText(fields, "leftLabel");
+  if (namedBrand(left, inputs.groundText)) return `Left label "${left}" looks like a named brand; compare against a generic category or behaviour.`;
+  const rows = fieldRows(fields, "rows");
+  for (const [i, row] of rows.entries()) {
+    const refs = row.note.split(/[\s,;]+/).map((r) => r.replace(/^\[|\]$/g, "")).filter(Boolean);
+    const where = `Row ${i + 1} ("${row.label}" / "${row.text}")`;
+    if (!refs.length || !refs.every((r) => basisAllowed(r, inputs, safeProfile))) return `${where} does not resolve to an approved input reference (${row.note || "none"}).`;
+    const basis = refs.map((r) => inputs.byRef.get(r)!.text).join("\n");
+    const basisStems = tokenStems(basis);
+    if (![...tokenStems(row.text)].some((t) => basisStems.has(t))) return `${where}: our side is not stated by ${refs.join(", ")}.`;
+    if (namedBrand(row.label, inputs.groundText)) return `${where}: the other side looks like a named brand.`;
+  }
+  const lowerBasis = rows.map((r) => r.note.split(/[\s,;]+/).map((ref) => inputs.byRef.get(ref.replace(/^\[|\]$/g, ""))?.text ?? "").join("\n")).join("\n").toLowerCase();
+  const text = [left, fieldText(fields, "rightLabel"), fieldText(fields, "headline"), ...rows.flatMap((r) => [r.label, r.text])].join("\n");
+  for (const m of text.matchAll(COMPARATIVE_WORD)) {
+    if (!new RegExp(`\\b${m[0]}\\b`, "iu").test(lowerBasis)) return `Comparative wording "${m[0]}" is not stated by the cited inputs.`;
+  }
+  return null;
+}
+
 export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: string; reason: string }[], ctx: GuardContext): GuardResult {
   const { plan, inputs, safeProfile, brand } = ctx;
   const slots = new Map(plan.slots.map((s) => [s.slotId, s]));
@@ -246,6 +302,12 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
     const structure = validateCopyFields(mechanismId, d.copyFields);
     if (!structure.ok) {
       drop("invalid_copy_structure", structure.issues.slice(0, 3).join(" "));
+      continue;
+    }
+    // Comparisons: every row resolves to an approved / safe input; no named competitors, no invented superiority.
+    const comparison = mechanismId === "us_vs_them" ? comparisonIssue(structure.fields, inputs, safeProfile) : null;
+    if (comparison) {
+      drop("unsupported_claim", comparison);
       continue;
     }
 

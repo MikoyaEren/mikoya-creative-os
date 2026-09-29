@@ -1,5 +1,6 @@
 import type { AssetRole, CopyField, MechanismId } from "@/lib/types";
 import type { RenderConceptInput } from "../render-variant";
+import { COVERAGE_CASES } from "./fixtures-coverage";
 
 /**
  * TEMPLATE LAB FIXTURES — neutral, product-agnostic concept copy for
@@ -473,4 +474,5 @@ export const LAB_CASES: Partial<Record<MechanismId, LabCase[]>> = {
   warning_label: WARNING,
   checklist: CHECKLIST,
   dictionary: DICTIONARY,
+  ...COVERAGE_CASES,
 };

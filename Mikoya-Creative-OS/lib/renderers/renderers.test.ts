@@ -92,13 +92,20 @@ describe("formats", () => {
 
 describe("template registry and contracts", () => {
   it("has one proper template per implemented mechanism, and none for the rest", () => {
-    expect([...TEMPLATE_MECHANISMS].sort()).toEqual(["checklist", "dictionary", "imessage", "lock_screen", "receipt", "search_bar", "warning_label", "x_post"]);
+    expect([...TEMPLATE_MECHANISMS].sort()).toEqual([
+      "breaking_news", "checklist", "confession", "dictionary", "dm_conversation", "imessage", "lock_screen", "membership_card", "missing_poster",
+      "receipt", "relationship_status", "search_bar", "starter_pack", "things_that_make_sense", "unpopular_opinion", "us_vs_them", "warning_label", "x_post",
+    ]);
     expect(templateFor("notes_app")).toBeNull();
   });
 
   it("declares CTA policies per template (never on for native lock screens)", () => {
     const modes = Object.fromEntries(listTemplates().map((tpl) => [tpl.id, tpl.ctaMode]));
-    expect(modes).toEqual({ imessage: "optional", receipt: "optional", lock_screen: "none", x_post: "none", search_bar: "none", warning_label: "optional", checklist: "optional", dictionary: "optional" });
+    expect(modes).toEqual({
+      imessage: "optional", receipt: "optional", lock_screen: "none", x_post: "none", search_bar: "none", warning_label: "optional", checklist: "optional", dictionary: "optional",
+      confession: "optional", unpopular_opinion: "optional", things_that_make_sense: "optional", relationship_status: "optional",
+      membership_card: "optional", missing_poster: "optional", breaking_news: "optional", starter_pack: "optional", dm_conversation: "optional", us_vs_them: "optional",
+    });
     // None of these draw the concept hook as a separate headline: the native copy carries it.
     expect(listTemplates().filter((tpl) => tpl.hookMode !== "none" && !["imessage", "receipt"].includes(tpl.id)).map((tpl) => tpl.id)).toEqual([]);
   });
@@ -323,6 +330,78 @@ describe("Phase 5A templates: typed payloads and concept-chosen visuals", () => 
     expect(dict.doc).not.toContain('class="pron"');
     expect(dict.doc).not.toContain('class="example"');
     expect(dict.doc).not.toContain('class="num"');
+  });
+});
+
+describe("mechanism coverage templates: typed payloads, invalid payloads, concept-chosen assets", () => {
+  const ALL: RenderAsset[] = [
+    { hash: "a".repeat(64), role: "main", width: 2000, height: 2000, mime: "image/webp", treatment: "light_studio" },
+    { hash: "b".repeat(64), role: "lifestyle", width: 2000, height: 2000, mime: "image/webp", treatment: "photo" },
+    { hash: "c".repeat(64), role: "bundle", width: 2000, height: 2000, mime: "image/webp", treatment: "photo" },
+  ];
+  const render = async (mechanism: RenderVariantInput["concept"]["mechanism"], copyFields: CopyField[]) => {
+    let doc = "";
+    const r = await renderVariant(input({ assets: ALL, concept: { mechanism, renderer: "html", hook: "an unrelated hook line", cta: "", copyFields } }), { rasterizer: fakeRasterizer({}, (d) => (doc = d)), store: memoryStore() });
+    return { doc, record: r.record };
+  };
+  const cmpRows = (r: [string, string, string][]) => rows("rows", r);
+
+  it("maps each template's copy fields to its typed payload", () => {
+    expect(templateFor("confession")!.payload([t("kicker", "confession:"), t("confession", "I used to rush")])).toEqual({ kicker: "confession:", confession: "I used to rush", turn: "", signoff: "", visual: null });
+    expect(templateFor("unpopular_opinion")!.payload([t("opinion", "o"), t("visual", "lifestyle")])).toEqual({ opinion: "o", because: "", visual: "lifestyle" });
+    expect(templateFor("things_that_make_sense")!.payload([t("title", "T"), rows("items", [["a", "b"], ["", "c"], ["", "d"]])])).toEqual({ title: "T", items: [{ first: "a", thing: "b" }, { first: "", thing: "c" }, { first: "", thing: "d" }], visual: null });
+    expect(templateFor("relationship_status")!.payload([t("status", "Committed.")])).toEqual({ status: "Committed.", partner: "", bio: "", visual: null });
+    expect(templateFor("membership_card")!.payload([t("club", "C"), t("status", "member"), rows("perks", [["", "p"]])])).toEqual({ club: "C", status: "member", holder: "", number: "", perks: ["p"], visual: null });
+    expect(templateFor("missing_poster")!.payload([t("header", "MISSING"), t("subject", "s"), t("description", "d")])).toMatchObject({ header: "MISSING", subject: "s", reward: "", visual: null });
+    expect(templateFor("breaking_news")!.payload([t("kicker", "BREAKING"), t("headline", "h")])).toEqual({ kicker: "BREAKING", headline: "h", deck: "", visual: null });
+    expect(templateFor("starter_pack")!.payload([t("title", "T"), rows("items", [["product", "a"], ["", "b"], ["", "c"]])])).toEqual({ title: "T", items: [{ picture: "product", label: "a" }, { picture: null, label: "b" }, { picture: null, label: "c" }] });
+    expect(templateFor("dm_conversation")!.payload([rows("messages", [["them", "hi", "heart"], ["me", "hey"]]), t("name", "Lena")])).toEqual({
+      name: "Lena",
+      messages: [{ from: "them", text: "hi", reaction: "heart" }, { from: "me", text: "hey", reaction: null }],
+      attachment: null,
+    });
+    expect(templateFor("us_vs_them")!.payload([t("comparisonPattern", "old_new"), t("leftLabel", "old"), t("rightLabel", "new"), cmpRows([["a", "b", "fact:x"], ["c", "d", "fact:y"]])])).toEqual({
+      pattern: "old_new", leftLabel: "old", rightLabel: "new", rows: [{ left: "a", right: "b" }, { left: "c", right: "d" }], headline: "", visual: null,
+    });
+  });
+
+  it("rejects payloads a template cannot draw honestly (invalid_payload, nothing rendered)", async () => {
+    // A monetary reward line on a missing poster.
+    const money = await render("missing_poster", [t("header", "MISSING"), t("subject", "my mornings"), t("description", "last seen before the inbox"), t("reward", "€50 reward")]);
+    expect(money.record).toMatchObject({ status: "failed", error: { code: "invalid_payload" } });
+    // The same uploaded visual twice in one starter pack.
+    const twice = await render("starter_pack", [t("title", "the starter pack"), rows("items", [["product", "a"], ["product", "b"], ["", "c"]])]);
+    expect(twice.record.error?.code).toBe("invalid_payload");
+    // A comparison row without its basis reference fails the recipe itself.
+    const noBasis = await render("us_vs_them", [t("comparisonPattern", "table"), t("leftLabel", "typical"), t("rightLabel", "ours"), cmpRows([["a", "b", ""], ["c", "d", "fact:y"]])]);
+    expect(noBasis.record.error?.code).toBe("invalid_payload");
+    // A pattern the template does not know.
+    const pattern = await render("us_vs_them", [t("comparisonPattern", "radar"), t("leftLabel", "typical"), t("rightLabel", "ours"), cmpRows([["a", "b", "fact:x"], ["c", "d", "fact:y"]])]);
+    expect(pattern.record.error?.code).toBe("invalid_payload");
+    for (const r of [money, twice, noBasis, pattern]) expect(r.doc).toBe("");
+  });
+
+  it("draws the basis reference of a comparison row nowhere, and each pattern with its own grammar", async () => {
+    const docs = new Map<string, string>();
+    for (const pattern of ["table", "split", "us_them", "this_that", "old_new", "typical_ours"]) {
+      const r = await render("us_vs_them", [t("comparisonPattern", pattern), t("leftLabel", "typical"), t("rightLabel", "ours"), cmpRows([["left one", "right one", "fact:origin"], ["left two", "right two", "fact:grade"]])]);
+      expect(r.record.status, pattern).toBe("complete");
+      expect(r.doc, pattern).not.toContain("fact:origin");
+      expect(r.doc, pattern).toContain(`pattern-${pattern}`);
+      docs.set(pattern, r.doc.replace(/<style[\s\S]*?<\/style>/, ""));
+    }
+    expect(new Set(docs.values()).size).toBe(6);
+  });
+
+  it("uses only the visuals the concept names (starter pack items, DM attachment, poster picture)", async () => {
+    const pack = await render("starter_pack", [t("title", "the starter pack"), rows("items", [["lifestyle", "a"], ["", "b"], ["", "c"]])]);
+    expect(pack.doc).toContain(`assets/${"b".repeat(64)}`);
+    expect(pack.doc).not.toContain(`assets/${"a".repeat(64)}`);
+    const dm = await render("dm_conversation", [rows("messages", [["them", "hi"], ["me", "hey"]]), t("name", "Lena")]);
+    expect(dm.doc).not.toContain("data-slot");
+    const poster = await render("missing_poster", [t("header", "LOST"), t("subject", "my evenings"), t("description", "last seen at nine"), t("visual", "bundle")]);
+    expect(poster.doc).toContain(`assets/${"c".repeat(64)}`);
+    for (const d of [pack, dm, poster]) expect(d.doc).not.toContain("an unrelated hook line");
   });
 });
 

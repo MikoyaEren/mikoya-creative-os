@@ -58,13 +58,22 @@ export function fitAndMeasure(args: MeasureArgs): MeasureReport {
     const cs = getComputedStyle(el);
     const bottom = r.bottom - Number.parseFloat(cs.paddingBottom) - Number.parseFloat(cs.borderBottomWidth);
     const right = r.right - Number.parseFloat(cs.paddingRight) - Number.parseFloat(cs.borderRightWidth);
+    // Top / left too: bottom-anchored content (a chat thread) overflows upwards, which scroll sizes never report.
+    const top = r.top + Number.parseFloat(cs.paddingTop) + Number.parseFloat(cs.borderTopWidth);
+    const left = r.left + Number.parseFloat(cs.paddingLeft) + Number.parseFloat(cs.borderLeftWidth);
     for (const d of Array.from(el.querySelectorAll<HTMLElement>("*"))) {
       const display = getComputedStyle(d).display;
       if (display === "none" || display.startsWith("inline")) continue;
       const dr = d.getBoundingClientRect();
-      if (dr.bottom > bottom + 1 || dr.right > right + 1) return true;
+      if (dr.bottom > bottom + 1 || dr.right > right + 1 || dr.top < top - 1 || dr.left < left - 1) return true;
       // A word wider than its own box (bubble, label, card) — words are never split.
       if (d.scrollWidth > d.clientWidth + 1 && d.clientWidth > 0) return true;
+      // Clipped inside a shape of its own (sticker, tag, card) within the unit: layout boxes, as above.
+      for (let a = d.parentElement; a && a !== el; a = a.parentElement) {
+        if (getComputedStyle(a).overflow === "visible") continue;
+        const ar = a.getBoundingClientRect();
+        if (dr.bottom > ar.bottom + 1 || dr.right > ar.right + 1 || dr.top < ar.top - 1 || dr.left < ar.left - 1) return true;
+      }
     }
     return false;
   };

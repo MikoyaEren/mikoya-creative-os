@@ -97,9 +97,12 @@ export function copyFieldsToText(fields: CopyField[]): string {
  * read): one line per text or row; row parts are separate values, joined with
  * " · " so a quantity label ("1x") never reads as part of the row text.
  */
-export function copyFieldsCanvasText(fields: CopyField[]): string {
-  const row = (r: CopyRow) => PARTS.map((p) => r[p]).filter(Boolean).join(" · ");
-  return fields.flatMap((f) => (f.rows.length ? f.rows.map(row) : [f.text])).filter(Boolean).join("\n");
+export function copyFieldsCanvasText(fields: CopyField[], mechanismId?: MechanismId): string {
+  const slots = mechanismId ? getRecipeForMechanism(mechanismId).structure.copySlots : [];
+  // Internal row parts (e.g. a comparison row's input reference) are data, never drawn.
+  const drawn = (key: string, p: (typeof PARTS)[number]) => !slots.find((s) => s.key === key)?.row?.[p]?.internal;
+  const row = (key: string, r: CopyRow) => PARTS.filter((p) => drawn(key, p)).map((p) => r[p]).filter(Boolean).join(" · ");
+  return fields.flatMap((f) => (f.rows.length ? f.rows.map((r) => row(f.key, r)) : [f.text])).filter(Boolean).join("\n");
 }
 
 /** Copy field lookup helpers for template payload mappers. */
@@ -109,7 +112,9 @@ export const fieldRows = (fields: CopyField[], key: string) => fields.find((f) =
 /** The writer-facing description of a recipe's copy fields (used in the concept prompt). */
 export function describeCopySlots(slots: RecipeCopySlot[]): string {
   const part = (name: string, p?: RowPartSpec) =>
-    p ? `${name} = ${p.meaning}${p.values ? ` (${p.values.join(" | ")})` : ""} ≤${p.maxChars}${p.required ? "" : ", optional"}${p.example ? `, e.g. "${p.example}"` : ""}` : `${name} = ""`;
+    p
+      ? `${name} = ${p.meaning}${p.values ? ` (${p.values.join(" | ")})` : ""} ≤${p.maxChars}${p.required ? "" : ", optional"}${p.example ? `, e.g. "${p.example}"` : ""}${p.internal ? ", not drawn" : ""}`
+      : `${name} = ""`;
   return slots
     .map((s) =>
       s.kind === "list"

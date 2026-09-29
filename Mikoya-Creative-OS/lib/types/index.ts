@@ -66,6 +66,7 @@ export type MechanismId =
   | "relationship_status"
   | "warning_label"
   | "membership_card"
+  | "us_vs_them"
   | "calendar"
   | "review"
   | "product_hero"
@@ -201,6 +202,11 @@ export interface RowPartSpec {
   required?: boolean;
   /** A short neutral example shown to the writer. */
   example?: string;
+  /**
+   * Structural data that is never drawn (e.g. the input reference a comparison row rests on).
+   * Validated like any part, left out of the on-canvas text.
+   */
+  internal?: boolean;
 }
 
 export interface RecipeCopySlot {

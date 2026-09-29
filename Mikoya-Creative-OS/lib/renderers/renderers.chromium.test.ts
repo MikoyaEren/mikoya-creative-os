@@ -43,7 +43,11 @@ describe.skipIf(!hasChromium)(`HTML renderer in Chromium (${hasChromium ? "avail
           const { record, html } = await renderLabCase(c, format, { rasterizer, store });
           const key = `${mechanism}_${c.id}_${format.replace(":", "x")}`;
           const slots = getRecipeForMechanism(mechanism).structure.copySlots;
-          const enumerated = (key: string, part: "label" | "text" | "note") => Boolean(slots.find((sl) => sl.key === key)?.row?.[part]?.values);
+          // Enumerated row parts (speaker, state, reaction) and internal ones (a comparison row's basis reference) are not drawn as words.
+          const enumerated = (key: string, part: "label" | "text" | "note") => {
+            const spec = slots.find((sl) => sl.key === key)?.row?.[part];
+            return Boolean(spec?.values || spec?.internal);
+          };
           // Structural choices are not drawn as words: value fields (attachment, backgroundAsset, visual) and enumerated row parts (speaker, state).
           const copy = (c.concept.copyFields ?? [])
             .filter((f) => !slots.find((sl) => sl.key === f.key)?.values)

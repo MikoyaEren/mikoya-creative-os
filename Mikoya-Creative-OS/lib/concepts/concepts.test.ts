@@ -14,9 +14,11 @@ import { buildConceptUserText } from "@/lib/server/concepts/prompt";
 import { createMockBatch } from "@/lib/mock/generate-batch";
 import { allocateSlots, mechanismIneligibility } from "./allocation";
 import { buildConceptInputs } from "./concept-inputs";
-import { nearDuplicate, unsupportedNumbers, validateConcepts, type RawConceptDraft } from "./concept-guards";
+import { comparisonIssue, nearDuplicate, unsupportedNumbers, validateConcepts, type RawConceptDraft } from "./concept-guards";
+import type { ConceptInputs } from "./concept-inputs";
 import { toConcept } from "./expand-variants";
 import { demoCopyFields } from "@/lib/mock/demo-copy-fields";
+import { copyFieldsCanvasText } from "./copy-fields";
 import { medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms, unsupportedOfferWording } from "./claim-context";
 import { classifyRisk, isBlockedStatement } from "@/lib/strategy/claims";
 
@@ -47,6 +49,20 @@ const plan = allocateSlots({ snapshot, outputMix: FULL_DROP, mechanismIds: ALL_M
 const inputs = buildConceptInputs(snapshot);
 const ctx = { plan, inputs, safeProfile: snapshot.safeProfile, brand: snapshot.brandStrategy, selectedMechanisms: ALL_MECHANISM_IDS };
 
+/** Comparison rows grounded in a real input line (the demo filler cannot ground a comparison). */
+const groundedLine = inputs.refs.find((r) => r.kind === "fact" && r.ref !== "fact:name")!;
+const groundedWord = groundedLine.text.split(": ")[1].split(/[\s,.;]+/).find((w) => w.length >= 4)!;
+function copyFor(slot: ConceptSlot, phrases: string[]) {
+  if (slot.mechanismId !== "us_vs_them") return demoCopyFields(slot.mechanismId, phrases);
+  const t = (key: string, text: string) => ({ key, text, rows: [] });
+  return [
+    t("comparisonPattern", "old_new"),
+    t("leftLabel", "the old way"),
+    t("rightLabel", "the new way"),
+    { key: "rows", text: "", rows: [{ label: phrases[1] ?? "a rushed start", text: `${groundedWord}, as stated`, note: groundedLine.ref }, { label: phrases[0], text: groundedWord, note: groundedLine.ref }] },
+  ];
+}
+
 let n = 0;
 function draft(slot: ConceptSlot, over: Partial<RawConceptDraft> = {}): RawConceptDraft {
   n += 1;
@@ -59,7 +75,7 @@ function draft(slot: ConceptSlot, over: Partial<RawConceptDraft> = {}): RawConce
     addresses: slot.focus.statement,
     hook: `Unique hook ${n} ${["morning", "window", "table", "walk", "desk", "sunday", "bottle", "friend", "note", "diary", "train", "garden", "office", "kitchen", "balcony", "street", "playlist", "notebook", "sweater", "lamp"][n % 20]} ${n * 7}th`.replace(/ \d+th$/, ""),
     coreMessage: `Core message variant ${n} ${["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "theta", "kappa"][n % 8]}`,
-    copyFields: demoCopyFields(slot.mechanismId, [`quiet note ${n}`, "a slow start", "the good kind of slow"]),
+    copyFields: copyFor(slot, [`quiet note ${n}`, "a slow start", "the good kind of slow"]),
     cta: "Shop now",
     supportingProof: [],
     visualIdea: "Native UI on the brand background.",
@@ -79,10 +95,11 @@ function draft(slot: ConceptSlot, over: Partial<RawConceptDraft> = {}): RawConce
 
 /** Neutral copy fields for the slot's mechanism, with the given texts as the first written values (text or row text). */
 function withCopy(slot: ConceptSlot, ...texts: string[]): Pick<RawConceptDraft, "copyFields"> {
-  const fields = demoCopyFields(slot.mechanismId, ["a slow start", "the good kind of slow"]);
+  const fields = copyFor(slot, ["a slow start", "the good kind of slow"]);
+  const structural = new Set(getRecipeForMechanism(slot.mechanismId).structure.copySlots.filter((s) => s.values).map((s) => s.key));
   let i = 0;
   const out = fields.map((f) =>
-    f.rows.length ? { ...f, rows: f.rows.map((r) => (i < texts.length ? { ...r, text: texts[i++] } : r)) } : i < texts.length ? { ...f, text: texts[i++] } : f,
+    f.rows.length ? { ...f, rows: f.rows.map((r) => (i < texts.length ? { ...r, text: texts[i++] } : r)) } : i < texts.length && !structural.has(f.key) ? { ...f, text: texts[i++] } : f,
   );
   return { copyFields: out };
 }
@@ -451,5 +468,96 @@ describe("product-agnostic", () => {
       expect(p.slots.length).toBeGreaterThan(0);
       expect(buildConceptUserText(p, buildConceptInputs(s), GLOBAL_CREATIVE_CONSTITUTION)).not.toMatch(/mikoya|matcha|coffee/i);
     }
+  });
+});
+
+describe("us vs them: every comparison row resolves to an approved / safe input", () => {
+  const refs = [
+    { ref: "fact:origin", kind: "fact" as const, text: "Origin: single estate, stated on the pack" },
+    { ref: "fact:grade", kind: "fact" as const, text: "Grade: first harvest, printed on the front" },
+    { ref: "fact:claim_ok", kind: "claim" as const, text: "Tastes smoother than our previous blend (taste; user approved claim, approved by user)" },
+    { ref: "fact:claim_src", kind: "claim" as const, text: "Cleaner energy (energy; source claim)" },
+    { ref: "strategy:primaryAngles:0", kind: "strategy" as const, text: "Primary angle: slow mornings (AI inferred, unreviewed)" },
+    { ref: "strategy:primaryAngles:1", kind: "strategy" as const, text: "Primary angle: evenings without screens (AI inferred, accepted by user)" },
+  ];
+  const cinputs = { refs, byRef: new Map(refs.map((r) => [r.ref, r])), groundText: refs.map((r) => r.text).join("\n") } as unknown as ConceptInputs;
+  const profile = {
+    claims: [
+      { id: "claim_ok", claimType: "user_approved_claim", approved: true },
+      { id: "claim_src", claimType: "source_claim", approved: false },
+    ],
+  } as unknown as Parameters<typeof comparisonIssue>[2];
+  const t = (key: string, text: string) => ({ key, text, rows: [] });
+  const fields = (left: string, r: [string, string, string][], extra: { key: string; text: string; rows: never[] }[] = []) => [
+    t("comparisonPattern", "table"),
+    t("leftLabel", left),
+    t("rightLabel", "ours"),
+    { key: "rows", text: "", rows: r.map(([label, text, note]) => ({ label, text, note })) },
+    ...extra,
+  ];
+
+  it("keeps rows whose our side is stated by a cited fact, against a generic category", () => {
+    expect(comparisonIssue(fields("typical supermarket tin", [["origin not stated", "single estate", "fact:origin"], ["grade not stated", "first harvest", "fact:grade"]]), cinputs, profile)).toBeNull();
+    expect(comparisonIssue(fields("Typical Supermarket Tin", [["origin not stated", "single estate", "fact:origin"], ["no grade", "first harvest", "[fact:grade]"]]), cinputs, profile)).toBeNull();
+    // Behaviour comparisons may rest on a reviewed (accepted) strategy line.
+    expect(comparisonIssue(fields("the old way", [["scrolling at night", "evenings without screens", "strategy:primaryAngles:1"], ["grade unknown", "first harvest", "fact:grade"]]), cinputs, profile)).toBeNull();
+  });
+
+  it("drops rows without an approved basis, with an ungrounded side, or with a named brand", () => {
+    const cases: [string, ReturnType<typeof fields>][] = [
+      ["unknown ref", fields("typical", [["a", "single estate", "fact:nope"], ["b", "first harvest", "fact:grade"]])],
+      ["missing ref", fields("typical", [["a", "single estate", ""], ["b", "first harvest", "fact:grade"]])],
+      ["unreviewed hypothesis", fields("the old way", [["rushing", "slow mornings", "strategy:primaryAngles:0"], ["b", "first harvest", "fact:grade"]])],
+      ["unapproved source claim", fields("typical", [["dull energy", "cleaner energy", "fact:claim_src"], ["b", "first harvest", "fact:grade"]])],
+      ["our side not stated", fields("typical", [["origin unclear", "hand-picked leaves", "fact:origin"], ["b", "first harvest", "fact:grade"]])],
+      ["named brand label", fields("BrandCo", [["origin unclear", "single estate", "fact:origin"], ["b", "first harvest", "fact:grade"]])],
+      ["named brand in a row", fields("typical", [["like Acme Gold", "single estate", "fact:origin"], ["b", "first harvest", "fact:grade"]])],
+      ["trademark", fields("typical", [["Acme® blend", "single estate", "fact:origin"], ["b", "first harvest", "fact:grade"]])],
+    ];
+    for (const [name, f] of cases) expect(comparisonIssue(f, cinputs, profile), name).not.toBeNull();
+  });
+
+  it("allows comparative wording only when the cited input states it", () => {
+    const unsupported = ["better", "cheaper", "stronger", "healthier", "faster", "cleaner", "more", "fewer", "higher"].map((w) =>
+      comparisonIssue(fields("typical", [["origin unclear", `single estate, ${w}`, "fact:origin"], ["b", "first harvest", "fact:grade"]]), cinputs, profile),
+    );
+    for (const issue of unsupported) expect(issue).toMatch(/Comparative wording/);
+    expect(comparisonIssue(fields("our previous blend", [["less smooth", "smoother than our previous blend", "fact:claim_ok"], ["b", "first harvest", "fact:grade"]]), cinputs, profile)).toMatch(/"less"/);
+    expect(comparisonIssue(fields("our previous blend", [["the old taste", "smoother than our previous blend", "fact:claim_ok"], ["b", "first harvest", "fact:grade"]]), cinputs, profile)).toBeNull();
+  });
+
+  it("drops an ungrounded comparison concept in the real guard pipeline, keeps a grounded one", () => {
+    const slot = plan.slots.find((x) => x.mechanismId === "us_vs_them") ?? { ...plan.slots[0], mechanismId: "us_vs_them" as const };
+    const planWith = plan.slots.some((x) => x.mechanismId === "us_vs_them") ? plan : { ...plan, slots: [slot, ...plan.slots.slice(1)] };
+    const ctxWith = { ...ctx, plan: planWith };
+    const ungrounded = draft(slot, {
+      mechanismId: "us_vs_them",
+      copyFields: [t("comparisonPattern", "table"), t("leftLabel", "typical"), t("rightLabel", "ours"), { key: "rows", text: "", rows: [{ label: "a", text: "hand-picked at dawn", note: groundedLine.ref }, { label: "b", text: groundedWord, note: groundedLine.ref }] }],
+    });
+    const r = validateConcepts([ungrounded], [], ctxWith);
+    expect(r.dropped.map((d) => d.reason)).toEqual(["unsupported_claim"]);
+    const ok = validateConcepts([draft(slot, { mechanismId: "us_vs_them" })], [], ctxWith);
+    expect(ok.dropped).toEqual([]);
+    expect(ok.kept[0].draft.copy).toContain(groundedLine.ref);
+  });
+});
+
+describe("mechanism coverage: recipes and the concept engine", () => {
+  it("keeps every mechanism in concept generation, with or without an HTML template", () => {
+    const s = buildStrategySnapshot({ project: MIKOYA_PROJECT, product, brand });
+    const p = allocateSlots({ snapshot: s, outputMix: FULL_DROP, mechanismIds: ALL_MECHANISM_IDS, seed: "coverage" });
+    // Renderer coverage never gates generation: no mechanism is excluded for lacking an HTML template.
+    expect(p.ineligible.filter((i) => /template|render/i.test(i.reason))).toEqual([]);
+    expect(p.slots.length).toBeGreaterThan(0);
+    expect(mechanismIneligibility("us_vs_them", s)).toBeNull();
+    expect(MECHANISM_TRAITS.starter_pack.renderers[0]).toBe("html");
+  });
+
+  it("describes internal row parts to the writer and keeps them off the canvas text", () => {
+    const text = buildConceptUserText({ ...plan, slots: [{ ...plan.slots[0], mechanismId: "us_vs_them", alternatives: [] }] }, inputs, GLOBAL_CREATIVE_CONSTITUTION);
+    expect(text).toMatch(/basis reference.*not drawn/);
+    const f = [{ key: "rows", text: "", rows: [{ label: "a", text: "b", note: "fact:origin" }] }];
+    expect(copyFieldsCanvasText(f, "us_vs_them")).toBe("a · b");
+    expect(copyFieldsCanvasText(f)).toBe("a · b · fact:origin");
   });
 });
