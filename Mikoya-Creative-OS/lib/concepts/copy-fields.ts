@@ -82,6 +82,28 @@ export function validateCopyFields(mechanismId: MechanismId, fields: CopyField[]
     else byKey.set(key, f);
   }
   const out = slots.map((s) => checkSlot(s, byKey.get(s.key), issues)).filter((f): f is CopyField => f !== null);
+  const field = (key: string) => out.find((f) => f.key === key);
+  const filled = (key: string, values?: string[]) => {
+    const f = field(key);
+    if (!f?.text && !f?.rows.length) return false;
+    return !values || values.some((v) => v.toLowerCase() === f.text.toLowerCase());
+  };
+  const chars = (f: CopyField) => f.text.length + f.rows.reduce((n, r) => n + r.label.length + r.text.length + r.note.length, 0);
+  for (const slot of slots) {
+    const f = field(slot.key);
+    if (!f) continue;
+    const other = slot.pairedWith ? field(slot.pairedWith) : undefined;
+    if (other && other.rows.length !== f.rows.length) issues.push(`${slot.key}: ${f.rows.length} rows but ${slot.pairedWith} has ${other.rows.length} (rows pair 1:1).`);
+    // Capacity rules: what the template can still fit when another field is filled (e.g. an attached photo).
+    for (const rule of slot.whenFilled ?? []) {
+      if (!filled(rule.field, rule.values)) continue;
+      const when = `with ${rule.field}${rule.values ? ` = ${rule.values.join(" / ")}` : ""}`;
+      if (rule.maxRows !== undefined && f.rows.length > rule.maxRows) issues.push(`${slot.key}: ${f.rows.length} rows (max ${rule.maxRows} ${when}).`);
+      if (rule.maxChars !== undefined && chars(f) > rule.maxChars) issues.push(`${slot.key}: ${chars(f)} chars (max ${rule.maxChars} ${when}).`);
+      const long = rule.maxRowText !== undefined ? f.rows.findIndex((r) => r.text.length > rule.maxRowText!) : -1;
+      if (long >= 0) issues.push(`${slot.key}[${long + 1}]: ${f.rows[long].text.length} chars (max ${rule.maxRowText} per row ${when}).`);
+    }
+  }
   return issues.length ? { ok: false, issues } : { ok: true, fields: out };
 }
 
@@ -111,6 +133,17 @@ export const fieldRows = (fields: CopyField[], key: string) => fields.find((f) =
 
 /** The writer-facing description of a recipe's copy fields (used in the concept prompt). */
 export function describeCopySlots(slots: RecipeCopySlot[]): string {
+  const capacity = (s: RecipeCopySlot) =>
+    (s.whenFilled ?? [])
+      .map((w) => {
+        const limits = [
+          w.maxRows !== undefined ? `≤${w.maxRows} rows` : "",
+          w.maxChars !== undefined ? `≤${w.maxChars} chars${s.kind === "list" ? " in total" : ""}` : "",
+          w.maxRowText !== undefined ? `≤${w.maxRowText} chars per row text` : "",
+        ].filter(Boolean);
+        return `, when ${w.field} is ${w.values ? w.values.join(" / ") : "set"}: ${limits.join(", ")}`;
+      })
+      .join("");
   const part = (name: string, p?: RowPartSpec) =>
     p
       ? `${name} = ${p.meaning}${p.values ? ` (${p.values.join(" | ")})` : ""} ≤${p.maxChars}${p.required ? "" : ", optional"}${p.example ? `, e.g. "${p.example}"` : ""}${p.internal ? ", not drawn" : ""}`
@@ -118,8 +151,8 @@ export function describeCopySlots(slots: RecipeCopySlot[]): string {
   return slots
     .map((s) =>
       s.kind === "list"
-        ? `${s.key} (list, ${s.minRows ?? 1}–${s.maxRows ?? 12} rows${s.required ? "" : ", optional"}; ${part("label", s.row?.label)}; ${part("text", s.row?.text)}; ${part("note", s.row?.note)})`
-        : `${s.key} (text${s.values ? `: ${s.values.join(" | ")}` : ""}${s.maxChars && !s.values ? ` ≤${s.maxChars}` : ""}${s.required ? "" : ", optional"}${s.example ? `, e.g. "${s.example}"` : ""})`,
+        ? `${s.key} (list, ${s.minRows ?? 1}–${s.maxRows ?? 12} rows${s.maxChars ? `, ≤${s.maxChars} chars in total` : ""}${s.required ? "" : ", optional"}${s.pairedWith ? `, rows pair 1:1 with ${s.pairedWith}` : ""}${capacity(s)}; ${part("label", s.row?.label)}; ${part("text", s.row?.text)}; ${part("note", s.row?.note)})`
+        : `${s.key} (text${s.values ? `: ${s.values.join(" | ")}` : ""}${s.maxChars && !s.values ? ` ≤${s.maxChars}` : ""}${capacity(s)}${s.required ? "" : ", optional"}${s.example ? `, e.g. "${s.example}"` : ""})`,
     )
     .join("; ");
 }

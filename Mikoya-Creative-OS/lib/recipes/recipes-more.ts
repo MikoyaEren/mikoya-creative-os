@@ -12,6 +12,16 @@ const r = (recipe: Omit<CreativeRecipe, "status" | "version"> & Partial<Pick<Cre
   ...recipe,
 });
 
+/** One side of a comparison row (us_vs_them): its own kind, text and basis references. */
+const COMPARISON_SIDE: NonNullable<CreativeRecipe["structure"]["copySlots"][number]["row"]> = {
+  label: { meaning: "kind: fact (a factual assertion, needs its own references) or framing (subjective / rhetorical, no factual content)", values: ["fact", "framing"], maxChars: 7, required: true, internal: true },
+  text: { meaning: "this side of the row", maxChars: 32, required: true },
+  note: { meaning: "reference ids for THIS side only, space-separated (e.g. fact:origin); required for fact, empty for framing", maxChars: 60, internal: true },
+};
+
+/** Capacity: with a product visual every pattern fits three rows of up to 28 characters per side. */
+const COMPARISON_WITH_VISUAL = [{ field: "visual", maxRows: 3, maxRowText: 28 }];
+
 export const MORE_RECIPES: CreativeRecipe[] = [
   r({
     id: "dm_conversation",
@@ -20,11 +30,22 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A private social-app direct-message exchange (not a phone text thread) where the idea lands in the reply.",
     type: "static",
     renderer: "html",
-    version: 3,
+    version: 4,
     structure: {
       layout: "Generic dark-mode DM screen: header with a neutral avatar and a fictional first name, 2–6 message bubbles, optional shared photo, optional reactions, composer.",
       copySlots: [
-        { key: "messages", label: "Messages", maxChars: 300, required: true, kind: "list", minRows: 2, maxRows: 6, row: { label: { meaning: "speaker", values: ["me", "them"], maxChars: 4, required: true }, text: { meaning: "one message bubble", maxChars: 90, required: true }, note: { meaning: "optional reaction on this message", values: ["heart", "laugh", "fire", "wow"], maxChars: 5 } } },
+        {
+          key: "messages",
+          label: "Messages",
+          // Capacity: what the DM screen fits at readable sizes in 1:1 and 9:16 (reactions and CTA included).
+          maxChars: 190,
+          required: true,
+          kind: "list",
+          minRows: 2,
+          maxRows: 5,
+          whenFilled: [{ field: "attachment", maxRows: 3, maxChars: 110 }],
+          row: { label: { meaning: "speaker", values: ["me", "them"], maxChars: 4, required: true }, text: { meaning: "one message bubble", maxChars: 90, required: true }, note: { meaning: "optional reaction on this message", values: ["heart", "laugh", "fire", "wow"], maxChars: 5 } },
+        },
         { key: "name", label: "Fictional first name of the other person (never a real person or customer)", maxChars: 16, required: true, example: "Lena" },
         { key: "attachment", label: "Photo shared in the chat: product (product shot) or lifestyle (scene photo). Leave empty for none.", maxChars: 9, required: false, values: ["product", "lifestyle"] },
       ],
@@ -241,13 +262,13 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A missing / wanted poster whose subject is a feeling, habit or moment — a pattern interrupt, never a real missing person or emergency.",
     type: "experimental",
     renderer: "html",
-    version: 2,
+    version: 3,
     structure: {
       layout: "Paper poster taped to the brand wall: header word, picture area, subject, description, optional rhetorical reward line, blank tear-off strips.",
       copySlots: [
         { key: "header", label: "Header word", maxChars: 8, required: true, values: ["MISSING", "WANTED", "LOST", "FOUND"] },
         { key: "subject", label: "What is missing (a feeling, habit or moment — never a person or pet)", maxChars: 40, required: true },
-        { key: "description", label: "Description / last seen", maxChars: 150, required: true },
+        { key: "description", label: "Description / last seen", maxChars: 150, required: true, whenFilled: [{ field: "visual", values: ["lifestyle"], maxChars: 100 }] },
         { key: "reward", label: "Optional rhetorical reward line (never money, prices or a real reward)", maxChars: 50, required: false },
         { key: "visual", label: "Optional picture: product, bundle or lifestyle. Leave empty for a text-only poster.", maxChars: 9, required: false, values: ["product", "bundle", "lifestyle"] },
       ],
@@ -405,17 +426,19 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     id: "us_vs_them",
     mechanismId: "us_vs_them",
     name: "Us vs Them",
-    description: "One grounded product or behaviour difference, compared side by side so it reads in a second. Every row rests on an approved input.",
+    description:
+      "One grounded product or behaviour difference, compared side by side so it reads in a second. Each side of each row is either a grounded fact with its own input references, or subjective framing with no factual content.",
     type: "static",
     renderer: "html",
-    version: 1,
+    version: 2,
     structure: {
-      layout: "A comparison in one of six patterns the concept chooses: table, split screen, us / them, this / that, old way / new way, typical / ours. Left = the other way, right = ours.",
+      layout: "A comparison in one of six patterns the concept chooses: table, split screen, us / them, this / that, old way / new way, typical / ours. Left = the other way, right = ours. Row n of 'left' faces row n of 'right'.",
       copySlots: [
         { key: "comparisonPattern", label: "Comparison pattern", maxChars: 12, required: true, values: ["table", "split", "us_them", "this_that", "old_new", "typical_ours"] },
-        { key: "leftLabel", label: "Left label: the other way — a generic category or behaviour, never a named brand, e.g. 'the usual way', 'typical blend'", maxChars: 24, required: true },
+        { key: "leftLabel", label: "Left label: the other way — a generic category or behaviour, never a named brand, e.g. 'the usual way', 'doing it alone'", maxChars: 24, required: true },
         { key: "rightLabel", label: "Right label: ours, e.g. 'ours', 'the new way'", maxChars: 24, required: true },
-        { key: "rows", label: "Compared rows", maxChars: 420, required: true, kind: "list", minRows: 2, maxRows: 5, row: { label: { meaning: "left side of the row", maxChars: 32, required: true }, text: { meaning: "right side (ours) of the row", maxChars: 32, required: true }, note: { meaning: "basis reference: the exact reference id (e.g. fact:origin) that states the compared attribute", maxChars: 48, required: true, internal: true } } },
+        { key: "left", label: "Left side, one row per compared point (the other way)", maxChars: 300, required: true, kind: "list", minRows: 2, maxRows: 4, whenFilled: COMPARISON_WITH_VISUAL, row: COMPARISON_SIDE },
+        { key: "right", label: "Right side (ours), row n faces left row n", maxChars: 300, required: true, kind: "list", minRows: 2, maxRows: 4, pairedWith: "left", whenFilled: COMPARISON_WITH_VISUAL, row: COMPARISON_SIDE },
         { key: "headline", label: "Optional headline", maxChars: 60, required: false },
         { key: "visual", label: "Optional product visual on our side: product or bundle. Leave empty for none.", maxChars: 7, required: false, values: ["product", "bundle"] },
       ],
@@ -426,9 +449,12 @@ export const MORE_RECIPES: CreativeRecipe[] = [
       "9:16": "The chosen pattern side by side (table, us / them, typical / ours) or stacked (split, this / that, old / new), headline (if any) on top, product (if any) on our side.",
     },
     principles: [
-      "Every row states an attribute an approved input reference states for OUR side, and cites it in the row's basis reference",
-      "The other side is a generic category or behaviour ('typical supermarket blends', 'the old way') — never a named brand, never an invented fact about competitors",
-      "No 'better', 'cheaper', 'stronger', 'healthier', 'faster', 'cleaner', 'more effective', 'higher quality', 'more / fewer <x>' or similar unless an approved claim says exactly that",
+      "Classify every side of every row: 'fact' = a factual assertion (what something is, contains, where it comes from, how it is made, what is included, how it compares) — it must cite its OWN reference ids (facts, approved claims or approved proof) that state exactly that; 'framing' = subjective or rhetorical wording with no factual content ('figure it out yourself', 'a calmer start')",
+      "Never use one reference to justify both sides of a row; each factual side cites the input that states that side",
+      "Without explicit competitor or category evidence in the inputs, the other side must be framing — never facts about other products: no 'lower quality', 'unclear origin', 'mixed grades', 'more additives', 'weaker', 'cheaper', 'mass produced', 'artificial', 'generic ingredients' or similar",
+      "At least one row states a grounded fact for our side; our framing never smuggles in a product fact",
+      "No 'better', 'cheaper', 'stronger', 'healthier', 'faster', 'cleaner', 'more effective', 'higher quality', 'more / fewer <x>' or similar unless a cited approved input says exactly that",
+      "The other side is a generic category or behaviour ('doing it alone', 'the old way') — never a named brand",
       "Choose the pattern that fits the idea: table or typical / ours for product attributes, old / new or this / that for behaviours, split or us / them for a single sharp contrast",
     ],
   }),

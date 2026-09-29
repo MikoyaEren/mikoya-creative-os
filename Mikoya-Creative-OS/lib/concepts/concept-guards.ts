@@ -155,28 +155,42 @@ function cleanLayoutNote(note: string, d: RawConceptDraft): string | null {
 }
 
 /**
- * COMPARISON GROUNDING (us_vs_them). Every row must resolve to an approved /
- * safe input reference that states the compared attribute for our side;
- * comparative wording needs the cited line to use it; the other side is a
- * generic category or behaviour, never a named brand. Deterministic floor —
- * the semantic truth of each row is Creative QA's job.
+ * COMPARISON GROUNDING (us_vs_them) — per SIDE, not per row. Each side of
+ * each row is a factual assertion or subjective / rhetorical framing. A side
+ * is factual when the writer says so OR when its wording is factual
+ * (attributes such as origin, grade, ingredients, additives, quality,
+ * production, price, contents; comparatives; numbers) — framing can never
+ * smuggle a fact through. A factual side needs its OWN references: facts,
+ * approved claims or approved proof that state it (word overlap with the
+ * cited lines, comparatives only as the lines use them). The other side's
+ * facts additionally need category / competitor evidence (a cited line that
+ * speaks about others). One reference never justifies both sides of a row.
+ * Deterministic floor — the semantic truth of each side is Creative QA's job.
  */
 const COMPARATIVE_WORD =
   /\b(better|best|cheaper|stronger|healthier|faster|cleaner|purer|fresher|smoother|richer|tastier|safer|superior|inferior|worse|weaker|more|fewer|less|higher|lower|besser|stärker|gesünder|schneller|reiner|mehr|weniger)\b/giu;
+const FACTUAL_WORDING =
+  /\b(origins?|sourc(?:e|ed|es|ing)|grades?|ingredients?|additives?|preservatives?|fillers?|flavou?rings?|sugars?|sweeten\w*|chemicals?|pesticides?|quality|qualities|produc(?:ed|tion)|manufactur\w*|factory|industrial|mass[- ]?produced|artificial|synthetic|natural|organic|certifi\w*|tested|pure|purity|stale|harvest\w*|farms?|farmed|estates?|region|country|imported|made (?:in|from|with|by)|hand[- ]?(?:made|picked)|small[- ]batch|process(?:ed|ing)?|contains?|free (?:of|from)|included|includes|comes with|in the box|prices?|priced|costs?|cheap|expensive|premium|budget|guarantee[ds]?|warrant(?:y|ies)|shipping|delivery|stated|labell?ed|unclear|unknown|unlisted|hidden|generic|percent|grams?|servings?|calories?|caffeine|vitamins?|proteins?|nutrients?)\b/iu;
+const OTHER_SIDE_EVIDENCE = /\b(typical(?:ly)?|most|other|others|conventional|many|standard|regular|usual(?:ly)?|commercial|mass[- ]market|unlike|compared|than|competitors?|category|industry|market|elsewhere|alternatives?)\b/iu;
 const GENERIC_SIDE =
-  /\b(typical|usual|regular|standard|ordinary|conventional|generic|average|other|others|most|many|old|older|previous|before|after|new|mass[- ]market|store[- ]bought|supermarket|everyday|them|they|us|ours|this|that|way)\b/i;
+  /\b(typical|usual|regular|standard|ordinary|conventional|generic|average|other|others|most|many|old|older|previous|before|after|new|mass[- ]market|store[- ]bought|supermarket|everyday|them|they|us|ours|this|that|way|alone|yourself)\b/i;
 const tokenStems = (s: string) => new Set([...significantTokens(s)].map((t) => (t.length > 4 ? t.replace(/(es|s)$/, "") : t)));
+const refsIn = (note: string) => note.split(/[\s,;|]+/).map((r) => r.replace(/^\[|\]$/g, "")).filter(Boolean);
 
-function basisAllowed(ref: string, inputs: ConceptInputs, safeProfile: CreativeSafeProductProfile): boolean {
+/** Why a side's text is a factual assertion (its factual wording, comparative or number), or null for framing. */
+export function factualSignal(text: string): string | null {
+  return text.match(FACTUAL_WORDING)?.[0] ?? text.match(new RegExp(COMPARATIVE_WORD.source, "iu"))?.[0] ?? text.match(/\d+/)?.[0] ?? null;
+}
+
+/** References that may carry a factual assertion: product facts, approved / verified claims, approved proof — never strategy or brand intent. */
+function factBasis(ref: string, inputs: ConceptInputs, safeProfile: CreativeSafeProductProfile): boolean {
   const line = inputs.byRef.get(ref);
   if (!line) return false;
-  if (line.kind === "fact" || line.kind === "brand" || line.kind === "proof") return true;
+  if (line.kind === "fact" || line.kind === "proof") return true;
   if (line.kind === "claim") {
     const claim = safeProfile.claims.find((c) => `fact:${c.id}` === ref);
     return Boolean(claim && (claim.approved || ["product_fact", "verified_claim", "user_approved_claim"].includes(claim.claimType)));
   }
-  // Reviewed strategy lines only: an unreviewed AI hypothesis is never a basis for a comparison.
-  if (line.kind === "strategy") return !line.text.endsWith("(AI inferred, unreviewed)");
   return false;
 }
 
@@ -190,22 +204,46 @@ function namedBrand(text: string, groundText: string): boolean {
 }
 
 export function comparisonIssue(fields: CopyField[], inputs: ConceptInputs, safeProfile: CreativeSafeProductProfile): string | null {
-  const left = fieldText(fields, "leftLabel");
-  if (namedBrand(left, inputs.groundText)) return `Left label "${left}" looks like a named brand; compare against a generic category or behaviour.`;
-  const rows = fieldRows(fields, "rows");
-  for (const [i, row] of rows.entries()) {
-    const refs = row.note.split(/[\s,;]+/).map((r) => r.replace(/^\[|\]$/g, "")).filter(Boolean);
-    const where = `Row ${i + 1} ("${row.label}" / "${row.text}")`;
-    if (!refs.length || !refs.every((r) => basisAllowed(r, inputs, safeProfile))) return `${where} does not resolve to an approved input reference (${row.note || "none"}).`;
-    const basis = refs.map((r) => inputs.byRef.get(r)!.text).join("\n");
-    const basisStems = tokenStems(basis);
-    if (![...tokenStems(row.text)].some((t) => basisStems.has(t))) return `${where}: our side is not stated by ${refs.join(", ")}.`;
-    if (namedBrand(row.label, inputs.groundText)) return `${where}: the other side looks like a named brand.`;
+  const leftLabel = fieldText(fields, "leftLabel");
+  if (namedBrand(leftLabel, inputs.groundText)) return `Left label "${leftLabel}" looks like a named brand; compare against a generic category or behaviour.`;
+  const left = fieldRows(fields, "left");
+  const right = fieldRows(fields, "right");
+  if (!left.length || left.length !== right.length) return "Comparison sides must have the same number of rows.";
+  const cited: string[] = [];
+  let groundedOurs = 0;
+  for (let i = 0; i < left.length; i++) {
+    const refsBySide: string[][] = [];
+    for (const [side, row] of [["left", left[i]], ["right", right[i]]] as const) {
+      const where = `Row ${i + 1} ${side === "left" ? "other side" : "our side"} ("${row.text}")`;
+      if (namedBrand(row.text, inputs.groundText)) return `${where} looks like a named brand.`;
+      const signal = factualSignal(row.text);
+      const factual = row.label === "fact" || signal !== null;
+      const refs = refsIn(row.note);
+      refsBySide.push(factual ? refs : []);
+      if (!factual) continue;
+      const as = row.label === "fact" ? "is a factual assertion" : `reads as a factual assertion ("${signal}") though marked framing`;
+      if (!refs.length) return `${where} ${as} without its own input reference.`;
+      if (!refs.every((r) => factBasis(r, inputs, safeProfile))) return `${where} cites ${refs.join(", ")} — factual sides need product facts, approved claims or approved proof.`;
+      const lines = refs.map((r) => inputs.byRef.get(r)!.text);
+      const stems = tokenStems(lines.join("\n"));
+      if (![...tokenStems(row.text)].some((t) => stems.has(t))) return `${where} is not stated by ${refs.join(", ")}.`;
+      if (side === "left" && !lines.some((l) => OTHER_SIDE_EVIDENCE.test(l))) return `${where} states a fact about others, but ${refs.join(", ")} is not category / competitor evidence.`;
+      for (const m of row.text.matchAll(COMPARATIVE_WORD)) {
+        if (!lines.some((l) => new RegExp(`\\b${m[0]}\\b`, "iu").test(l))) return `${where}: comparative "${m[0]}" is not stated by ${refs.join(", ")}.`;
+      }
+      cited.push(...lines);
+      if (side === "right") groundedOurs += 1;
+    }
+    const shared = refsBySide[0].filter((r) => refsBySide[1].includes(r));
+    if (shared.length) return `Row ${i + 1}: ${shared.join(", ")} cannot justify both sides — each factual side needs its own reference.`;
   }
-  const lowerBasis = rows.map((r) => r.note.split(/[\s,;]+/).map((ref) => inputs.byRef.get(ref.replace(/^\[|\]$/g, ""))?.text ?? "").join("\n")).join("\n").toLowerCase();
-  const text = [left, fieldText(fields, "rightLabel"), fieldText(fields, "headline"), ...rows.flatMap((r) => [r.label, r.text])].join("\n");
-  for (const m of text.matchAll(COMPARATIVE_WORD)) {
-    if (!new RegExp(`\\b${m[0]}\\b`, "iu").test(lowerBasis)) return `Comparative wording "${m[0]}" is not stated by the cited inputs.`;
+  if (!groundedOurs) return "The comparison states no grounded fact for our side.";
+  // Labels and headline: comparative or factual wording only as a cited line states it.
+  const citedText = cited.join("\n");
+  for (const text of [leftLabel, fieldText(fields, "rightLabel"), fieldText(fields, "headline")]) {
+    for (const m of text.matchAll(new RegExp(`${COMPARATIVE_WORD.source}|${FACTUAL_WORDING.source}`, "giu"))) {
+      if (!new RegExp(`\\b${m[0]}\\b`, "iu").test(citedText)) return `"${text}": "${m[0]}" is not stated by the comparison's cited inputs.`;
+    }
   }
   return null;
 }

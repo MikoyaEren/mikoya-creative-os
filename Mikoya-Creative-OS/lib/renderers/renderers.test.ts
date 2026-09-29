@@ -344,7 +344,8 @@ describe("mechanism coverage templates: typed payloads, invalid payloads, concep
     const r = await renderVariant(input({ assets: ALL, concept: { mechanism, renderer: "html", hook: "an unrelated hook line", cta: "", copyFields } }), { rasterizer: fakeRasterizer({}, (d) => (doc = d)), store: memoryStore() });
     return { doc, record: r.record };
   };
-  const cmpRows = (r: [string, string, string][]) => rows("rows", r);
+  // Left side framing (no references), right side facts with their own reference.
+  const cmpRows = (r: [string, string, string][]) => [rows("left", r.map(([a]) => ["framing", a, ""])), rows("right", r.map(([, b, ref]) => ["fact", b, ref]))];
 
   it("maps each template's copy fields to its typed payload", () => {
     expect(templateFor("confession")!.payload([t("kicker", "confession:"), t("confession", "I used to rush")])).toEqual({ kicker: "confession:", confession: "I used to rush", turn: "", signoff: "", visual: null });
@@ -360,7 +361,7 @@ describe("mechanism coverage templates: typed payloads, invalid payloads, concep
       messages: [{ from: "them", text: "hi", reaction: "heart" }, { from: "me", text: "hey", reaction: null }],
       attachment: null,
     });
-    expect(templateFor("us_vs_them")!.payload([t("comparisonPattern", "old_new"), t("leftLabel", "old"), t("rightLabel", "new"), cmpRows([["a", "b", "fact:x"], ["c", "d", "fact:y"]])])).toEqual({
+    expect(templateFor("us_vs_them")!.payload([t("comparisonPattern", "old_new"), t("leftLabel", "old"), t("rightLabel", "new"), ...cmpRows([["a", "b", "fact:x"], ["c", "d", "fact:y"]])])).toEqual({
       pattern: "old_new", leftLabel: "old", rightLabel: "new", rows: [{ left: "a", right: "b" }, { left: "c", right: "d" }], headline: "", visual: null,
     });
   });
@@ -372,11 +373,11 @@ describe("mechanism coverage templates: typed payloads, invalid payloads, concep
     // The same uploaded visual twice in one starter pack.
     const twice = await render("starter_pack", [t("title", "the starter pack"), rows("items", [["product", "a"], ["product", "b"], ["", "c"]])]);
     expect(twice.record.error?.code).toBe("invalid_payload");
-    // A comparison row without its basis reference fails the recipe itself.
-    const noBasis = await render("us_vs_them", [t("comparisonPattern", "table"), t("leftLabel", "typical"), t("rightLabel", "ours"), cmpRows([["a", "b", ""], ["c", "d", "fact:y"]])]);
+    // A factual comparison side without its own basis reference is never drawn.
+    const noBasis = await render("us_vs_them", [t("comparisonPattern", "table"), t("leftLabel", "typical"), t("rightLabel", "ours"), ...cmpRows([["a", "b", ""], ["c", "d", "fact:y"]])]);
     expect(noBasis.record.error?.code).toBe("invalid_payload");
     // A pattern the template does not know.
-    const pattern = await render("us_vs_them", [t("comparisonPattern", "radar"), t("leftLabel", "typical"), t("rightLabel", "ours"), cmpRows([["a", "b", "fact:x"], ["c", "d", "fact:y"]])]);
+    const pattern = await render("us_vs_them", [t("comparisonPattern", "radar"), t("leftLabel", "typical"), t("rightLabel", "ours"), ...cmpRows([["a", "b", "fact:x"], ["c", "d", "fact:y"]])]);
     expect(pattern.record.error?.code).toBe("invalid_payload");
     for (const r of [money, twice, noBasis, pattern]) expect(r.doc).toBe("");
   });
@@ -384,7 +385,7 @@ describe("mechanism coverage templates: typed payloads, invalid payloads, concep
   it("draws the basis reference of a comparison row nowhere, and each pattern with its own grammar", async () => {
     const docs = new Map<string, string>();
     for (const pattern of ["table", "split", "us_them", "this_that", "old_new", "typical_ours"]) {
-      const r = await render("us_vs_them", [t("comparisonPattern", pattern), t("leftLabel", "typical"), t("rightLabel", "ours"), cmpRows([["left one", "right one", "fact:origin"], ["left two", "right two", "fact:grade"]])]);
+      const r = await render("us_vs_them", [t("comparisonPattern", pattern), t("leftLabel", "typical"), t("rightLabel", "ours"), ...cmpRows([["left one", "right one", "fact:origin"], ["left two", "right two", "fact:grade"]])]);
       expect(r.record.status, pattern).toBe("complete");
       expect(r.doc, pattern).not.toContain("fact:origin");
       expect(r.doc, pattern).toContain(`pattern-${pattern}`);

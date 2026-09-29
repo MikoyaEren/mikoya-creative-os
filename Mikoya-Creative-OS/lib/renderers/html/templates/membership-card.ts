@@ -72,10 +72,11 @@ ${ASSET_CSS}${CTA_CSS}
 .holder{white-space:nowrap;font:500 0.86em/1.1 var(--font-mono);letter-spacing:0.1em;text-transform:uppercase;color:color-mix(in srgb, var(--brand-on-dark) 82%, transparent)}
 .number{flex:0 0 auto;font:500 0.86em/1 var(--font-mono);letter-spacing:0.16em;color:color-mix(in srgb, var(--brand-on-dark) 70%, transparent);white-space:nowrap}
 .below{flex:0 1 auto;min-height:0;width:${cardW}px;max-width:100%;display:flex;flex-direction:${v ? "column" : "row"};align-items:${v ? "stretch" : "center"};gap:${byFormat(frame, 36, 44)}px}
-.perks{flex:1 1 auto;min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:0.42em}
+.perks{flex:${v ? "0 0 auto" : "1 1 auto"};min-width:0;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:0.42em}
 .perk{display:flex;align-items:baseline;gap:0.55em;font-weight:500;line-height:1.2;letter-spacing:-0.015em;color:var(--brand-ink)}
 .perk::before{content:"";flex:0 0 auto;width:0.5em;height:0.5em;border-radius:50%;background:var(--brand-accent);transform:translateY(-0.06em)}
-.product{flex:0 0 auto;width:${byFormat(frame, 250, 420)}px;height:${byFormat(frame, 250, 420)}px;${v ? "align-self:center;" : ""}display:flex}
+/* 9:16: the product yields space (never the lines): it shrinks from 420px when the CTA and long lines need room. */
+.product{${v ? "flex:0 1 420px;min-height:160px;width:420px;align-self:center;" : "flex:0 0 auto;width:250px;height:250px;"}display:flex}
 .cta{flex:0 0 auto}
 `;
     const body = html`<div class="stage">

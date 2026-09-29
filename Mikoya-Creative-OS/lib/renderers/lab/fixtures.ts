@@ -62,7 +62,7 @@ const IMESSAGE: LabCase[] = [
   },
   {
     id: "max_rows",
-    label: "Maximum rows (6), long but valid · Brand B · assets uploaded, no attachment in the concept → no photo",
+    label: "Maximum rows (6) near the 220-char total · Brand B · assets uploaded, no attachment in the concept → no photo",
     brand: "B",
     withAssets: true,
     cta: false,
@@ -73,9 +73,9 @@ const IMESSAGE: LabCase[] = [
       copyFields: [
         rows("messages", [
           ["them", "be honest, did you change something?"],
-          ["me", "i stopped starting the day on my phone"],
+          ["me", "i stopped opening my phone first"],
           ["them", "and that actually works for you?"],
-          ["me", "weirdly yes. first ten minutes are mine now"],
+          ["me", "weirdly yes. first minutes are mine"],
           ["them", "ok send me whatever you're using"],
           ["me", "sending it now. thank me in a week"],
         ]),

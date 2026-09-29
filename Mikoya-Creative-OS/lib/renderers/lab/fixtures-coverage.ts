@@ -220,7 +220,7 @@ const MEMBERSHIP: LabCase[] = [
   },
   {
     id: "long",
-    label: "Longest valid club (28), status, holder, number and lines · Brand B · no visual · CTA",
+    label: "Longest valid club (28), status, holder and lines · Brand B · no visual · CTA",
     brand: "B",
     withAssets: false,
     cta: true,
@@ -232,7 +232,7 @@ const MEMBERSHIP: LabCase[] = [
         t("club", "The Early Night Appreciators"),
         t("status", "lifetime lamp-dimmer"),
         t("holder", "whoever leaves at nine"),
-        t("number", "No. 22 · PM · ZZ"),
+        t("number", "No. 22 · PM"),
         rows("perks", [["", "permission to leave the party at nine"], ["", "a book that is actually getting read"], ["", "evenings that end before they blur"]]),
       ],
     },
@@ -427,7 +427,7 @@ const DM: LabCase[] = [
   },
   {
     id: "max_product",
-    label: "Six messages (max) + product shared · Brand B",
+    label: "Three messages (max with a photo) + product shared · Brand B",
     brand: "B",
     withAssets: true,
     cta: false,
@@ -438,10 +438,7 @@ const DM: LabCase[] = [
       copyFields: [
         rows("messages", [
           ["them", "ok what changed with your evenings"],
-          ["me", "the big light is off. for good"],
-          ["them", "that can't be the whole story"],
           ["me", "one lamp, one book, phone in the hall", "laugh"],
-          ["them", "annoyingly convincing"],
           ["me", "sending you the one i use"],
         ]),
         t("name", "Alexandra"),
@@ -451,7 +448,7 @@ const DM: LabCase[] = [
   },
   {
     id: "long_text",
-    label: "Four long messages (near the 300-char limit) · Brand A · no attachment",
+    label: "Four messages near the 190-char total · Brand A · no attachment",
     brand: "A",
     withAssets: false,
     cta: false,
@@ -461,10 +458,10 @@ const DM: LabCase[] = [
       cta: "",
       copyFields: [
         rows("messages", [
-          ["them", "be honest with me, what happened to the person who answered emails at 6am"],
-          ["me", "she retired. now the first ten minutes are a bowl, a window and nothing else"],
-          ["them", "i hate how good that sounds, send me whatever you're using"],
-          ["me", "already did. check your door on thursday", "heart"],
+          ["them", "be honest, what happened to the person who answered emails at 6am"],
+          ["me", "she retired. now it's a bowl, a window and nothing else"],
+          ["them", "i hate how good it sounds"],
+          ["me", "check your door on thursday", "heart"],
         ]),
         t("name", "Nora"),
       ],
@@ -480,11 +477,13 @@ const DM: LabCase[] = [
   },
 ];
 
-const cmp = (pattern: string, left: string, right: string, r: [string, string][], extra: CopyField[] = []): CopyField[] => [
+/** Comparison sides: [left text, right text]; the other side is framing, ours a fact with its own (fixture) reference. */
+const cmp = (pattern: string, left: string, right: string, r: [string, string, ("fact" | "framing")?][], extra: CopyField[] = []): CopyField[] => [
   t("comparisonPattern", pattern),
   t("leftLabel", left),
   t("rightLabel", right),
-  rows("rows", r.map(([a, b]) => [a, b, "fact:description"])),
+  rows("left", r.map(([a]) => ["framing", a, ""])),
+  rows("right", r.map(([, b, kind], i) => [kind ?? "fact", b, (kind ?? "fact") === "fact" ? `fact:lab_${i}` : ""])),
   ...extra,
 ];
 
@@ -499,7 +498,7 @@ const US_VS_THEM: LabCase[] = [
       mechanism: "us_vs_them",
       hook: "",
       cta: "",
-      copyFields: cmp("table", "a typical blend", "ours", [["origin not always stated", "origin on the label"], ["often a mix of grades", "one grade, stated"], ["preparation left to you", "a short guide in the box"]], [t("headline", "What's actually in the pouch"), t("visual", "product")]),
+      copyFields: cmp("table", "a typical blend", "ours", [["guess where it comes from", "origin on the label"], ["pick a grade and hope", "one grade, stated"], ["figure it out yourself", "a short guide in the box"]], [t("headline", "What's actually in the pouch"), t("visual", "product")]),
     },
   },
   {
@@ -508,7 +507,7 @@ const US_VS_THEM: LabCase[] = [
     brand: "B",
     withAssets: false,
     cta: false,
-    concept: { mechanism: "us_vs_them", hook: "", cta: "", copyFields: cmp("split", "the usual evening", "the new evening", [["the big light on", "one warm lamp"], ["scrolling in bed", "a real book"], ["asleep at one", "asleep by eleven"]]) },
+    concept: { mechanism: "us_vs_them", hook: "", cta: "", copyFields: cmp("split", "the usual evening", "the new evening", [["the big light on", "one warm lamp", "framing"], ["scrolling in bed", "a real book", "framing"], ["asleep at one", "dims to a warm glow"]]) },
   },
   {
     id: "split_product",
@@ -529,7 +528,7 @@ const US_VS_THEM: LabCase[] = [
     brand: "A",
     withAssets: true,
     cta: false,
-    concept: { mechanism: "us_vs_them", hook: "", cta: "", copyFields: cmp("us_them", "them", "us", [["a list of flavours", "one ingredient"], ["origin unclear", "origin stated"], ["mixed grades", "one grade"]]) },
+    concept: { mechanism: "us_vs_them", hook: "", cta: "", copyFields: cmp("us_them", "them", "us", [["read the small print", "one ingredient"], ["hope for the best", "origin stated"], ["guesswork", "one grade"]]) },
   },
   {
     id: "this_that",
@@ -546,7 +545,7 @@ const US_VS_THEM: LabCase[] = [
   },
   {
     id: "old_new_max",
-    label: "E · old way / new way · five rows (max), longest valid · Brand B · CTA",
+    label: "E · old way / new way · four rows (max), long sides · Brand B · CTA",
     brand: "B",
     withAssets: false,
     cta: true,
@@ -562,7 +561,6 @@ const US_VS_THEM: LabCase[] = [
           ["every light in the flat on", "one low, warm lamp by the bed"],
           ["a second screen on the pillow", "a paperback, a real bookmark"],
           ["messages until midnight", "the phone charging in the hall"],
-          ["asleep somewhere past one", "lights out before eleven"],
           ["waking up already behind", "up before the alarm, rested"],
         ],
         [t("headline", "Evenings, rewritten")],
@@ -579,7 +577,7 @@ const US_VS_THEM: LabCase[] = [
       mechanism: "us_vs_them",
       hook: "",
       cta: "",
-      copyFields: cmp("typical_ours", "typical supermarket tin", "our pouch", [["grade not stated", "grade on the front"], ["origin not stated", "origin on the back"], ["no preparation notes", "preparation on the pack"]], [t("visual", "product")]),
+      copyFields: cmp("typical_ours", "typical supermarket tin", "our pouch", [["you do the research", "grade on the front"], ["you ask the internet", "origin on the back"], ["you improvise", "preparation on the pack"]], [t("visual", "product")]),
     },
   },
   {
@@ -588,7 +586,7 @@ const US_VS_THEM: LabCase[] = [
     brand: "B",
     withAssets: false,
     cta: false,
-    concept: { mechanism: "us_vs_them", hook: "", cta: "", copyFields: cmp("typical_ours", "a typical night light", "our lamp", [["one fixed brightness", "dims to a glow"], ["cold white light", "warm light"]]) },
+    concept: { mechanism: "us_vs_them", hook: "", cta: "", copyFields: cmp("typical_ours", "a typical night light", "our lamp", [["whatever the ceiling gives", "dims to a glow"], ["the big light or nothing", "warm light"]]) },
   },
 ];
 

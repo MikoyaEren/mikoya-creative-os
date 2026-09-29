@@ -46,11 +46,22 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "active",
-    version: 4,
+    version: 5,
     structure: {
       layout: "iOS Messages UI, 3–6 bubbles, grey incoming and blue outgoing.",
       copySlots: [
-        { key: "messages", label: "Message thread", maxChars: 320, required: true, kind: "list", minRows: 2, maxRows: 6, row: { label: { meaning: "speaker", values: ["me", "them"], maxChars: 4, required: true }, text: { meaning: "one message bubble", maxChars: 90, required: true } } },
+        {
+          key: "messages",
+          label: "Message thread",
+          // Capacity: what the thread fits at readable sizes in 1:1 and 9:16 (CTA included); a sent photo takes the room of two bubbles.
+          maxChars: 220,
+          required: true,
+          kind: "list",
+          minRows: 2,
+          maxRows: 6,
+          whenFilled: [{ field: "attachment", maxRows: 4, maxChars: 170 }],
+          row: { label: { meaning: "speaker", values: ["me", "them"], maxChars: 4, required: true }, text: { meaning: "one message bubble", maxChars: 90, required: true } },
+        },
         { key: "contact", label: "Contact name", maxChars: 16, required: true },
         { key: "attachment", label: "Photo sent in the thread: product (product shot) or lifestyle (scene photo). Leave empty for none.", maxChars: 9, required: false, values: ["product", "lifestyle"] },
       ],
@@ -213,15 +224,15 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "beta",
-    version: 3,
+    version: 4,
     structure: {
       layout: "A premium card object on the brand background: club name, member status, holder line, decorative number; identity / benefit lines beside or below; optional product.",
       copySlots: [
         { key: "club", label: "Club name", maxChars: 28, required: true },
         { key: "status", label: "Member status / tier (identity, not a real ranking)", maxChars: 24, required: true, example: "founding member" },
         { key: "holder", label: "Optional card holder line (a role or 'you', never a real person)", maxChars: 24, required: false },
-        { key: "number", label: "Optional decorative card number, clearly not an account id (letters, dots or a short motif)", maxChars: 16, required: false, example: "No. 07 · AM" },
-        { key: "perks", label: "Identity or benefit lines", maxChars: 130, required: true, kind: "list", minRows: 1, maxRows: 3, row: { text: { meaning: "one identity or benefit line (benefits only as approved inputs state them)", maxChars: 44, required: true } } },
+        { key: "number", label: "Optional decorative card number, clearly not an account id (letters, dots or a short motif)", maxChars: 12, required: false, example: "No. 07 · AM" },
+        { key: "perks", label: "Identity or benefit lines", maxChars: 130, required: true, kind: "list", minRows: 1, maxRows: 3, whenFilled: [{ field: "visual", maxChars: 105 }], row: { text: { meaning: "one identity or benefit line (benefits only as approved inputs state them)", maxChars: 44, required: true } } },
         { key: "visual", label: "Optional product visual: product or bundle. Leave empty for none.", maxChars: 7, required: false, values: ["product", "bundle"] },
       ],
       visualRules: ["The card is a real, premium object in brand colours", "No invented exclusivity, member counts, waiting lists, prices or benefits", "No payment-card logos, chips from real networks or barcodes that look scannable"],

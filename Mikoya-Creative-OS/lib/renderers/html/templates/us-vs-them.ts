@@ -16,7 +16,7 @@ import { slotsForVisual, visualOf, visualSlots, type VisualRole } from "../visua
  *   old_new      each row a transformation: old (struck) → new
  *   typical_ours two spec cards side by side
  * Left = the other way (muted, never ridiculed: no crosses or warning
- * icons), right = ours (brand colour). Row basis references are data and
+ * icons), right = ours (brand colour). Each side's kind and basis references are data and
  * never drawn; the concept guards have already resolved them against the
  * approved inputs.
  */
@@ -145,14 +145,15 @@ function thisThat(c: Ctx) {
 .tcard .lines{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:0.25em}
 .link{align-self:center;width:1.6em;height:1.6em;border-radius:50%;background:var(--brand-accent);color:var(--brand-on-accent);display:flex;align-items:center;justify-content:center;margin:-0.35em 0;position:relative;z-index:2}
 .link svg{width:60%;height:60%}
-.product{flex:0 0 auto;${frame.vertical ? `height:${260}px;align-self:center;width:100%;` : "width:32%;align-self:stretch;"}display:flex}
+/* The product belongs to our card: beside its lines (1:1), under them (9:16) — at a fixed size, never its image's own height. */
+.tcard.r .product{${frame.vertical ? "flex:0 0 auto;height:240px;width:100%;" : "flex:0 0 26%;aspect-ratio:1 / 1;align-self:center;"}display:flex}
 `;
   const lines = (xs: string[]) => html`<div class="lines">${xs.map((x) => html`<p class="line">${x}</p>`)}</div>`;
   const body = html`${headlineEl(c)}<div class="cards" ${raw(fit("rows", "body", byFormat(frame, 42, 64), 34))}>
     <div class="tcard l" data-key="left"><p class="label">${p.leftLabel}</p>${lines(p.rows.map((r) => r.left))}</div>
     <span class="link">${DOWN}</span>
-    <div class="tcard r" data-key="right"><div class="lines"><p class="label">${p.rightLabel}</p>${p.rows.map((r) => html`<p class="line">${r.right}</p>`)}</div></div>
-  </div>${productEl(c, c.brand.lightBackground)}`;
+    <div class="tcard r"><div class="lines" data-key="right"><p class="label">${p.rightLabel}</p>${p.rows.map((r) => html`<p class="line">${r.right}</p>`)}</div>${productEl(c, false)}</div>
+  </div>`;
   return { css, body };
 }
 
@@ -239,12 +240,14 @@ export const usVsThemTemplate: HtmlTemplate<ComparisonPayload> = {
     const pattern = fieldText(fields, "comparisonPattern") as ComparisonPattern;
     const leftLabel = fieldText(fields, "leftLabel");
     const rightLabel = fieldText(fields, "rightLabel");
-    const rows = fieldRows(fields, "rows").map((r) => ({ left: r.label, right: r.text, basis: r.note }));
+    const left = fieldRows(fields, "left");
+    const right = fieldRows(fields, "right");
     if (!PATTERNS.includes(pattern)) throw new PayloadError(`Unknown comparison pattern "${pattern}".`);
-    if (!leftLabel || !rightLabel || rows.length < 2) throw new PayloadError("A comparison needs both labels and at least two rows.");
-    // Grounding is the concept guards' job; a row without a basis reference never reaches the canvas.
-    if (rows.some((r) => !r.left || !r.right || !r.basis)) throw new PayloadError("Every comparison row needs both sides and a basis reference.");
-    return { pattern, leftLabel, rightLabel, rows: rows.map(({ left, right }) => ({ left, right })), headline: fieldText(fields, "headline"), visual: visualOf(fields, ROLES) };
+    if (!leftLabel || !rightLabel || left.length < 2 || left.length !== right.length) throw new PayloadError("A comparison needs both labels and at least two rows on each side, paired 1:1.");
+    // Grounding is the concept guards' job; a side marked as fact without its own reference never reaches the canvas.
+    if ([...left, ...right].some((r) => !r.text || (r.label === "fact" && !r.note))) throw new PayloadError("Every comparison side needs its text, and every factual side its own basis reference.");
+    const rows = left.map((l, i) => ({ left: l.text, right: right[i].text }));
+    return { pattern, leftLabel, rightLabel, rows, headline: fieldText(fields, "headline"), visual: visualOf(fields, ROLES) };
   },
 
   render({ payload, frame, brand, cta, assets }) {

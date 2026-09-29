@@ -224,6 +224,22 @@ export interface RecipeCopySlot {
   values?: string[];
   minRows?: number;
   maxRows?: number;
+  /** List fields: rows pair 1:1 with the rows of this other list field (same count, same order). */
+  pairedWith?: string;
+  /**
+   * Capacity rules: tighter limits that apply when another copy field is filled — what the
+   * template can still fit at readable sizes (e.g. fewer messages when a photo is attached).
+   */
+  whenFilled?: {
+    field: string;
+    /** Only when the field holds one of these values (default: any value). */
+    values?: string[];
+    maxRows?: number;
+    /** Text fields: max characters. List fields: max characters across all row parts. */
+    maxChars?: number;
+    /** List fields: max characters of each row's text part. */
+    maxRowText?: number;
+  }[];
 }
 
 /** A structured copy row: parts as the recipe's row spec defines them ("" when unused). */

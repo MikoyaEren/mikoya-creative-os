@@ -18,7 +18,7 @@ import { comparisonIssue, nearDuplicate, unsupportedNumbers, validateConcepts, t
 import type { ConceptInputs } from "./concept-inputs";
 import { toConcept } from "./expand-variants";
 import { demoCopyFields } from "@/lib/mock/demo-copy-fields";
-import { copyFieldsCanvasText } from "./copy-fields";
+import { copyFieldsCanvasText, validateCopyFields } from "./copy-fields";
 import { medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms, unsupportedOfferWording } from "./claim-context";
 import { classifyRisk, isBlockedStatement } from "@/lib/strategy/claims";
 
@@ -55,11 +55,13 @@ const groundedWord = groundedLine.text.split(": ")[1].split(/[\s,.;]+/).find((w)
 function copyFor(slot: ConceptSlot, phrases: string[]) {
   if (slot.mechanismId !== "us_vs_them") return demoCopyFields(slot.mechanismId, phrases);
   const t = (key: string, text: string) => ({ key, text, rows: [] });
+  const side = (key: string, r: [string, string, string][]) => ({ key, text: "", rows: r.map(([label, text, note]) => ({ label, text, note })) });
   return [
     t("comparisonPattern", "old_new"),
     t("leftLabel", "the old way"),
     t("rightLabel", "the new way"),
-    { key: "rows", text: "", rows: [{ label: phrases[1] ?? "a rushed start", text: `${groundedWord}, as stated`, note: groundedLine.ref }, { label: phrases[0], text: groundedWord, note: groundedLine.ref }] },
+    side("left", [["framing", "a rushed start", ""], ["framing", "figure it out alone", ""]]),
+    side("right", [["fact", groundedWord, groundedLine.ref], ["framing", "a calmer start", ""]]),
   ];
 }
 
@@ -471,13 +473,15 @@ describe("product-agnostic", () => {
   });
 });
 
-describe("us vs them: every comparison row resolves to an approved / safe input", () => {
+describe("us vs them: every factual side of every row has its own approved / safe basis", () => {
   const refs = [
     { ref: "fact:origin", kind: "fact" as const, text: "Origin: single estate, stated on the pack" },
     { ref: "fact:grade", kind: "fact" as const, text: "Grade: first harvest, printed on the front" },
+    { ref: "fact:guide", kind: "fact" as const, text: "Includes a preparation guide in every box" },
+    { ref: "proof:0", kind: "proof" as const, text: "Supporting proof: most blends on the market mix several grades (approved category research)" },
+    { ref: "fact:both", kind: "fact" as const, text: "Unlike most blends that mix grades, ours is one first-harvest grade" },
     { ref: "fact:claim_ok", kind: "claim" as const, text: "Tastes smoother than our previous blend (taste; user approved claim, approved by user)" },
     { ref: "fact:claim_src", kind: "claim" as const, text: "Cleaner energy (energy; source claim)" },
-    { ref: "strategy:primaryAngles:0", kind: "strategy" as const, text: "Primary angle: slow mornings (AI inferred, unreviewed)" },
     { ref: "strategy:primaryAngles:1", kind: "strategy" as const, text: "Primary angle: evenings without screens (AI inferred, accepted by user)" },
   ];
   const cinputs = { refs, byRef: new Map(refs.map((r) => [r.ref, r])), groundText: refs.map((r) => r.text).join("\n") } as unknown as ConceptInputs;
@@ -487,58 +491,85 @@ describe("us vs them: every comparison row resolves to an approved / safe input"
       { id: "claim_src", claimType: "source_claim", approved: false },
     ],
   } as unknown as Parameters<typeof comparisonIssue>[2];
+  type Side = [kind: "fact" | "framing", text: string, refs?: string];
   const t = (key: string, text: string) => ({ key, text, rows: [] });
-  const fields = (left: string, r: [string, string, string][], extra: { key: string; text: string; rows: never[] }[] = []) => [
+  const side = (key: string, r: Side[]) => ({ key, text: "", rows: r.map(([label, text, note]) => ({ label, text, note: note ?? "" })) });
+  const cmp = (left: Side[], right: Side[], labels: [string, string] = ["doing it alone", "ours"], headline = "") => [
     t("comparisonPattern", "table"),
-    t("leftLabel", left),
-    t("rightLabel", "ours"),
-    { key: "rows", text: "", rows: r.map(([label, text, note]) => ({ label, text, note })) },
-    ...extra,
+    t("leftLabel", labels[0]),
+    t("rightLabel", labels[1]),
+    side("left", left),
+    side("right", right),
+    ...(headline ? [t("headline", headline)] : []),
   ];
+  const ok: Side = ["framing", "figure it out yourself"];
+  const guide: Side = ["fact", "preparation guide included", "fact:guide"];
+  const issue = (f: ReturnType<typeof cmp>) => comparisonIssue(f, cinputs, profile);
 
-  it("keeps rows whose our side is stated by a cited fact, against a generic category", () => {
-    expect(comparisonIssue(fields("typical supermarket tin", [["origin not stated", "single estate", "fact:origin"], ["grade not stated", "first harvest", "fact:grade"]]), cinputs, profile)).toBeNull();
-    expect(comparisonIssue(fields("Typical Supermarket Tin", [["origin not stated", "single estate", "fact:origin"], ["no grade", "first harvest", "[fact:grade]"]]), cinputs, profile)).toBeNull();
-    // Behaviour comparisons may rest on a reviewed (accepted) strategy line.
-    expect(comparisonIssue(fields("the old way", [["scrolling at night", "evenings without screens", "strategy:primaryAngles:1"], ["grade unknown", "first harvest", "fact:grade"]]), cinputs, profile)).toBeNull();
+  it("passes rhetorical framing on the other side against a grounded fact on ours", () => {
+    expect(issue(cmp([ok, ["framing", "hope it works out"]], [guide, ["fact", "one first-harvest grade", "fact:grade"]]))).toBeNull();
+    // Our side may mix grounded facts with pure framing.
+    expect(issue(cmp([ok, ["framing", "rushing out the door"]], [guide, ["framing", "a calmer start"]]))).toBeNull();
   });
 
-  it("drops rows without an approved basis, with an ungrounded side, or with a named brand", () => {
-    const cases: [string, ReturnType<typeof fields>][] = [
-      ["unknown ref", fields("typical", [["a", "single estate", "fact:nope"], ["b", "first harvest", "fact:grade"]])],
-      ["missing ref", fields("typical", [["a", "single estate", ""], ["b", "first harvest", "fact:grade"]])],
-      ["unreviewed hypothesis", fields("the old way", [["rushing", "slow mornings", "strategy:primaryAngles:0"], ["b", "first harvest", "fact:grade"]])],
-      ["unapproved source claim", fields("typical", [["dull energy", "cleaner energy", "fact:claim_src"], ["b", "first harvest", "fact:grade"]])],
-      ["our side not stated", fields("typical", [["origin unclear", "hand-picked leaves", "fact:origin"], ["b", "first harvest", "fact:grade"]])],
-      ["named brand label", fields("BrandCo", [["origin unclear", "single estate", "fact:origin"], ["b", "first harvest", "fact:grade"]])],
-      ["named brand in a row", fields("typical", [["like Acme Gold", "single estate", "fact:origin"], ["b", "first harvest", "fact:grade"]])],
-      ["trademark", fields("typical", [["Acme® blend", "single estate", "fact:origin"], ["b", "first harvest", "fact:grade"]])],
-    ];
-    for (const [name, f] of cases) expect(comparisonIssue(f, cinputs, profile), name).not.toBeNull();
+  it("passes two independently grounded sides (category evidence for theirs, a product fact for ours)", () => {
+    expect(issue(cmp([["fact", "most blends mix grades", "proof:0"], ok], [["fact", "one first-harvest grade", "fact:grade"], guide], ["most blends", "ours"]))).toBeNull();
   });
 
-  it("allows comparative wording only when the cited input states it", () => {
-    const unsupported = ["better", "cheaper", "stronger", "healthier", "faster", "cleaner", "more", "fewer", "higher"].map((w) =>
-      comparisonIssue(fields("typical", [["origin unclear", `single estate, ${w}`, "fact:origin"], ["b", "first harvest", "fact:grade"]]), cinputs, profile),
-    );
-    for (const issue of unsupported) expect(issue).toMatch(/Comparative wording/);
-    expect(comparisonIssue(fields("our previous blend", [["less smooth", "smoother than our previous blend", "fact:claim_ok"], ["b", "first harvest", "fact:grade"]]), cinputs, profile)).toMatch(/"less"/);
-    expect(comparisonIssue(fields("our previous blend", [["the old taste", "smoother than our previous blend", "fact:claim_ok"], ["b", "first harvest", "fact:grade"]]), cinputs, profile)).toBeNull();
+  it("drops unsupported factual claims about the other side, however they are labelled", () => {
+    const banned = ["lower quality", "unclear origin", "mixed grades", "more additives", "weaker", "cheaper", "less effective", "mass produced", "artificial", "generic ingredients", "origin not always stated", "often a mix of grades"];
+    for (const text of banned) {
+      expect(issue(cmp([["framing", text], ok], [guide, ["fact", "one first-harvest grade", "fact:grade"]])), `framing: ${text}`).toMatch(/other side.*factual assertion/);
+      expect(issue(cmp([["fact", text], ok], [guide, ["fact", "one first-harvest grade", "fact:grade"]])), `fact, no ref: ${text}`).toMatch(/without its own input reference/);
+    }
+    // A product fact is not evidence about other products, even when the words overlap.
+    expect(issue(cmp([["fact", "origin not stated", "fact:origin"], ok], [guide, ["fact", "one first-harvest grade", "fact:grade"]]))).toMatch(/not category \/ competitor evidence/);
+    // A reviewed strategy line or an unapproved source claim is never a basis for a fact.
+    expect(issue(cmp([["fact", "screens every evening", "strategy:primaryAngles:1"], ok], [guide, guide]))).toMatch(/need product facts/);
+  });
+
+  it("drops unsupported factual claims about our side", () => {
+    expect(issue(cmp([ok, ok], [["fact", "hand-picked at dawn", "fact:origin"], guide]))).toMatch(/is not stated by fact:origin/);
+    expect(issue(cmp([ok, ok], [["fact", "single estate", ""], guide]))).toMatch(/without its own input reference/);
+    // Framing on our side cannot carry a product fact.
+    expect(issue(cmp([ok, ok], [["framing", "no additives inside"], guide]))).toMatch(/our side.*marked framing/);
+    expect(issue(cmp([ok, ok], [["fact", "cleaner energy", "fact:claim_src"], guide]))).toMatch(/need product facts, approved claims or approved proof/);
+    expect(issue(cmp([ok, ok], [["framing", "a calmer start"], ["framing", "your own pace"]]))).toMatch(/no grounded fact for our side/);
+  });
+
+  it("never lets one source justify the other side", () => {
+    // Even a line that speaks about both cannot ground both sides of a row.
+    expect(issue(cmp([["fact", "most blends mix grades", "fact:both"], ok], [["fact", "one first-harvest grade", "fact:both"], guide]))).toMatch(/cannot justify both sides/);
+    // Our fact's source does not carry a claim about others.
+    expect(issue(cmp([["fact", "grade not printed", "fact:grade"], ok], [["fact", "grade printed on the front", "fact:grade"], guide]))).not.toBeNull();
+  });
+
+  it("keeps comparatives and named brands out unless the cited inputs state them", () => {
+    for (const w of ["better", "cheaper", "stronger", "healthier", "faster", "cleaner", "more", "fewer"]) {
+      expect(issue(cmp([ok, ok], [["fact", `single estate, ${w}`, "fact:origin"], guide])), w).toMatch(new RegExp(`"${w}"`));
+    }
+    expect(issue(cmp([ok, ok], [["fact", "smoother than our previous blend", "fact:claim_ok"], guide]))).toBeNull();
+    expect(issue(cmp([ok, ok], [guide, guide], ["doing it alone", "ours"], "The better way"))).toMatch(/"better"/);
+    expect(issue(cmp([ok, ok], [guide, guide], ["BrandCo", "ours"]))).toMatch(/named brand/);
+    expect(issue(cmp([["framing", "like Acme Gold"], ok], [guide, guide]))).toMatch(/named brand/);
+    expect(issue(cmp([["framing", "Acme® style"], ok], [guide, guide]))).toMatch(/named brand/);
+  });
+
+  it("requires both sides to pair row for row (recipe structure)", () => {
+    const r = validateCopyFields("us_vs_them", [t("comparisonPattern", "table"), t("leftLabel", "a"), t("rightLabel", "b"), side("left", [ok, ok, ok]), side("right", [guide, guide])]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.issues.join(" ")).toMatch(/rows pair 1:1/);
   });
 
   it("drops an ungrounded comparison concept in the real guard pipeline, keeps a grounded one", () => {
     const slot = plan.slots.find((x) => x.mechanismId === "us_vs_them") ?? { ...plan.slots[0], mechanismId: "us_vs_them" as const };
     const planWith = plan.slots.some((x) => x.mechanismId === "us_vs_them") ? plan : { ...plan, slots: [slot, ...plan.slots.slice(1)] };
     const ctxWith = { ...ctx, plan: planWith };
-    const ungrounded = draft(slot, {
-      mechanismId: "us_vs_them",
-      copyFields: [t("comparisonPattern", "table"), t("leftLabel", "typical"), t("rightLabel", "ours"), { key: "rows", text: "", rows: [{ label: "a", text: "hand-picked at dawn", note: groundedLine.ref }, { label: "b", text: groundedWord, note: groundedLine.ref }] }],
-    });
-    const r = validateConcepts([ungrounded], [], ctxWith);
-    expect(r.dropped.map((d) => d.reason)).toEqual(["unsupported_claim"]);
-    const ok = validateConcepts([draft(slot, { mechanismId: "us_vs_them" })], [], ctxWith);
-    expect(ok.dropped).toEqual([]);
-    expect(ok.kept[0].draft.copy).toContain(groundedLine.ref);
+    const them = draft(slot, { mechanismId: "us_vs_them", copyFields: [t("comparisonPattern", "table"), t("leftLabel", "a typical blend"), t("rightLabel", "ours"), side("left", [["framing", "origin not always stated"], ok]), side("right", [["fact", groundedWord, groundedLine.ref], ok])] });
+    expect(validateConcepts([them], [], ctxWith).dropped.map((d) => d.reason)).toEqual(["unsupported_claim"]);
+    const grounded = validateConcepts([draft(slot, { mechanismId: "us_vs_them" })], [], ctxWith);
+    expect(grounded.dropped).toEqual([]);
+    expect(grounded.kept[0].draft.copy).toContain(groundedLine.ref);
   });
 });
 
@@ -555,9 +586,10 @@ describe("mechanism coverage: recipes and the concept engine", () => {
 
   it("describes internal row parts to the writer and keeps them off the canvas text", () => {
     const text = buildConceptUserText({ ...plan, slots: [{ ...plan.slots[0], mechanismId: "us_vs_them", alternatives: [] }] }, inputs, GLOBAL_CREATIVE_CONSTITUTION);
-    expect(text).toMatch(/basis reference.*not drawn/);
-    const f = [{ key: "rows", text: "", rows: [{ label: "a", text: "b", note: "fact:origin" }] }];
-    expect(copyFieldsCanvasText(f, "us_vs_them")).toBe("a · b");
-    expect(copyFieldsCanvasText(f)).toBe("a · b · fact:origin");
+    expect(text).toMatch(/reference ids for THIS side only.*not drawn/);
+    expect(text).toMatch(/rows pair 1:1 with left/);
+    const f = [{ key: "right", text: "", rows: [{ label: "fact", text: "one grade", note: "fact:origin" }] }];
+    expect(copyFieldsCanvasText(f, "us_vs_them")).toBe("one grade");
+    expect(copyFieldsCanvasText(f)).toBe("fact · one grade · fact:origin");
   });
 });
