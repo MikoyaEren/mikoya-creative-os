@@ -36,7 +36,7 @@ const ROLES: VisualRole[] = ["product", "lifestyle", "bundle"];
 export const xPostTemplate: HtmlTemplate<XPostPayload> = {
   id: "x_post",
   mechanismId: "x_post",
-  version: 1,
+  version: 2,
   name: "Social post",
   ctaMode: "none",
   hookMode: "none",
@@ -59,20 +59,22 @@ export const xPostTemplate: HtmlTemplate<XPostPayload> = {
     const css = `
 ${ASSET_CSS}
 #canvas{background:radial-gradient(110% 80% at 50% 38%, color-mix(in srgb, var(--brand-bg) 80%, #ffffff) 0%, var(--brand-bg) 55%, color-mix(in srgb, var(--brand-bg) 86%, var(--brand-dark)) 100%)}
-.stage{position:absolute;left:${frame.inner.x}px;top:${frame.inner.y}px;width:${frame.inner.width}px;height:${frame.inner.height}px;display:flex;align-items:center;justify-content:center}
-.card{width:100%;max-height:100%;display:flex;flex-direction:column;background:#fff;color:#0f1419;border-radius:${byFormat(frame, 40, 48)}px;padding:${byFormat(frame, "44px 48px 34px", "58px 60px 44px")};box-shadow:0 2px 0 rgba(0,0,0,0.03),0 40px 90px -40px rgba(0,0,0,0.35),0 14px 30px -20px rgba(0,0,0,0.18)}
+.stage{position:absolute;left:${frame.inner.x}px;top:${frame.inner.y}px;width:${frame.inner.width}px;height:${frame.inner.height}px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+/* 9:16: sit the card on the optical centre (slightly above the middle) rather than the geometric one. */
+.f-vertical .stage{padding-bottom:${frame.vertical ? 120 : 0}px}
+.card{width:100%;max-height:100%;display:flex;flex-direction:column;background:#fff;color:#0f1419;border-radius:${byFormat(frame, 40, 56)}px;padding:${byFormat(frame, "44px 48px 34px", "68px 68px 52px")};box-shadow:0 2px 0 rgba(0,0,0,0.03),0 40px 90px -40px rgba(0,0,0,0.35),0 14px 30px -20px rgba(0,0,0,0.18)}
 .who{flex:0 0 auto;display:flex;align-items:center;gap:${byFormat(frame, 20, 24)}px}
-.avatar{flex:0 0 auto;width:${byFormat(frame, 84, 100)}px;height:${byFormat(frame, 84, 100)}px;border-radius:50%;background:var(--brand-dark);color:var(--brand-on-dark);display:flex;align-items:center;justify-content:center;font:600 ${byFormat(frame, 38, 44)}px/1 var(--font-ui)}
+.avatar{flex:0 0 auto;width:${byFormat(frame, 84, 116)}px;height:${byFormat(frame, 84, 116)}px;border-radius:50%;background:var(--brand-dark);color:var(--brand-on-dark);display:flex;align-items:center;justify-content:center;font:600 ${byFormat(frame, 38, 50)}px/1 var(--font-ui)}
 .ident{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px;line-height:1.15}
-.name{font:700 ${byFormat(frame, 32, 36)}px/1.15 var(--font-ui);letter-spacing:-0.01em;white-space:nowrap;overflow:hidden}
-.meta{font:400 ${byFormat(frame, 28, 32)}px/1.15 var(--font-ui);color:#536471;white-space:nowrap;overflow:hidden}
+.name{font:700 ${byFormat(frame, 32, 40)}px/1.15 var(--font-ui);letter-spacing:-0.01em;white-space:nowrap;overflow:hidden}
+.meta{font:400 ${byFormat(frame, 28, 34)}px/1.15 var(--font-ui);color:#536471;white-space:nowrap;overflow:hidden}
 .more{color:#536471;align-self:flex-start}
 .body{flex:1 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:0.6em;margin-top:${byFormat(frame, 26, 34)}px}
 .post{font-weight:400;line-height:1.3;letter-spacing:-0.012em;white-space:pre-line}
 .media{flex:0 0 auto;width:100%;aspect-ratio:${byFormat(frame, "16 / 8", "4 / 3")};border-radius:28px;overflow:hidden;border:1px solid #e3e6e8;background:#f4f3f0;display:flex}
 .media.contain{padding:5%}
 .actions{flex:0 0 auto;display:flex;justify-content:space-between;margin-top:${byFormat(frame, 26, 34)}px;padding:0 6%;color:#536471}
-.act svg{width:${byFormat(frame, 38, 44)}px;height:${byFormat(frame, 38, 44)}px;display:block}
+.act svg{width:${byFormat(frame, 38, 50)}px;height:${byFormat(frame, 38, 50)}px;display:block}
 `;
     const body = html`<div class="stage"><div class="card" data-key="post">
   <div class="who">
@@ -80,7 +82,7 @@ ${ASSET_CSS}
     <div class="ident"><span class="name" data-line="name">${payload.name}</span><span class="meta" data-line="handle">${payload.handle} · 2h</span></div>
     <span class="more">${MORE}</span>
   </div>
-  <div class="body" data-fit="post" data-role="body" data-max="${byFormat(frame, media ? 44 : 64, media ? 56 : 88)}" data-min="34">
+  <div class="body" data-fit="post" data-role="body" data-max="${byFormat(frame, media ? 44 : 64, media ? 60 : 100)}" data-min="34">
     <p class="post">${payload.post}</p>
     ${media ? html`<div class="media ${media.fit}">${assetImg(media, brand, "", true)}</div>` : null}
   </div>

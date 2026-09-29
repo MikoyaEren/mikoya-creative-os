@@ -283,11 +283,11 @@ const SEARCH: LabCase[] = [
   },
   {
     id: "product",
-    label: "Direct intent · Brand A · product visual · CTA",
+    label: "Direct intent · Brand A · product visual",
     brand: "A",
     withAssets: true,
-    cta: true,
-    concept: { mechanism: "search_bar", hook: "", cta: "See the one people mean", copyFields: [t("query", "a calm morning ritual"), rows("suggestions", [["", "a calm morning ritual that takes 5 minutes"], ["", "a calm morning ritual without my phone"]]), t("visual", "product")] },
+    cta: false,
+    concept: { mechanism: "search_bar", hook: "", cta: "", copyFields: [t("query", "a calm morning ritual"), rows("suggestions", [["", "a calm morning ritual that takes 5 minutes"], ["", "a calm morning ritual without my phone"]]), t("visual", "product")] },
   },
   {
     id: "long_bundle",

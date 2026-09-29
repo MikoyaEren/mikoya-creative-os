@@ -98,7 +98,7 @@ describe("template registry and contracts", () => {
 
   it("declares CTA policies per template (never on for native lock screens)", () => {
     const modes = Object.fromEntries(listTemplates().map((tpl) => [tpl.id, tpl.ctaMode]));
-    expect(modes).toEqual({ imessage: "optional", receipt: "optional", lock_screen: "none", x_post: "none", search_bar: "optional", warning_label: "optional", checklist: "optional", dictionary: "optional" });
+    expect(modes).toEqual({ imessage: "optional", receipt: "optional", lock_screen: "none", x_post: "none", search_bar: "none", warning_label: "optional", checklist: "optional", dictionary: "optional" });
     // None of these draw the concept hook as a separate headline: the native copy carries it.
     expect(listTemplates().filter((tpl) => tpl.hookMode !== "none" && !["imessage", "receipt"].includes(tpl.id)).map((tpl) => tpl.id)).toEqual([]);
   });
@@ -315,7 +315,7 @@ describe("Phase 5A templates: typed payloads and concept-chosen visuals", () => 
     expect(withLifestyle.doc).not.toContain(`assets/${"a".repeat(64)}`);
     const searchBundle = await render("search_bar", [t("query", "a calm evening"), rows("suggestions", [["", "a calm evening routine"], ["", "a calm evening at home"]]), t("visual", "bundle")], "Try it");
     expect(searchBundle.doc).toMatch(new RegExp(`assets/${"c".repeat(64)}[^>]*object-fit:contain`));
-    expect(searchBundle.record.cta).toBe(true);
+    expect(searchBundle.record.cta).toBe(false);
     const tweetCta = await render("x_post", post, "Try it");
     expect(tweetCta.record.cta).toBe(false);
     for (const d of [withLifestyle, searchBundle, tweetCta]) expect(d.doc).not.toContain("an unrelated hook line");

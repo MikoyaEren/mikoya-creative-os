@@ -2,7 +2,7 @@ import { fieldRows, fieldText } from "@/lib/concepts/copy-fields";
 import { PayloadError, type HtmlTemplate } from "../../types";
 import { html, raw, type SafeHtml } from "../escape";
 import { byFormat } from "../format-adapter";
-import { ASSET_CSS, CTA_CSS, assetImg, ctaPill } from "../primitives";
+import { ASSET_CSS, assetImg } from "../primitives";
 import { slotsForVisual, visualOf, visualSlots, type VisualRole } from "../visual";
 
 /**
@@ -33,9 +33,10 @@ function suggestion(text: string, query: string): SafeHtml {
 export const searchBarTemplate: HtmlTemplate<SearchPayload> = {
   id: "search_bar",
   mechanismId: "search_bar",
-  version: 1,
+  version: 2,
   name: "Search",
-  ctaMode: "optional",
+  // No CTA: query → suggestions → optional product visual reads as native search, not an ad unit.
+  ctaMode: "none",
   hookMode: "none",
   brandInfluence: "framed",
   assetSlots: visualSlots("visual", ROLES),
@@ -50,10 +51,10 @@ export const searchBarTemplate: HtmlTemplate<SearchPayload> = {
     return { query, suggestions, visual: visualOf(fields, ROLES) };
   },
 
-  render({ payload, frame, brand, cta, assets }) {
+  render({ payload, frame, brand, assets }) {
     const product = payload.visual ? assets.visual : null;
     const css = `
-${ASSET_CSS}${CTA_CSS}
+${ASSET_CSS}
 #canvas{background:linear-gradient(180deg, color-mix(in srgb, var(--brand-bg) 78%, #ffffff) 0%, var(--brand-bg) 60%)}
 .stage{position:absolute;left:${frame.inner.x}px;top:${frame.inner.y}px;width:${frame.inner.width}px;height:${frame.inner.height}px;display:flex;flex-direction:column;gap:${byFormat(frame, 34, 48)}px;justify-content:${product ? "flex-start" : "center"}}
 .box{flex:0 1 auto;min-height:0;display:flex;flex-direction:column;background:#fff;color:#1f1f1f;border-radius:${byFormat(frame, 44, 52)}px;box-shadow:0 30px 70px -34px rgba(0,0,0,0.35),0 8px 22px -14px rgba(0,0,0,0.18);overflow:hidden}
@@ -71,14 +72,13 @@ ${ASSET_CSS}${CTA_CSS}
 .row b{font-weight:650}
 .lower{flex:${product ? "1 1 0" : "0 0 auto"};min-height:${product ? byFormat(frame, 200, 300) : 0}px;display:flex;flex-direction:column;align-items:stretch}
 .product{flex:1 1 0;min-height:0;display:flex;justify-content:center}
-.cta{flex:0 0 auto;align-self:center}
 `;
     const rows = payload.suggestions.map((s) => html`<div class="row"><span class="lens">${LENS}</span><span class="text">${suggestion(s, payload.query)}</span></div>`);
     const box = html`<div class="box" data-key="search">
       <div class="field" data-fit="query" data-role="body" data-max="${byFormat(frame, 66, 88)}" data-min="40"><span class="lens">${LENS}</span><span class="query">${payload.query}<span class="caret"></span></span></div>
       <div class="list" data-fit="suggestions" data-role="body" data-max="${byFormat(frame, 40, 50)}" data-min="34">${rows}</div>
     </div>`;
-    const body = html`<div class="stage">${box}<div class="lower">${product ? html`<div class="product" data-key="product">${assetImg(product, brand)}</div>` : null}</div>${cta ? ctaPill(cta) : null}</div>`;
+    const body = html`<div class="stage">${box}<div class="lower">${product ? html`<div class="product" data-key="product">${assetImg(product, brand)}</div>` : null}</div></div>`;
     return { css, body };
   },
 };

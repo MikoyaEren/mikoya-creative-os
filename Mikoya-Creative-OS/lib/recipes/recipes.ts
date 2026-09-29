@@ -128,7 +128,7 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "active",
-    version: 3,
+    version: 4,
     structure: {
       layout: "Generic search field with the query (visually dominant), a suggestion dropdown, optional product visual.",
       copySlots: [
@@ -146,6 +146,7 @@ export const RECIPES: CreativeRecipe[] = [
       "The query is the real need or curiosity, phrased how people actually search (direct intent, problem-led, discovery)",
       "Suggestions escalate the tension or narrow toward the answer; they state no product facts the inputs don't support",
       "The query stays visually dominant",
+      "No implied social proof in queries or suggestions ('the one everyone uses', 'most popular', 'the one people mean') unless an approved input states it",
     ],
   },
   {

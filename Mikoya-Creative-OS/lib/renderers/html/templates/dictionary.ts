@@ -25,7 +25,7 @@ const ROLES: VisualRole[] = ["product", "bundle"];
 export const dictionaryTemplate: HtmlTemplate<DictionaryPayload> = {
   id: "dictionary",
   mechanismId: "dictionary",
-  version: 1,
+  version: 2,
   name: "Dictionary entry",
   ctaMode: "optional",
   hookMode: "none",
@@ -43,12 +43,14 @@ export const dictionaryTemplate: HtmlTemplate<DictionaryPayload> = {
   },
 
   render({ payload, frame, brand, cta, assets }) {
-    const product = payload.visual ? assets.visual : null;
+    // Typography wins: a dense entry keeps the whole page and the product is left out (same rule in both formats).
+    const entryChars = payload.pronunciation.length + payload.example.length + payload.definitions.reduce((n, d) => n + d.pos.length + d.text.length, 0);
+    const product = payload.visual && entryChars <= 170 ? assets.visual : null;
     const numbered = payload.definitions.length > 1;
     const css = `
 ${ASSET_CSS}${CTA_CSS}
 #canvas{background:var(--brand-bg)}
-.stage{position:absolute;left:${frame.inner.x}px;top:${frame.inner.y}px;width:${frame.inner.width}px;height:${frame.inner.height}px;display:flex;flex-direction:column;justify-content:center;padding:0 ${byFormat(frame, 18, 12)}px}
+.stage{position:absolute;left:${frame.inner.x}px;top:${frame.inner.y}px;width:${frame.inner.width}px;height:${frame.inner.height}px;display:flex;flex-direction:column;justify-content:${product ? "flex-start" : "center"};padding:0 ${byFormat(frame, 18, 12)}px}
 .word-box{flex:0 0 auto;max-height:${byFormat(frame, 330, 520)}px;overflow:hidden}
 .word{font:400 1em/0.95 var(--font-display);letter-spacing:-0.025em;color:var(--brand-ink)}
 .entry{flex:0 1 auto;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:0.7em;margin-top:${byFormat(frame, 20, 34)}px;padding-top:${byFormat(frame, 22, 34)}px;border-top:2px solid color-mix(in srgb, var(--brand-ink) 30%, transparent)}
@@ -58,8 +60,9 @@ ${ASSET_CSS}${CTA_CSS}
 .def p{min-width:0}
 .pos{font:italic 400 1.08em/1 var(--font-display);margin-right:0.35em;color:color-mix(in srgb, var(--brand-ink) 80%, var(--brand-bg))}
 .example{font:italic 400 1.12em/1.28 var(--font-display);color:color-mix(in srgb, var(--brand-ink) 82%, var(--brand-bg));padding-left:0.7em;border-left:3px solid var(--brand-accent)}
-.foot{flex:0 0 auto;display:flex;align-items:flex-end;justify-content:space-between;gap:28px;margin-top:${byFormat(frame, 22, 44)}px;min-height:0}
-.product{flex:0 0 auto;width:${byFormat(frame, 220, 300)}px;height:${byFormat(frame, 220, 300)}px;display:flex;margin-left:auto}
+/* The foot only takes the space the typography leaves (basis 0): the entry never shrinks for the product. */
+.foot{flex:${product ? "1 1 0" : "0 0 auto"};display:flex;align-items:flex-end;justify-content:space-between;gap:28px;margin-top:${byFormat(frame, 22, 44)}px;min-height:0}
+.product{flex:0 0 auto;width:${byFormat(frame, 360, 560)}px;height:100%;max-height:${byFormat(frame, 360, 560)}px;min-height:0;display:flex;margin-left:auto}
 .cta{flex:0 0 auto}
 `;
     const defs = payload.definitions.map(

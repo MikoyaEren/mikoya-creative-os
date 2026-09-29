@@ -26,7 +26,7 @@ const ROLES: VisualRole[] = ["product", "bundle", "lifestyle"];
 export const checklistTemplate: HtmlTemplate<ChecklistPayload> = {
   id: "checklist",
   mechanismId: "checklist",
-  version: 1,
+  version: 2,
   name: "Checklist",
   ctaMode: "optional",
   hookMode: "none",
@@ -50,8 +50,8 @@ export const checklistTemplate: HtmlTemplate<ChecklistPayload> = {
     const css = `
 ${ASSET_CSS}${CTA_CSS}
 #canvas{background:var(--brand-bg);background-image:radial-gradient(120% 90% at 20% 10%, color-mix(in srgb, var(--brand-bg) 70%, #ffffff) 0%, transparent 60%)}
-.stage{position:absolute;left:${frame.inner.x}px;top:${frame.inner.y}px;width:${frame.inner.width}px;height:${frame.inner.height}px;display:flex;flex-direction:${side ? "row" : "column"};gap:${byFormat(frame, 34, 44)}px;justify-content:center}
-.sheet{flex:0 1 auto;min-height:0;${side ? "flex:1 1 0;min-width:0;" : ""}display:flex;flex-direction:column;justify-content:center}
+.stage{position:absolute;left:${frame.inner.x}px;top:${frame.inner.y}px;width:${frame.inner.width}px;height:${frame.inner.height}px;display:flex;flex-direction:${side ? "row" : "column"};gap:${byFormat(frame, 40, 44)}px;justify-content:center;${side ? "align-items:center;" : ""}}
+.sheet{flex:0 1 auto;min-height:0;${side ? "flex:0 0 58%;min-width:0;max-height:100%;" : ""}display:flex;flex-direction:column;justify-content:center}
 .title-box{flex:0 0 auto;max-height:${byFormat(frame, 240, 380)}px;overflow:hidden;margin-bottom:${byFormat(frame, 18, 30)}px}
 .title{font:400 1em/1.0 var(--font-display);letter-spacing:-0.015em;color:var(--brand-ink);text-wrap:balance}
 .list{flex:0 1 auto;min-height:0;overflow:hidden;border-top:2px solid color-mix(in srgb, var(--brand-ink) 22%, transparent)}
@@ -60,7 +60,8 @@ ${ASSET_CSS}${CTA_CSS}
 .mark svg{width:100%;height:100%;display:block}
 .item p{font-weight:500;line-height:1.18;letter-spacing:-0.015em;color:var(--brand-ink);min-width:0}
 .item.todo p{color:color-mix(in srgb, var(--brand-ink) 78%, var(--brand-bg))}
-.visual{${side ? "flex:0 0 36%;" : "flex:1 1 0;"}min-height:${visual && v ? 280 : 0}px;display:flex;justify-content:center;${visual && visual.fit === "cover" ? "border-radius:32px;overflow:hidden;" : ""}}
+/* 1:1: a 4:5 block beside the list (not a thin strip), so the photo keeps its subjects. */
+.visual{${side ? "flex:1 1 0;min-width:0;aspect-ratio:4 / 5;max-height:100%;" : "flex:1 1 0;"}min-height:${visual && v ? 280 : 0}px;display:flex;justify-content:center;${visual && visual.fit === "cover" ? "border-radius:32px;overflow:hidden;" : ""}}
 .cta{flex:0 0 auto;align-self:${side ? "flex-start" : "center"};margin-top:${byFormat(frame, 22, 0)}px}
 `;
     const items = payload.items.map((i) => html`<div class="item ${i.done ? "done" : "todo"}"><span class="mark">${i.done ? TICK : OPEN}</span><p>${i.text}</p></div>`);

@@ -13,7 +13,7 @@ import { html, type SafeHtml } from "./escape";
  * cover (photo). A packshot on a light studio background blends into light
  * canvases with "darken": wherever the studio backdrop is lighter than the
  * canvas it disappears, while the (darker) product stays untouched. On dark
- * canvases it sits on a paper surface instead.
+ * canvases it is shown as a framed print with its own backdrop.
  */
 export function assetImg(asset: PlacedAsset, brand: BrandTokens, className = "", onSurface = false, canvasLight = brand.lightBackground): SafeHtml {
   // `canvasLight`: is the surface the asset actually sits on light? (Some templates place it on brand dark.)
@@ -21,12 +21,11 @@ export function assetImg(asset: PlacedAsset, brand: BrandTokens, className = "",
   // Blending needs an un-isolated backdrop: templates must not put transforms/filters on a blended asset's ancestors.
   const shadow = asset.treatment === "cutout" ? "cutout-shadow" : "";
   const img = html`<img data-slot="${asset.slot}" class="asset ${className} ${blend ? "blend" : ""} ${shadow}" src="${asset.url}" alt="" style="object-fit:${asset.fit};object-position:${asset.position}" />`;
-  if (asset.fit === "contain" && asset.treatment === "light_studio" && !canvasLight && !onSurface) {
-    return html`<div class="asset-surface ${className}">${img}</div>`;
-  }
-  // A contained PHOTO (e.g. a bundle shot with its own backdrop) is framed deliberately — a rounded
-  // print at its natural aspect ratio — instead of showing as a raw rectangle on the canvas.
-  if (asset.fit === "contain" && asset.treatment === "photo" && !onSurface) {
+  // A contained PHOTO (e.g. a bundle shot with its own backdrop), or a light studio packshot on a dark
+  // canvas, is framed deliberately — a rounded print at its natural aspect ratio — instead of showing
+  // as a raw rectangle or a padded card.
+  const framed = asset.fit === "contain" && !onSurface && (asset.treatment === "photo" || (asset.treatment === "light_studio" && !canvasLight));
+  if (framed) {
     return html`<div class="asset-frame ${className}"><img data-slot="${asset.slot}" class="asset framed" src="${asset.url}" alt="" style="object-fit:contain;object-position:50% 50%" /></div>`;
   }
   return img;
