@@ -2,12 +2,13 @@
 
 import { useState, type ReactNode } from "react";
 import { Check, CircleDashed, X } from "lucide-react";
-import type { Fact, ReviewStatus, SourcedStatement, StrategySnapshot } from "@/lib/types";
+import type { CreativeSafeProductProfile, Fact, ReviewStatus, SafeFact, SourcedStatement, StrategySnapshot } from "@/lib/types";
 import { formatPrice } from "@/lib/strategy/product-truth-pack";
+import { REVIEW_FIELD_LABELS } from "@/lib/strategy/claims";
 import { HYPOTHESIS_CATEGORY_LABELS, MIN_HYPOTHESIS_CONFIDENCE, isUsable } from "@/lib/strategy/strategy-hypotheses";
 import { cn } from "@/lib/utils";
 import { Segmented } from "@/components/ui/segmented";
-import { SourceBadge, SourceLegend } from "./source-badge";
+import { AcceptedMark, SourceBadge, SourceLegend } from "./source-badge";
 
 type Tab = "facts" | "brand" | "inferences" | "direction";
 
@@ -67,7 +68,7 @@ function Facts({ items }: { items: (Fact<string> | null | undefined)[] }) {
   );
 }
 
-/** Product Truth Pack view with provenance, source refs, evidence and missing fields. */
+/** Raw Product Truth Pack view with provenance, source refs, evidence and missing fields (audit only). */
 export function ProductFactsView({ truthPack: p }: { truthPack: StrategySnapshot["truthPack"] }) {
   const price = formatPrice(p);
   return (
@@ -77,12 +78,14 @@ export function ProductFactsView({ truthPack: p }: { truthPack: StrategySnapshot
         <Facts items={[p.category, price && p.price ? { value: price, source: p.price.source, sourceRef: p.price.sourceRef, evidence: p.price.evidence } : null]} />
       </Block>
       <Block label="Description" className="md:col-span-2"><Facts items={[p.description]} /></Block>
+      <Block label="Size & origin"><Facts items={[p.productSize, p.origin]} /></Block>
+      <Block label="Availability & shipping"><Facts items={[p.availability, ...p.shipping]} /></Block>
       <Block label="Offer"><Facts items={p.offers} /></Block>
       <Block label="Guarantees"><Facts items={p.guarantees} /></Block>
       <Block label="Benefits (as stated by the source)"><Facts items={p.benefits} /></Block>
       <Block label="Features & specifications"><Facts items={[...p.features, ...p.ingredientsOrSpecifications]} /></Block>
       <Block label="Variants"><Facts items={p.variants} /></Block>
-      <Block label="Verified claims & social proof"><Facts items={[...p.verifiedClaims, ...p.socialProof]} /></Block>
+      <Block label="Claims (as stated — not verified) & social proof"><Facts items={[...p.sourceClaims, ...p.socialProof]} /></Block>
       <Block label="Physical appearance"><Facts items={[p.physicalAppearance]} /></Block>
       <Block label="Packaging"><Facts items={[p.packagingDescription]} /></Block>
       {p.reviews.length > 0 && (
@@ -121,6 +124,59 @@ export function ProductFactsView({ truthPack: p }: { truthPack: StrategySnapshot
             ))}
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function SafeFacts({ items }: { items: (SafeFact | null)[] }) {
+  const present = items.filter((f): f is SafeFact => Boolean(f));
+  if (!present.length) return <Empty>Nothing approved</Empty>;
+  return (
+    <ul className="flex flex-col gap-2">
+      {present.map((f) => (
+        <li key={f.id} className="flex items-start justify-between gap-3">
+          <span className="min-w-0 text-[13.5px] leading-snug text-ink [overflow-wrap:anywhere]">{f.value}</span>
+          <span className="flex shrink-0 items-center gap-1">
+            <SourceBadge source={f.source} />
+            {f.approved && <AcceptedMark />}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Creative-Safe Product Profile: the only product information creative generation receives. */
+export function SafeProfileView({ profile: p }: { profile: CreativeSafeProductProfile }) {
+  const claims = (field: string) => p.claims.filter((c) => c.field === field);
+  return (
+    <div className="grid gap-3 md:grid-cols-2" data-testid="safe-profile">
+      <Block label="Product"><p className="text-[13.5px] text-ink">{p.productName}</p></Block>
+      <Block label="Price, size & origin"><SafeFacts items={[p.price, p.productSize, p.origin]} /></Block>
+      <Block label="Availability & shipping"><SafeFacts items={[p.availability, ...p.shipping]} /></Block>
+      <Block label="Offers"><SafeFacts items={p.offers} /></Block>
+      <Block label="Benefits"><SafeFacts items={claims("benefits")} /></Block>
+      <Block label="Claims & guarantees"><SafeFacts items={[...claims("sourceClaims"), ...claims("guarantees")]} /></Block>
+      <Block label="Features & specifications"><SafeFacts items={[...claims("features"), ...claims("ingredientsOrSpecifications")]} /></Block>
+      <Block label="Social proof & reviews">
+        <SafeFacts items={claims("socialProof")} />
+        {p.reviews.length > 0 && <p className="mt-2 text-xs text-muted">{p.reviews.length} review(s) about this product</p>}
+      </Block>
+      {p.excluded.length > 0 && (
+        <details className="rounded-xl border border-dashed border-line-strong p-4 md:col-span-2">
+          <summary className="cursor-pointer text-[13px] font-medium text-ink">Withheld from creatives ({p.excluded.length})</summary>
+          <ul className="mt-2 flex flex-col gap-1">
+            {p.excluded.map((e) => (
+              <li key={e.id} className="text-xs leading-snug text-muted [overflow-wrap:anywhere]">
+                <span className="font-mono text-[10.5px]">{REVIEW_FIELD_LABELS[e.field]}</span> · {e.value} ·{" "}
+                <span className="text-ink-soft">
+                  {{ rejected: "rejected", blocked: "blocked", unapproved_high_risk: "needs approval", unresolved_conflict: "unresolved conflict", unrelated_review: "other product" }[e.reason]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
     </div>
   );
@@ -249,7 +305,7 @@ function DirectionTab({ snapshot }: { snapshot: StrategySnapshot }) {
 export function CreativeStrategyPanel({ snapshot, onReview }: CreativeStrategyPanelProps) {
   const [tab, setTab] = useState<Tab>("direction");
   const counts = {
-    facts: snapshot.truthPack.benefits.length + snapshot.truthPack.features.length + snapshot.truthPack.offers.length + snapshot.truthPack.guarantees.length,
+    facts: snapshot.safeProfile.claims.length + snapshot.safeProfile.offers.length,
     inferences: snapshot.hypotheses.length,
   };
   return (
@@ -260,7 +316,7 @@ export function CreativeStrategyPanel({ snapshot, onReview }: CreativeStrategyPa
           value={tab}
           onChange={setTab}
           options={[
-            { value: "facts", label: "Product facts", count: counts.facts },
+            { value: "facts", label: "Approved product facts", count: counts.facts },
             { value: "brand", label: "Brand strategy" },
             { value: "inferences", label: "AI inferences", count: counts.inferences },
             { value: "direction", label: "Creative direction" },
@@ -269,7 +325,15 @@ export function CreativeStrategyPanel({ snapshot, onReview }: CreativeStrategyPa
         <SourceLegend />
       </div>
       <div className="mt-5" role="tabpanel">
-        {tab === "facts" && <ProductFactsView truthPack={snapshot.truthPack} />}
+        {tab === "facts" && (
+          <>
+            <p className="mb-3 text-xs text-muted">
+              What creative generation receives — reviewed in step B.{" "}
+              {snapshot.safeProfile.needsReview > 0 && `${snapshot.safeProfile.needsReview} item(s) still need review and are withheld.`}
+            </p>
+            <SafeProfileView profile={snapshot.safeProfile} />
+          </>
+        )}
         {tab === "brand" && <BrandTab snapshot={snapshot} />}
         {tab === "inferences" && <InferencesTab snapshot={snapshot} onReview={onReview} />}
         {tab === "direction" && <DirectionTab snapshot={snapshot} />}

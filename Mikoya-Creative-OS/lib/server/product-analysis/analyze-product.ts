@@ -1,5 +1,7 @@
 import { z } from "zod";
-import type { ProductAnalysisRequest, ProductAnalysisSuccess } from "@/lib/types";
+import type { ProductAnalysisContext, ProductAnalysisRequest, ProductAnalysisSuccess } from "@/lib/types";
+import { buildProductReview } from "@/lib/strategy/claims";
+import { detectContextConflicts, detectPageConflicts, mergeConflicts } from "@/lib/strategy/conflicts";
 import { getAnthropicClient } from "@/lib/server/ai/client";
 import { hasAnthropicApiKey } from "@/lib/server/ai/config";
 import { extractProductPage, type ExtractedPage } from "@/lib/server/fetch/extract-page";
@@ -13,7 +15,9 @@ import { prepareImages } from "./images";
  * analyzeProduct() — PRODUCT INPUT + PAGE + IMAGES → PRODUCT TRUTH PACK.
  *
  * One Analyze action = one page fetch, one preprocessing pass, and one model
- * call (real analyzer). The real analyzer runs only when CREATIVE_OS_ANTHROPIC_API_KEY is
+ * call (real analyzer). The raw truth pack is then wrapped in a review bundle:
+ * claim taxonomy, key facts, conflicts (context, page checks, model) and
+ * reviews that could not be attributed to this product. Nothing is rewritten. The real analyzer runs only when CREATIVE_OS_ANTHROPIC_API_KEY is
  * set and the user explicitly requested it.
  */
 
@@ -30,6 +34,19 @@ export const ProductAnalysisRequestSchema = z.object({
   productName: z.string().trim().min(1, "Product name is required").max(200),
   productUrl: z.string().trim().min(1, "Product URL is required").max(2048),
   notes: z.string().max(4000).optional(),
+  context: z
+    .object({
+      targetMarket: z.string().trim().max(100).optional(),
+      expectedCurrency: z
+        .string()
+        .trim()
+        .regex(/^[A-Za-z]{3}$/, "Currency must be an ISO 4217 code such as EUR")
+        .transform((c) => c.toUpperCase())
+        .optional()
+        .or(z.literal("").transform(() => undefined)),
+      language: z.string().trim().max(20).optional(),
+    })
+    .optional(),
   mainImage: ImageInputSchema.nullable(),
   additionalImages: z.array(ImageInputSchema).max(20),
 });
@@ -47,6 +64,15 @@ export function parseAnalysisRequest(body: unknown): ProductAnalysisRequest {
     throw new AnalysisError("invalid_request", first ? `${first.path.join(".")}: ${first.message}` : undefined);
   }
   return result.data;
+}
+
+function normaliseContext(context: ProductAnalysisRequest["context"]): ProductAnalysisContext | null {
+  if (!context) return null;
+  const out: ProductAnalysisContext = {};
+  if (context.targetMarket?.trim()) out.targetMarket = context.targetMarket.trim();
+  if (context.expectedCurrency?.trim()) out.expectedCurrency = context.expectedCurrency.trim().toUpperCase();
+  if (context.language?.trim()) out.language = context.language.trim();
+  return Object.keys(out).length ? out : null;
 }
 
 export async function analyzeProduct(request: ProductAnalysisRequest, deps: AnalyzeDeps = {}): Promise<ProductAnalysisSuccess> {
@@ -82,9 +108,27 @@ export async function analyzeProduct(request: ProductAnalysisRequest, deps: Anal
 
   const result = await analyzer.analyze({ request, page, images });
 
+  const context = normaliseContext(request.context);
+  const signals = page?.signals ?? null;
+  if (context?.language && signals?.lang && !signals.lang.toLowerCase().startsWith(context.language.toLowerCase())) {
+    warnings.push(`The page declares language "${signals.lang}", but the target language is "${context.language}".`);
+  }
+  const conflicts = mergeConflicts(
+    detectContextConflicts(result.truthPack, context, signals),
+    detectPageConflicts(result.truthPack, signals),
+    result.conflicts ?? [],
+  );
+  const review = buildProductReview(result.truthPack, {
+    context,
+    conflicts,
+    excludedReviews: result.excludedReviews,
+    hints: { risk: result.riskHints },
+  });
+
   return {
     ok: true,
     truthPack: result.truthPack,
+    review,
     warnings: [...warnings, ...result.warnings],
     missing: result.truthPack.missing,
     metadata: {

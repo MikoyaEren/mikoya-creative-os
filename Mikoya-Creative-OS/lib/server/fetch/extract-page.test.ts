@@ -66,3 +66,18 @@ describe("decodeEntities", () => {
     expect(decodeEntities("&amp; &#8364; &#x20AC; &euro; &auml;")).toBe("& € € € ä");
   });
 });
+
+describe("page signals", () => {
+  it("reads language, currencies and stock status declared by the page", () => {
+    const html = `<html lang="de-DE"><head>
+      <meta property="og:price:currency" content="USD">
+      <script type="application/ld+json">{"@type":"Product","offers":{"@type":"Offer","price":"35.00","priceCurrency":"USD","availability":"http:\\/\\/schema.org\\/OutOfStock"}}</script>
+      </head><body><p>Auf Lager</p><p>$35.00</p><p>29,90 €</p></body></html>`;
+    expect(extractProductPage(html, "https://shop.example/p").signals).toEqual({
+      lang: "de-DE",
+      structuredCurrencies: ["USD"],
+      visibleCurrencies: ["USD", "EUR"],
+      structuredAvailability: ["http://schema.org/OutOfStock"],
+    });
+  });
+});

@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { AlertTriangle, CircleAlert, CircleCheck, FlaskConical, LoaderCircle, RefreshCw, ScanSearch, X } from "lucide-react";
-import type { ProductAnalysisFailure, ProductAnalysisSuccess } from "@/lib/types";
+import type { CreativeSafeProductProfile, ProductAnalysisContext, ProductAnalysisFailure, ProductAnalysisSuccess, UserDecision, UserDecisions } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
-import { Textarea } from "@/components/ui/input";
+import { Input, Textarea } from "@/components/ui/input";
 import { SectionCard } from "@/components/ui/section-card";
-import { ProductFactsView } from "@/components/strategy/creative-strategy-panel";
+import { FactReviewSection } from "./fact-review-section";
 
 export type AnalysisState =
   | { status: "idle" }
@@ -25,11 +25,18 @@ interface ProductAnalysisSectionProps {
   blockers: string[];
   notes: string;
   onNotesChange: (notes: string) => void;
+  /** Target market used to flag suspicious values (e.g. a USD price for a EUR market). */
+  context: ProductAnalysisContext;
+  onContextChange: (context: ProductAnalysisContext) => void;
+  /** Review gate state for the current successful analysis. */
+  decisions: UserDecisions;
+  onDecide: (id: string, decision: UserDecision | null) => void;
+  profile: CreativeSafeProductProfile | null;
   onAnalyze: (analyzer: "real" | "mock") => void;
   onCancel: () => void;
 }
 
-const STEPS = ["Fetching product page", "Reading product images", "Extracting verified facts", "Validating the Truth Pack"];
+const STEPS = ["Fetching product page", "Reading product images", "Extracting facts and claims", "Checking claims and conflicts"];
 
 function Progress() {
   const [step, setStep] = useState(0);
@@ -55,7 +62,20 @@ function formatDuration(ms: number) {
   return ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;
 }
 
-export function ProductAnalysisSection({ state, stale, blockers, notes, onNotesChange, onAnalyze, onCancel }: ProductAnalysisSectionProps) {
+export function ProductAnalysisSection({
+  state,
+  stale,
+  blockers,
+  notes,
+  onNotesChange,
+  context,
+  onContextChange,
+  decisions,
+  onDecide,
+  profile,
+  onAnalyze,
+  onCancel,
+}: ProductAnalysisSectionProps) {
   const analyzing = state.status === "analyzing";
   const hasResult = state.status === "success";
 
@@ -64,12 +84,12 @@ export function ProductAnalysisSection({ state, stale, blockers, notes, onNotesC
       id="section-analysis"
       step="B"
       title="Analyze product"
-      description="Fetches the product page and reads your images to build verified Product Facts. Nothing is generated yet — you review the facts first."
+      description="Fetches the product page and reads your images to extract product facts and claims. Nothing is generated yet — you review what creatives may use first."
       actions={
         hasResult ? (
-          <Badge tone={stale ? "warning" : "forest"}>
-            {stale ? <AlertTriangle /> : <CircleCheck />}
-            {stale ? "Out of date" : "Analysed"}
+          <Badge tone={stale || (profile && profile.needsReview > 0) ? "warning" : "forest"}>
+            {stale || (profile && profile.needsReview > 0) ? <AlertTriangle /> : <CircleCheck />}
+            {stale ? "Out of date" : profile && profile.needsReview > 0 ? `${profile.needsReview} need review` : "Reviewed"}
           </Badge>
         ) : null
       }
@@ -85,6 +105,28 @@ export function ProductAnalysisSection({ state, stale, blockers, notes, onNotesC
           disabled={analyzing}
         />
       </Field>
+
+      <fieldset className="mt-4 grid gap-3 sm:grid-cols-3" disabled={analyzing}>
+        <legend className="mb-2 text-[13px] font-medium">
+          Target market <span className="font-normal text-muted">· optional — flags suspicious values, never rewrites them</span>
+        </legend>
+        <Field label="Market" htmlFor="ctx-market">
+          <Input id="ctx-market" className="h-9" value={context.targetMarket ?? ""} placeholder="e.g. Germany" onChange={(e) => onContextChange({ ...context, targetMarket: e.target.value })} />
+        </Field>
+        <Field label="Expected currency" htmlFor="ctx-currency">
+          <Input
+            id="ctx-currency"
+            className="h-9 uppercase"
+            maxLength={3}
+            value={context.expectedCurrency ?? ""}
+            placeholder="EUR"
+            onChange={(e) => onContextChange({ ...context, expectedCurrency: e.target.value.toUpperCase() })}
+          />
+        </Field>
+        <Field label="Language" htmlFor="ctx-language">
+          <Input id="ctx-language" className="h-9" maxLength={20} value={context.language ?? ""} placeholder="de" onChange={(e) => onContextChange({ ...context, language: e.target.value })} />
+        </Field>
+      </fieldset>
 
       <div className="mt-5 flex flex-wrap items-center gap-2">
         {analyzing ? (
@@ -172,15 +214,17 @@ export function ProductAnalysisSection({ state, stale, blockers, notes, onNotesC
           )}
 
           <div className="mt-6 flex items-baseline justify-between gap-3">
-            <h3 className="text-[14px] font-semibold">Review product facts</h3>
+            <h3 className="text-[14px] font-semibold">Review product facts & claims</h3>
             <span className="text-xs text-muted">
               {state.result.missing.length ? `${state.result.missing.length} field(s) unknown` : "All fields supported"}
             </span>
           </div>
-          <p className="mt-1 mb-4 text-xs text-muted">
-            Check these before continuing. Every fact shows its source and, where available, the quote it was taken from.
+          <p className="mt-1 text-xs text-muted">
+            Accept, edit or reject before continuing. Every item shows its source and, where available, the quote it was taken from.
           </p>
-          <ProductFactsView truthPack={state.result.truthPack} />
+          {profile && (
+            <FactReviewSection truthPack={state.result.truthPack} review={state.result.review} decisions={decisions} profile={profile} onDecide={onDecide} />
+          )}
         </div>
       )}
     </SectionCard>

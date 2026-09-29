@@ -8,6 +8,8 @@
  * capped so a huge page cannot flood the model context.
  */
 
+import type { PageSignals } from "@/lib/types";
+
 export const EXTRACT_LIMITS = {
   textChars: 16_000,
   structuredDataChars: 6_000,
@@ -30,6 +32,8 @@ export interface ExtractedPage {
   truncated: boolean;
   /** Length of the cleaned text before truncation. */
   originalTextChars: number;
+  /** Deterministic signals (language, currencies, stock status) for conflict checks. */
+  signals: PageSignals;
 }
 
 const NAMED_ENTITIES: Record<string, string> = {
@@ -131,6 +135,40 @@ function visibleText(html: string): string {
   return lines.join("\n");
 }
 
+const SYMBOL_CURRENCY: Record<string, string> = { "€": "EUR", $: "USD", "£": "GBP" };
+
+/** Decode a raw JSON string body (e.g. "http:\/\/schema.org\/InStock"). */
+function unescapeJson(raw: string): string {
+  try {
+    return JSON.parse(`"${raw}"`) as string;
+  } catch {
+    return raw;
+  }
+}
+
+/** Language, currencies and stock status as declared by the page itself — no interpretation. */
+export function pageSignals(html: string, meta: Record<string, string>, priceSnippets: string[]): PageSignals {
+  const jsonLd = [...html.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]).join("\n");
+  const uniq = (xs: (string | undefined)[]) => [...new Set(xs.filter((x): x is string => Boolean(x)))];
+  const structuredCurrencies = uniq([
+    ...[...jsonLd.matchAll(/"priceCurrency"\s*:\s*"([A-Za-z]{3})"/g)].map((m) => m[1].toUpperCase()),
+    ...["og:price:currency", "product:price:currency", "pricecurrency"].map((k) => meta[k]?.trim().toUpperCase()).filter((c) => c && /^[A-Z]{3}$/.test(c)),
+  ]);
+  const visibleCurrencies = uniq(
+    priceSnippets.map((p) => {
+      const code = p.match(/EUR|USD|GBP|CHF/)?.[0];
+      return code ?? SYMBOL_CURRENCY[p.match(/[€$£]/)?.[0] ?? ""];
+    }),
+  );
+  const structuredAvailability = uniq([
+    ...[...jsonLd.matchAll(/"availability"\s*:\s*"((?:[^"\\]|\\.){1,120})"/g)].map((m) => unescapeJson(m[1]).trim()),
+    meta["product:availability"],
+    meta["availability"],
+  ]);
+  const lang = html.match(/<html\b[^>]*\blang\s*=\s*["']([A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})?)["']/i)?.[1] ?? null;
+  return { lang, structuredCurrencies, visibleCurrencies, structuredAvailability };
+}
+
 export function extractProductPage(html: string, url: string): ExtractedPage {
   const title = html.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i)?.[1];
   const meta = metaTags(html);
@@ -163,6 +201,7 @@ export function extractProductPage(html: string, url: string): ExtractedPage {
     text,
     truncated,
     originalTextChars: fullText.length,
+    signals: pageSignals(html, meta, priceSnippets),
   };
 }
 

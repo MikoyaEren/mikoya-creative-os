@@ -7,31 +7,24 @@ import { hasAnthropicApiKey } from "@/lib/server/ai/config";
 import { MIKOYA_PROJECT } from "@/lib/projects/mikoya";
 import { analyzeProduct } from "./analyze-product";
 import { RealProductAnalyzer, mapAnthropicError, type AnthropicLike } from "./analyzers";
-import { parseAnalysisOutput, toTruthPack, type ProductAnalysisOutput } from "./schema";
+import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { ProductAnalysisOutputSchema, parseAnalysisOutput, toTruthPack, type ProductAnalysisOutput } from "./schema";
 
 // 1×1 transparent PNG
 const PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
 const emptyOutput = (): ProductAnalysisOutput => ({
-  productNameOnPage: null,
-  category: null,
-  description: null,
   price: null,
-  variants: [],
-  features: [],
-  benefits: [],
-  ingredientsOrSpecifications: [],
-  verifiedClaims: [],
-  offers: [],
-  guarantees: [],
-  socialProof: [],
+  facts: [],
   reviews: [],
-  physicalAppearance: null,
-  packagingDescription: null,
   assetDescriptions: [],
+  conflicts: [],
   unknown: [],
   warnings: [],
 });
+
+/** One extracted fact in the model's output shape. */
+const fx = (field: string, value: string, sourceRef: string, evidence: string | null = null, riskCategory = "general") => ({ field, value, sourceRef, evidence, riskCategory });
 
 const sources = {
   productName: "Test Tea",
@@ -64,11 +57,22 @@ const fakePage = async () => ({
   redirects: 0,
 });
 
+describe("structured output grammar budget", () => {
+  // The provider rejects schemas whose compiled grammar is too large ("The compiled grammar is too large").
+  // Verified live: this shape is accepted; per-field objects plus nested enums were not.
+  it("keeps the output schema compact: shared fact shape, no enums", () => {
+    const { schema } = betaZodOutputFormat(ProductAnalysisOutputSchema) as unknown as { schema: { $defs?: object; properties: object } };
+    expect(JSON.stringify(schema)).not.toContain('"enum"');
+    expect(Object.keys(schema.properties).length).toBeLessThanOrEqual(8);
+    expect(Object.keys(schema.$defs ?? {}).length).toBeLessThanOrEqual(8);
+  });
+});
+
 describe("parseAnalysisOutput (schema validation)", () => {
   it("accepts a valid output", () => {
     expect(() => parseAnalysisOutput(emptyOutput())).not.toThrow();
   });
-  it.each([null, "text", { ...emptyOutput(), features: "not an array" }, { ...emptyOutput(), price: { amount: "29.90" } }])(
+  it.each([null, "text", { ...emptyOutput(), facts: "not an array" }, { ...emptyOutput(), price: { amount: "29.90" } }])(
     "rejects malformed output %#",
     (raw) => expect(() => parseAnalysisOutput(raw)).toThrowError(expect.objectContaining({ code: "invalid_ai_output" })),
   );
@@ -79,8 +83,10 @@ describe("toTruthPack (provenance)", () => {
     const { truthPack } = toTruthPack(
       {
         ...emptyOutput(),
-        guarantees: [{ value: "30-day money-back guarantee", sourceRef: "product_page", evidence: "30-day money-back guarantee" }],
-        packagingDescription: { value: "Black pouch", sourceRef: "main_image", evidence: "Black stand-up pouch visible" },
+        facts: [
+          fx("guarantees", "30-day money-back guarantee", "product_page", "30-day money-back guarantee"),
+          fx("packagingDescription", "Black pouch", "main_image", "Black stand-up pouch visible"),
+        ],
         price: { amount: 29.9, currency: "eur", sourceRef: "product_page", evidence: "29,90 €" },
       },
       sources,
@@ -93,7 +99,7 @@ describe("toTruthPack (provenance)", () => {
 
   it("marks user-input facts as user_input and always uses the entered name", () => {
     const { truthPack, warnings } = toTruthPack(
-      { ...emptyOutput(), productNameOnPage: { value: "Other Name", sourceRef: "product_page", evidence: "Test Tea" }, offers: [{ value: "Launch discount", sourceRef: "user_input", evidence: null }] },
+      { ...emptyOutput(), facts: [fx("productNameOnPage", "Other Name", "product_page", "Test Tea"), fx("offers", "Launch discount", "user_input")] },
       sources,
     );
     expect(truthPack.productName).toMatchObject({ value: "Test Tea", source: "user_input" });
@@ -105,11 +111,7 @@ describe("toTruthPack (provenance)", () => {
     const { truthPack, warnings } = toTruthPack(
       {
         ...emptyOutput(),
-        features: [
-          { value: "Origin: Japan", sourceRef: "general_knowledge", evidence: null },
-          { value: "Hand-picked", sourceRef: "additional_image_3", evidence: "visible" },
-          { value: "Organic", sourceRef: "product_page", evidence: null },
-        ],
+        facts: [fx("features", "Origin: Japan", "general_knowledge"), fx("features", "Hand-picked", "additional_image_3", "visible"), fx("features", "Organic", "product_page")],
       },
       sources,
     );
@@ -125,8 +127,74 @@ describe("toTruthPack (provenance)", () => {
   });
 
   it("never produces ai_inference facts", () => {
-    const { truthPack } = toTruthPack({ ...emptyOutput(), benefits: [{ value: "calm focus", sourceRef: "product_page", evidence: "Test Tea" }] }, sources);
+    const { truthPack } = toTruthPack({ ...emptyOutput(), facts: [fx("benefits", "calm focus", "product_page", "Test Tea")] }, sources);
     expect([truthPack.productName, ...truthPack.benefits].every((f) => f.source !== ("ai_inference" as string))).toBe(true);
+  });
+});
+
+describe("toTruthPack (review scoping, conflicts, risk hints)", () => {
+  const review = (over: Partial<ProductAnalysisOutput["reviews"][number]>) => ({
+    quote: "Lovely",
+    author: "A.",
+    rating: 5,
+    sourceRef: "product_page",
+    evidence: null,
+    productMentioned: null,
+    attribution: "this_product",
+    ...over,
+  });
+
+  it("excludes reviews about other products and records a warning", () => {
+    const { truthPack, excludedReviews, warnings } = toTruthPack(
+      {
+        ...emptyOutput(),
+        reviews: [
+          review({ author: "Alexandra L.", quote: "So mild" }),
+          review({ author: "Sascha D.", quote: "Tastes artificial", rating: 1, productMentioned: "Vanilla Cream", attribution: "other_product" }),
+          review({ author: "Model trusted it", quote: "Great glass", productMentioned: "Nami Glas" }),
+          review({ author: "Unsure", quote: "Nice", attribution: "unclear" }),
+          review({ author: "Named it", quote: "Best tea", productMentioned: "Test Tea" }),
+        ],
+      },
+      sources,
+    );
+    expect(truthPack.reviews.map((r) => r.author)).toEqual(["Alexandra L.", "Named it"]);
+    expect(excludedReviews.map((e) => e.review.author)).toEqual(["Sascha D.", "Model trusted it", "Unsure"]);
+    expect(excludedReviews[1].reason).toMatch(/Nami Glas/);
+    expect(warnings.join(" ")).toMatch(/3 review\(s\) were excluded/);
+  });
+
+  it("keeps model conflicts only with provided sources and never resolves them", () => {
+    const { conflicts, truthPack } = toTruthPack(
+      {
+        ...emptyOutput(),
+        facts: [fx("availability", "In stock", "product_page", "Auf Lager")],
+        conflicts: [
+          {
+            field: "availability",
+            values: [
+              { value: "In stock", sourceRef: "product_page", evidence: "Auf Lager" },
+              { value: "OutOfStock", sourceRef: "product_page", evidence: "OutOfStock" },
+              { value: "Imagined", sourceRef: "general_knowledge", evidence: null },
+            ],
+            description: "Structured data says OutOfStock.",
+            severity: "high",
+          },
+          { field: "shipping", values: [{ value: "x", sourceRef: "made_up", evidence: null }], description: "no valid source", severity: "low" },
+        ],
+      },
+      sources,
+    );
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject({ field: "availability", status: "unresolved", detectedBy: "model", sources: ["product_page"] });
+    expect(conflicts[0].values).toHaveLength(2);
+    expect(truthPack.availability?.value).toBe("In stock");
+  });
+
+  it("passes model risk hints through for claim classification", () => {
+    const { riskHints } = toTruthPack({ ...emptyOutput(), facts: [fx("benefits", "Supports calm", "product_page", "Test Tea", "health"), fx("benefits", "Odd hint", "product_page", "Test Tea", "made-up")] }, sources);
+    expect(riskHints.get("supports calm")).toBe("health");
+    expect(riskHints.has("odd hint")).toBe(false);
   });
 });
 
@@ -164,7 +232,7 @@ describe("analyzeProduct (service)", () => {
     let calls = 0;
     const output = {
       ...emptyOutput(),
-      guarantees: [{ value: "30-day money-back guarantee", sourceRef: "product_page", evidence: "30-day money-back guarantee." }],
+      facts: [fx("guarantees", "30-day money-back guarantee", "product_page", "30-day money-back guarantee.")],
       assetDescriptions: [{ imageRef: "main_image", description: "Packshot on white" }],
     };
     const result = await analyzeProduct(request(), {
@@ -177,6 +245,31 @@ describe("analyzeProduct (service)", () => {
     expect(result.truthPack.guarantees[0].source).toBe("source_fact");
     expect(result.truthPack.availableAssets[0].description).toBe("Packshot on white");
     expect(result.missing).toContain("price");
+  });
+
+  it("builds a review bundle with context conflicts from a USD-only page for a EUR market", async () => {
+    const usdPage = async () => ({
+      ...(await fakePage()),
+      html: `<html lang="de"><head><script type="application/ld+json">{"@type":"Product","offers":{"@type":"Offer","price":"35.00","priceCurrency":"USD","availability":"http://schema.org/OutOfStock"}}</script></head><body><h1>Test Tea</h1><p>$35.00</p><p>Auf Lager</p><p>Besserer Schlaf</p></body></html>`,
+    });
+    const output = {
+      ...emptyOutput(),
+      price: { amount: 35, currency: "USD", sourceRef: "product_page", evidence: '"priceCurrency":"USD"' },
+      facts: [fx("availability", "In stock", "product_page", "Auf Lager"), fx("benefits", "Better sleep", "product_page", "Besserer Schlaf")],
+    };
+    const result = await analyzeProduct(request({ context: { targetMarket: "Germany", expectedCurrency: "EUR", language: "de" } }), {
+      fetchPage: usdPage,
+      createClient: () => fakeClient({ stop_reason: "end_turn", parsed_output: output, content: [], model: "m", usage: null }),
+    });
+    expect(result.review.context).toEqual({ targetMarket: "Germany", expectedCurrency: "EUR", language: "de" });
+    expect(result.review.conflicts.map((c) => [c.field, c.detectedBy, c.severity])).toEqual([
+      ["price", "context", "high"],
+      ["availability", "validator", "high"],
+    ]);
+    // Model said "general"; the classifier raises it — a page health claim is never verified.
+    expect(result.review.claims[0]).toMatchObject({ statement: "Better sleep", riskCategory: "health", claimType: "source_claim" });
+    // Raw values stay exactly as extracted.
+    expect(result.truthPack.currency).toBe("USD");
   });
 
   it("fails fast with missing_api_key before fetching anything", async () => {

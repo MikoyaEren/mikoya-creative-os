@@ -18,6 +18,7 @@
  */
 
 import type { AssetRole } from "./index";
+import type { CreativeSafeProductProfile, ProductReviewBundle, UserDecisions } from "./review";
 
 // ---------------------------------------------------------------------------
 // Provenance
@@ -123,11 +124,23 @@ export interface ProductTruthPack {
   description: Fact | null;
   price: Fact<number> | null;
   currency: string | null;
+  /** Net size / weight / volume, e.g. "30 g". */
+  productSize: Fact | null;
+  /** Where the product comes from, as stated. */
+  origin: Fact | null;
+  /** Stock status as visibly stated (conflicts with structured data are flagged, not resolved). */
+  availability: Fact | null;
+  /** Shipping / delivery statements. */
+  shipping: Fact[];
   variants: Fact[];
   features: Fact[];
   benefits: Fact[];
   ingredientsOrSpecifications: Fact[];
-  verifiedClaims: Fact[];
+  /**
+   * Claims the source makes (grades, tests, certifications). Stated ≠ verified:
+   * the claim taxonomy in ProductReviewBundle decides what may be used.
+   */
+  sourceClaims: Fact[];
   offers: Fact[];
   guarantees: Fact[];
   socialProof: Fact[];
@@ -238,7 +251,14 @@ export interface DynamicCreativeStrategy {
 
 /** Everything the concept writer needs, frozen per batch. */
 export interface StrategySnapshot {
+  /** Raw facts, kept for audit. Creatives must use `safeProfile`. */
   truthPack: ProductTruthPack;
+  /** Claims, conflicts and excluded reviews for the raw truth pack. */
+  review: ProductReviewBundle;
+  /** User decisions applied on top of `review`. */
+  decisions: UserDecisions;
+  /** The only product information creative generation may use. */
+  safeProfile: CreativeSafeProductProfile;
   brandStrategy: BrandStrategyProfile;
   hypotheses: StrategyHypothesis[];
   dynamicStrategy: DynamicCreativeStrategy;

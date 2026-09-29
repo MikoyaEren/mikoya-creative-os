@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
-import type { AnalyzerKind, ProductAnalysisRequest, ProductTruthPack } from "@/lib/types";
+import type { AnalyzerKind, ClaimRiskCategory, ExcludedReview, ProductAnalysisRequest, ProductConflict, ProductTruthPack } from "@/lib/types";
 import { getProject } from "@/lib/projects";
 import { buildTruthPackFromInput, withUserInput } from "@/lib/strategy/product-truth-pack";
 import { AI_CONFIG } from "@/lib/server/ai/config";
@@ -23,6 +23,10 @@ export interface AnalyzerResult {
   model: string | null;
   modelCalls: number;
   usage: { inputTokens: number; outputTokens: number } | null;
+  /** Model-reported conflicts (validated), reviews not attributable to this product, and claim risk hints. */
+  conflicts?: Omit<ProductConflict, "id">[];
+  excludedReviews?: ExcludedReview[];
+  riskHints?: Map<string, ClaimRiskCategory>;
 }
 
 /** Provider seam: the service only depends on this interface. */
@@ -98,6 +102,7 @@ export class RealProductAnalyzer implements ProductAnalyzer {
         productName: request.productName,
         productUrl: request.productUrl,
         notes: request.notes,
+        context: request.context,
         imageRefs: images.map((i) => i.ref),
         pageBlock: page ? formatPageForPrompt(page) : null,
       }),
@@ -134,7 +139,7 @@ export class RealProductAnalyzer implements ProductAnalyzer {
     }
     const output = parseAnalysisOutput(raw);
 
-    const { truthPack, warnings } = toTruthPack(output, {
+    const { truthPack, warnings, conflicts, excludedReviews, riskHints } = toTruthPack(output, {
       productName: request.productName,
       productUrl: request.productUrl,
       pageFetched: Boolean(page),
@@ -148,6 +153,9 @@ export class RealProductAnalyzer implements ProductAnalyzer {
       model: response.model ?? cfg.model,
       modelCalls: 1,
       usage: response.usage ? { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens } : null,
+      conflicts,
+      excludedReviews,
+      riskHints,
     };
   }
 }

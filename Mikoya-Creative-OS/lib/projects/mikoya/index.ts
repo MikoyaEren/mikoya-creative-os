@@ -23,6 +23,10 @@ const ceremonialTruthBase: Omit<ProductTruthPack, "missing"> = {
   description: fact("Japanese ceremonial-grade matcha powder, 30 g pouch.", "source_fact", PRODUCT_PAGE),
   price: fact(29.9, "source_fact", PRODUCT_PAGE),
   currency: "EUR",
+  productSize: fact("30 g", "source_fact", POUCH),
+  origin: fact("Japan", "source_fact", POUCH),
+  availability: null,
+  shipping: [],
   variants: [fact("30 g pouch", "source_fact", POUCH)],
   features: [
     fact("100% ceremonial grade", "source_fact", POUCH),
@@ -35,7 +39,7 @@ const ceremonialTruthBase: Omit<ProductTruthPack, "missing"> = {
     fact("ready in two minutes", "source_fact", PRODUCT_PAGE),
   ],
   ingredientsOrSpecifications: [fact("100% matcha green tea powder", "source_fact", PRODUCT_PAGE), fact("Net weight 30 g", "source_fact", POUCH)],
-  verifiedClaims: [fact("Ceremonial grade", "source_fact", POUCH)],
+  sourceClaims: [fact("Ceremonial grade", "source_fact", POUCH)],
   offers: [fact("15% off the first order", "source_fact", PRODUCT_PAGE)],
   guarantees: [fact("30-day satisfaction guarantee", "source_fact", PRODUCT_PAGE)],
   socialProof: [fact("4.8/5 average rating", "source_fact", PRODUCT_PAGE)],
@@ -178,6 +182,7 @@ export const MIKOYA_PROJECT: CreativeProject = {
     supportingProof: ["Product quality"],
     avoidLeadingWith: ["Technical tea production details"],
   },
+  analysisContext: { targetMarket: "Germany", expectedCurrency: "EUR", language: "de" },
   exampleProduct: {
     name: "Mikoya Ceremonial Matcha",
     url: "https://mikoya.de/products/ceremonial-matcha",

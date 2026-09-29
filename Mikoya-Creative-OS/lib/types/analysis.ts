@@ -1,4 +1,5 @@
 import type { AssetRole, ProductTruthPack } from "./index";
+import type { ProductAnalysisContext, ProductReviewBundle } from "./review";
 
 /**
  * Product analysis API contract (shared by the client and POST /api/analyze-product).
@@ -21,6 +22,8 @@ export interface ProductAnalysisRequest {
   productName: string;
   productUrl: string;
   notes?: string;
+  /** Target market context used to flag suspicious values (never to rewrite them). */
+  context?: ProductAnalysisContext;
   mainImage: AnalysisImageInput | null;
   additionalImages: AnalysisImageInput[];
 }
@@ -45,7 +48,10 @@ export interface AnalysisMetadata {
 
 export interface ProductAnalysisSuccess {
   ok: true;
+  /** Raw extracted facts — never modified after analysis. */
   truthPack: ProductTruthPack;
+  /** Claim taxonomy, key facts, conflicts and excluded reviews for the review gate. */
+  review: ProductReviewBundle;
   metadata: AnalysisMetadata;
   warnings: string[];
   missing: string[];

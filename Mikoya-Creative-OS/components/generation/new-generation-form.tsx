@@ -3,7 +3,18 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
-import type { BrandContext, CreativeType, GenerationRequest, ReviewStatus, MechanismId, OutputMix, OutputPresetId, ProductInput } from "@/lib/types";
+import type {
+  BrandContext,
+  CreativeType,
+  GenerationRequest,
+  ReviewStatus,
+  MechanismId,
+  OutputMix,
+  OutputPresetId,
+  ProductAnalysisContext,
+  ProductInput,
+  UserDecisions,
+} from "@/lib/types";
 import { CREATIVE_TYPE_ORDER, DEFAULT_PRESET, outputsFor, plural } from "@/lib/constants";
 import { DEFAULT_PROJECT_ID, PROJECTS, getProject } from "@/lib/projects";
 import { buildStrategySnapshot } from "@/lib/strategy";
@@ -51,12 +62,16 @@ export function NewGenerationForm() {
   const [generating, setGenerating] = useState(false);
   const [analysis, setAnalysis] = useState<AnalysisState>({ status: "idle" });
   const [analysisNotes, setAnalysisNotes] = useState("");
+  const [analysisContext, setAnalysisContext] = useState<ProductAnalysisContext>(project.analysisContext ?? {});
+  // Review-gate decisions for the current analysis. Kept apart from the raw result for audit.
+  const [factDecisions, setFactDecisions] = useState<UserDecisions>({});
   const analysisAbort = useRef<AbortController | null>(null);
 
-  const currentInputKey = analysisInputKey(product);
+  const currentInputKey = analysisInputKey(product, analysisContext);
   const analysisStale = analysis.status === "success" && analysis.inputKey !== currentInputKey;
   // Only a fresh, successful analysis replaces stored/mock facts.
   const analyzedTruthPack = analysis.status === "success" && !analysisStale ? analysis.result.truthPack : null;
+  const analyzedReview = analysis.status === "success" && !analysisStale ? analysis.result.review : null;
   const analysisBlockers = [
     !product.name.trim() && "product name",
     !product.url.trim() ? "product URL" : !isValidUrl(product.url.trim()) && "a valid URL",
@@ -66,11 +81,12 @@ export function NewGenerationForm() {
     analysisAbort.current?.abort();
     const controller = new AbortController();
     analysisAbort.current = controller;
-    const inputKey = analysisInputKey(product);
+    const inputKey = analysisInputKey(product, analysisContext);
     setAnalysis({ status: "analyzing", analyzer });
     try {
-      const response = await requestProductAnalysis({ projectId: project.id, analyzer, product, notes: analysisNotes, signal: controller.signal });
+      const response = await requestProductAnalysis({ projectId: project.id, analyzer, product, notes: analysisNotes, context: analysisContext, signal: controller.signal });
       if (controller.signal.aborted) return;
+      setFactDecisions({});
       setAnalysis(response.ok ? { status: "success", result: response, inputKey } : { status: "error", error: response.error, analyzer });
     } catch {
       // Aborted by the user or superseded by a newer request.
@@ -90,9 +106,20 @@ export function NewGenerationForm() {
   );
   // Same resolution the pipeline uses — what you see is what the concept writer gets.
   const snapshot = useMemo(
-    () => buildStrategySnapshot({ project, product, brand, direction: project.defaultDirection, reviews, truthPack: analyzedTruthPack }),
-    [project, product, brand, reviews, analyzedTruthPack],
+    () =>
+      buildStrategySnapshot({
+        project,
+        product,
+        brand,
+        direction: project.defaultDirection,
+        reviews,
+        truthPack: analyzedTruthPack,
+        productReview: analyzedReview,
+        factDecisions,
+      }),
+    [project, product, brand, reviews, analyzedTruthPack, analyzedReview, factDecisions],
   );
+  const safeProfile = snapshot.safeProfile;
   const inferredInUse = snapshot.hypotheses.filter((h) => h.reviewStatus !== "rejected").length;
 
   function switchProject(id: string) {
@@ -105,6 +132,8 @@ export function NewGenerationForm() {
     analysisAbort.current?.abort();
     setAnalysis({ status: "idle" });
     setAnalysisNotes("");
+    setAnalysisContext(next.analysisContext ?? {});
+    setFactDecisions({});
   }
 
   const formatError = submitted && mechanismIds.length === 0 ? "Select at least one creative mechanism." : undefined;
@@ -126,6 +155,8 @@ export function NewGenerationForm() {
       direction: project.defaultDirection,
       hypothesisReviews: reviews,
       truthPack: analyzedTruthPack ?? undefined,
+      productReview: analyzedReview ?? undefined,
+      factDecisions,
       product: { ...product, name: product.name.trim(), url: product.url.trim() },
       brand,
       outputMix: mix,
@@ -174,6 +205,18 @@ export function NewGenerationForm() {
         blockers={analysisBlockers}
         notes={analysisNotes}
         onNotesChange={setAnalysisNotes}
+        context={analysisContext}
+        onContextChange={setAnalysisContext}
+        decisions={factDecisions}
+        onDecide={(id, decision) =>
+          setFactDecisions((d) => {
+            const next = { ...d };
+            if (decision) next[id] = decision;
+            else delete next[id];
+            return next;
+          })
+        }
+        profile={analyzedTruthPack ? safeProfile : null}
         onAnalyze={runAnalysis}
         onCancel={cancelAnalysis}
       />
@@ -219,9 +262,12 @@ export function NewGenerationForm() {
           <p className="mt-1 text-[13px] text-cream/70">
             Product facts:{" "}
             {analyzedTruthPack
-              ? analysis.status === "success" && analysis.result.metadata.analyzer === "real"
-                ? "AI-analysed and reviewed"
-                : "demo data (mock analysis)"
+              ? `${analysis.status === "success" && analysis.result.metadata.analyzer === "real" ? "AI-analysed" : "demo data (mock analysis)"} · ${plural(
+                  safeProfile.claims.length,
+                  "claim",
+                )} approved for creatives${safeProfile.needsReview ? ` · ${safeProfile.needsReview} need review` : ""}${
+                  safeProfile.unresolvedConflicts ? ` · ${plural(safeProfile.unresolvedConflicts, "unresolved conflict")}` : ""
+                }`
               : analysisStale
                 ? "analysis out of date — not used"
                 : "not analysed yet — using entered or stored data"}

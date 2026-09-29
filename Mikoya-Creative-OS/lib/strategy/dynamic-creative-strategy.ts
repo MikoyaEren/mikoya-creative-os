@@ -1,19 +1,20 @@
 import type {
   BrandStrategyProfile,
   CreativeDirectionInput,
+  CreativeSafeProductProfile,
   DynamicCreativeStrategy,
-  ProductTruthPack,
+  SafeFact,
   SourcedStatement,
   StrategyHypothesis,
 } from "@/lib/types";
-import { excluding, factToStatement, isApprovedInference, mergeByPriority, userInput } from "./provenance";
+import { excluding, isApprovedInference, mergeByPriority, userInput } from "./provenance";
 import { hypothesisStatements } from "./strategy-hypotheses";
 
 /**
  * DYNAMIC CREATIVE STRATEGY — "What should THIS batch communicate?"
  *
  * Derived per batch from:
- *   Product Truth Pack + Brand Strategy Profile + Strategy Hypotheses
+ *   Creative-Safe Product Profile + Brand Strategy Profile + Strategy Hypotheses
  *   + explicit batch direction (user input)
  * following the priority rule user_input > source_fact > ai_inference.
  *
@@ -22,7 +23,8 @@ import { hypothesisStatements } from "./strategy-hypotheses";
  * output must pass through the same merge so user input still wins.
  */
 export interface StrategyInputs {
-  truthPack: ProductTruthPack;
+  /** Only reviewed / safe product information — never the raw truth pack. */
+  safeProfile: CreativeSafeProductProfile;
   brandStrategy: BrandStrategyProfile;
   hypotheses: StrategyHypothesis[];
   direction?: CreativeDirectionInput;
@@ -30,7 +32,9 @@ export interface StrategyInputs {
 
 const asUser = (values: string[] | undefined) => (values ?? []).map((v) => userInput(v, "batch.direction"));
 
-export function deriveDynamicCreativeStrategy({ truthPack, brandStrategy, hypotheses, direction = {} }: StrategyInputs): DynamicCreativeStrategy {
+const safeToStatement = (f: SafeFact): SourcedStatement => ({ statement: f.value, source: f.source, sourceRef: f.sourceRef });
+
+export function deriveDynamicCreativeStrategy({ safeProfile, brandStrategy, hypotheses, direction = {} }: StrategyInputs): DynamicCreativeStrategy {
   const avoidLeadingWith = mergeByPriority(asUser(direction.avoidLeadingWith), brandStrategy.messagingToDeprioritize);
 
   const leadWith = excluding(
@@ -53,9 +57,9 @@ export function deriveDynamicCreativeStrategy({ truthPack, brandStrategy, hypoth
 
   const supportingProof = mergeByPriority(
     asUser(direction.supportingProof),
-    truthPack.guarantees.map(factToStatement),
-    truthPack.verifiedClaims.map(factToStatement),
-    truthPack.socialProof.map(factToStatement),
+    safeProfile.claims.filter((c) => c.field === "guarantees").map(safeToStatement),
+    safeProfile.claims.filter((c) => c.field === "sourceClaims").map(safeToStatement),
+    safeProfile.claims.filter((c) => c.field === "socialProof").map(safeToStatement),
   ).slice(0, 5);
 
   const primaryCustomerDesires = mergeByPriority(
@@ -75,7 +79,7 @@ export function deriveDynamicCreativeStrategy({ truthPack, brandStrategy, hypoth
   const inferred = used.filter((s) => s.source === "ai_inference").length - approved;
 
   return {
-    id: `strategy_${truthPack.id}`,
+    id: `strategy_${safeProfile.truthPackId}`,
     primaryCustomerDesires,
     primaryAngles,
     secondaryAngles,
@@ -89,7 +93,7 @@ export function deriveDynamicCreativeStrategy({ truthPack, brandStrategy, hypoth
     creativeOpportunities,
     rationale: [
       leadWith.length ? `Lead with ${leadWith.map((s) => s.statement.toLowerCase()).join(", ")}.` : "No explicit lead set; angles come from brand priorities.",
-      supportingProof.length ? `Back it up with ${supportingProof.length} verified proof point(s).` : "No verified proof available yet — avoid proof-led concepts.",
+      supportingProof.length ? `Back it up with ${supportingProof.length} approved or low-risk proof point(s).` : "No verified proof available yet — avoid proof-led concepts.",
       avoidLeadingWith.length ? `Do not open with ${avoidLeadingWith.map((s) => s.statement.toLowerCase()).join(", ")}.` : "",
       approved ? `${approved} user-approved AI inference(s) used as high-priority input.` : "",
       inferred ? `${inferred} unreviewed AI inference(s) should be validated.` : "No unreviewed AI inference used.",

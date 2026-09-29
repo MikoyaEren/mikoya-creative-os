@@ -231,8 +231,15 @@ ONE Claude call: page block + images      lib/server/product-analysis/analyzers.
    (structured output, zod schema)        schema.ts, prompt.ts
    ↓
 VALIDATE + MAP to ProductTruthPack        schema.ts → parseAnalysisOutput(), toTruthPack()
+   ↓  (raw, never modified afterwards)
+REVIEW BUNDLE: claims, key facts,         lib/strategy/claims.ts, conflicts.ts
+  conflicts, excluded reviews
    ↓
-UI: Review Product Facts → Creative Strategy → Generate
+UI REVIEW GATE: Accept / Edit / Reject    components/product/fact-review-section.tsx
+   ↓  (UserDecisions, stored separately)
+CreativeSafeProductProfile                lib/strategy/safe-profile.ts
+   ↓
+Creative Strategy → Generate (consumes the safe profile only)
 ```
 
 The Product Truth Pack is created in **`toTruthPack()`**
@@ -251,12 +258,64 @@ Malformed output returns `invalid_ai_output` and nothing is saved.
   text produce a review warning.
 - The entered product name and URL always win (`user_input`). If the page
   names the product differently, you get a warning.
-- Prices need a valid amount and an ISO currency code. Conflicting prices
-  stay unknown.
+- Prices need a valid amount and an ISO currency code, and are never
+  converted. Conflicting prices stay unknown or are flagged as conflicts.
 - Anything unsupported stays in `missing` and is shown in the UI. Customer
   psychology never enters the Truth Pack; that belongs to Strategy
   Hypotheses.
 - Each fact can carry a short `evidence` snippet (≤160 chars) for auditing.
+
+**Grammar budget.** The provider compiles the structured-output schema into
+a grammar with a size limit. All facts therefore share one item shape tagged
+by `field`, and categorical values are plain strings normalised in
+`toTruthPack()` (no enums). A test guards this; per-field objects with nested
+enums were rejected live ("The compiled grammar is too large").
+
+### Product fact review (claims, conflicts, safe profile)
+
+Stated is not verified. The raw Truth Pack is kept for audit, and creative
+generation only ever receives the derived **`CreativeSafeProductProfile`**.
+
+**Claim taxonomy** (`lib/strategy/claims.ts`), deterministic and product-agnostic:
+
+| Type | Meaning |
+| ---- | ------- |
+| `product_fact` | low-risk attribute (size, process, material) |
+| `source_claim` | stated by a source, usually the brand's own page — not verified |
+| `verified_claim` | low-risk claim corroborated by two independent provided sources (e.g. page + packaging) |
+| `user_approved_claim` | accepted or edited by the user |
+| `blocked_claim` | medical / disease claim — never usable, even if approved |
+
+Risk categories: `general`, `health`, `performance`, `comparative`,
+`regulated`, `pricing`, `guarantee`. A keyword classifier (English + German)
+sets the risk; the model's suggestion can only raise it. Health, performance,
+comparative and regulated claims are never auto-verified and need approval.
+
+**Conflicts** (`lib/strategy/conflicts.ts`) are explicit `ProductConflict`s
+with values, sources, severity, status and a recommended action:
+- `context`: the extracted price currency doesn't match the target market's
+  expected currency (Mikoya: Germany / EUR / de).
+- `validator`: structured data (JSON-LD / meta) disagrees with the visible
+  stock status.
+- `model`: other disagreements the model reported with quotes (e.g. shipping).
+
+Nothing is rewritten. A conflict is resolved when every affected item has a
+decision, or when the user dismisses it.
+
+**Review scoping.** Reviews are kept only when attributable to this product.
+Reviews naming another product (checked deterministically against the product
+name) or marked other/unclear by the model are excluded, with a reason.
+
+**Review gate and safe profile.** Each key fact and claim can be accepted,
+edited or rejected. Decisions (`UserDecisions`) are stored apart from the
+bundle. An edit becomes `user_input` while the original value, source and
+quote stay visible. The safe profile includes an item unless:
+- it was rejected;
+- it is blocked;
+- its field has an unresolved conflict;
+- it is a high-risk claim nobody approved.
+
+Excluded items are listed with their reason.
 
 **Mock vs real analyzer.** Both implement `ProductAnalyzer`:
 

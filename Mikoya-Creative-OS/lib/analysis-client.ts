@@ -1,6 +1,7 @@
 import type {
   AnalysisImageInput,
   AnalyzerKind,
+  ProductAnalysisContext,
   ProductAnalysisResponse,
   ProductAsset,
   ProductInput,
@@ -12,11 +13,21 @@ function toImage(asset: ProductAsset): AnalysisImageInput {
   return { assetId: asset.id, role: asset.role, fileName: asset.fileName, src: asset.previewUrl };
 }
 
+function cleanContext(context: ProductAnalysisContext | undefined): ProductAnalysisContext | undefined {
+  if (!context) return undefined;
+  const out: ProductAnalysisContext = {};
+  if (context.targetMarket?.trim()) out.targetMarket = context.targetMarket.trim();
+  if (/^[A-Za-z]{3}$/.test(context.expectedCurrency?.trim() ?? "")) out.expectedCurrency = context.expectedCurrency!.trim().toUpperCase();
+  if (context.language?.trim()) out.language = context.language.trim();
+  return Object.keys(out).length ? out : undefined;
+}
+
 export async function requestProductAnalysis(args: {
   projectId: string;
   analyzer: AnalyzerKind;
   product: ProductInput;
   notes?: string;
+  context?: ProductAnalysisContext;
   signal?: AbortSignal;
 }): Promise<ProductAnalysisResponse> {
   try {
@@ -30,6 +41,7 @@ export async function requestProductAnalysis(args: {
         productName: args.product.name.trim(),
         productUrl: args.product.url.trim(),
         notes: args.notes?.trim() || undefined,
+        context: cleanContext(args.context),
         mainImage: args.product.mainImage ? toImage(args.product.mainImage) : null,
         additionalImages: args.product.additionalAssets.map(toImage),
       }),
@@ -44,11 +56,12 @@ export async function requestProductAnalysis(args: {
 }
 
 /** Stable key of the inputs an analysis was based on; used to detect stale results. */
-export function analysisInputKey(product: ProductInput) {
+export function analysisInputKey(product: ProductInput, context?: ProductAnalysisContext) {
   return JSON.stringify([
     product.name.trim(),
     product.url.trim(),
     product.mainImage?.id ?? null,
     product.additionalAssets.map((a) => a.id),
+    cleanContext(context) ?? null,
   ]);
 }
