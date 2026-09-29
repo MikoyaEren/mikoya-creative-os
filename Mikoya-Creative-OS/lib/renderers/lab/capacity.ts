@@ -22,6 +22,15 @@ export function filler(n: number, seed = 0): string {
   return cut.endsWith(" ") ? `${cut.slice(0, -1)}s` : cut;
 }
 
+/** A hook of exactly `n` characters whose words never occur in the copy filler, so a template with a hook headline draws it. */
+const HOOK_WORDS = "honest bright little reason every person deserves quiet sure real".split(" ");
+export function hookText(n: number): string {
+  let s = "";
+  for (let i = 0; s.length < n + 12; i++) s += `${HOOK_WORDS[i % HOOK_WORDS.length]} `;
+  const cut = s.slice(0, n);
+  return cut.endsWith(" ") ? `${cut.slice(0, -1)}y` : cut;
+}
+
 /** Value slots that choose a visual or a layout: every choice is its own capacity case. */
 const CHOICE_KEYS = new Set(["visual", "attachment", "backgroundAsset", "comparisonPattern"]);
 
@@ -69,7 +78,8 @@ function listField(slot: RecipeCopySlot, rows: number, maxChars: number | undefi
 
 /** Every maximum-capacity case for a mechanism's recipe. */
 export function capacityCases(mechanism: MechanismId): LabCase[] {
-  const slots = getRecipeForMechanism(mechanism).structure.copySlots;
+  const recipe = getRecipeForMechanism(mechanism);
+  const slots = recipe.structure.copySlots;
   const choices = slots.filter((s) => s.values && CHOICE_KEYS.has(s.key));
   // Every combination of the choice slots (an optional choice may also stay empty).
   let combos: Record<string, string>[] = [{}];
@@ -78,10 +88,18 @@ export function capacityCases(mechanism: MechanismId): LabCase[] {
     combos = combos.flatMap((combo) => options.map((o) => ({ ...combo, [c.key]: o })));
   }
   const cases: LabCase[] = [];
+  // Hook: a template that draws it is tested without a drawn hook AND with a drawn hook at its limit (copy at the
+  // tighter whenDrawn limits); every other template gets a long hook that must stay metadata (never drawn).
+  const hookModes = recipe.hook ? (["none", "drawn"] as const) : (["inert"] as const);
+  for (const hookMode of hookModes)
   for (const combo of combos) {
     const lists = slots.filter((s) => s.kind === "list");
     // The same capacity rules the validator applies (whenFilled, optionally for specific values).
-    const rulesFor = (s: RecipeCopySlot) => (s.whenFilled ?? []).filter((r) => combo[r.field] && (!r.values || r.values.includes(combo[r.field])));
+    const drawnRules = hookMode === "drawn" ? recipe.hook!.whenDrawn.filter((r) => !r.ifFilled || combo[r.ifFilled]) : [];
+    const rulesFor = (s: RecipeCopySlot) => [
+      ...(s.whenFilled ?? []).filter((r) => combo[r.field] && (!r.values || r.values.includes(combo[r.field]))),
+      ...drawnRules.filter((r) => r.field === s.key),
+    ];
     const limitFor = (s: RecipeCopySlot) => {
       let maxRows = s.maxRows ?? 12;
       let maxChars = s.maxChars;
@@ -118,13 +136,14 @@ export function capacityCases(mechanism: MechanismId): LabCase[] {
         fields.push({ key: slot.key, text: slot.key === "time" ? "12:45" : slot.key === "handle" ? `@${filler(textMax - 1).replace(/ /g, "")}` : filler(textMax, fields.length * 5), rows: [] });
       }
       const choice = Object.entries(combo).map(([k, val]) => `${k}=${val || "none"}`).join(", ");
+      const hook = hookMode === "drawn" ? hookText(recipe.hook!.maxChars) : hookMode === "inert" ? hookText(200) : "";
       cases.push({
-        id: `cap_${[...Object.values(combo).map((x) => x || "none"), v].join("_")}`,
-        label: `CAPACITY · ${[choice, ...names].filter(Boolean).join(" · ")}`,
+        id: `cap_${[hookMode, ...Object.values(combo).map((x) => x || "none"), v].join("_")}`,
+        label: `CAPACITY · hook ${hookMode === "drawn" ? `drawn (${recipe.hook!.maxChars})` : hookMode === "inert" ? "never drawn (200)" : "none"} · ${[choice, ...names].filter(Boolean).join(" · ")}`,
         brand: "A",
         withAssets: true,
         cta: true,
-        concept: { mechanism, hook: "", cta: "Try it for yourself now", copyFields: fields },
+        concept: { mechanism, hook, cta: "Try it for yourself now", copyFields: fields },
       });
     }
   }

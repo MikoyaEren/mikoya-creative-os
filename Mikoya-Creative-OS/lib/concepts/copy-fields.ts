@@ -1,4 +1,4 @@
-import type { CopyField, CopyRow, MechanismId, RecipeCopySlot, RowPartSpec } from "@/lib/types";
+import type { CapacityRule, CopyField, CopyRow, MechanismId, RecipeCopySlot, RowPartSpec } from "@/lib/types";
 import { getRecipeForMechanism } from "@/lib/recipes";
 
 /**
@@ -70,6 +70,18 @@ function checkSlot(slot: RecipeCopySlot, field: CopyField | undefined, issues: s
   return { key: slot.key, text, rows: [] };
 }
 
+const fieldChars = (f: CopyField) => f.text.length + f.rows.reduce((n, r) => n + r.label.length + r.text.length + r.note.length, 0);
+
+/** Issues of one copy field against one capacity rule (`when` names the situation). */
+function capacityIssues(f: CopyField, rule: Omit<CapacityRule, "field" | "values">, when: string): string[] {
+  const out: string[] = [];
+  if (rule.maxRows !== undefined && f.rows.length > rule.maxRows) out.push(`${f.key}: ${f.rows.length} rows (max ${rule.maxRows} ${when}).`);
+  if (rule.maxChars !== undefined && fieldChars(f) > rule.maxChars) out.push(`${f.key}: ${fieldChars(f)} chars (max ${rule.maxChars} ${when}).`);
+  const long = rule.maxRowText !== undefined ? f.rows.findIndex((r) => r.text.length > rule.maxRowText!) : -1;
+  if (long >= 0) out.push(`${f.key}[${long + 1}]: ${f.rows[long].text.length} chars (max ${rule.maxRowText} per row ${when}).`);
+  return out;
+}
+
 /** Validate and normalise copy fields against the mechanism's recipe. Unknown keys and limit breaches are issues, never trimmed away. */
 export function validateCopyFields(mechanismId: MechanismId, fields: CopyField[]): CopyStructureResult {
   const slots = getRecipeForMechanism(mechanismId).structure.copySlots;
@@ -88,7 +100,6 @@ export function validateCopyFields(mechanismId: MechanismId, fields: CopyField[]
     if (!f?.text && !f?.rows.length) return false;
     return !values || values.some((v) => v.toLowerCase() === f.text.toLowerCase());
   };
-  const chars = (f: CopyField) => f.text.length + f.rows.reduce((n, r) => n + r.label.length + r.text.length + r.note.length, 0);
   for (const slot of slots) {
     const f = field(slot.key);
     if (!f) continue;
@@ -96,12 +107,7 @@ export function validateCopyFields(mechanismId: MechanismId, fields: CopyField[]
     if (other && other.rows.length !== f.rows.length) issues.push(`${slot.key}: ${f.rows.length} rows but ${slot.pairedWith} has ${other.rows.length} (rows pair 1:1).`);
     // Capacity rules: what the template can still fit when another field is filled (e.g. an attached photo).
     for (const rule of slot.whenFilled ?? []) {
-      if (!filled(rule.field, rule.values)) continue;
-      const when = `with ${rule.field}${rule.values ? ` = ${rule.values.join(" / ")}` : ""}`;
-      if (rule.maxRows !== undefined && f.rows.length > rule.maxRows) issues.push(`${slot.key}: ${f.rows.length} rows (max ${rule.maxRows} ${when}).`);
-      if (rule.maxChars !== undefined && chars(f) > rule.maxChars) issues.push(`${slot.key}: ${chars(f)} chars (max ${rule.maxChars} ${when}).`);
-      const long = rule.maxRowText !== undefined ? f.rows.findIndex((r) => r.text.length > rule.maxRowText!) : -1;
-      if (long >= 0) issues.push(`${slot.key}[${long + 1}]: ${f.rows[long].text.length} chars (max ${rule.maxRowText} per row ${when}).`);
+      if (filled(rule.field, rule.values)) issues.push(...capacityIssues(f, rule, `with ${rule.field}${rule.values ? ` = ${rule.values.join(" / ")}` : ""}`));
     }
   }
   return issues.length ? { ok: false, issues } : { ok: true, fields: out };
@@ -155,4 +161,44 @@ export function describeCopySlots(slots: RecipeCopySlot[]): string {
         : `${s.key} (text${s.values ? `: ${s.values.join(" | ")}` : ""}${s.maxChars && !s.values ? ` ≤${s.maxChars}` : ""}${capacity(s)}${s.required ? "" : ", optional"}${s.example ? `, e.g. "${s.example}"` : ""})`,
     )
     .join("; ");
+}
+
+const hookWords = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w.length > 1);
+
+/** True when the hook adds words the copy fields do not already carry (a template with a hook headline then draws it). */
+export function hookIsDistinct(hook: string, fields: CopyField[]) {
+  const copy = new Set(hookWords(copyFieldsCanvasText(fields)));
+  const words = hookWords(hook);
+  return words.length > 0 && words.some((w) => !copy.has(w));
+}
+
+/**
+ * Hook capacity: for mechanisms whose template draws the hook (recipe.hook),
+ * a drawn hook has a length limit and takes room from the copy (whenDrawn).
+ * A hook that is not drawn — or any hook of another mechanism — is metadata
+ * and is never limited for rendering.
+ */
+export function validateHook(mechanismId: MechanismId, hook: string, fields: CopyField[]): string[] {
+  const spec = getRecipeForMechanism(mechanismId).hook;
+  const h = hook.trim();
+  if (!spec || !h || !hookIsDistinct(h, fields)) return [];
+  const issues: string[] = [];
+  if (h.length > spec.maxChars) issues.push(`hook: ${h.length} chars (max ${spec.maxChars} when drawn as the headline).`);
+  const filled = (key: string) => fields.some((x) => x.key === key && (x.text.trim() || x.rows.length));
+  for (const rule of spec.whenDrawn) {
+    const f = fields.find((x) => x.key === rule.field);
+    if (f && (!rule.ifFilled || filled(rule.ifFilled))) issues.push(...capacityIssues(f, rule, `when the hook is drawn${rule.ifFilled ? ` with ${rule.ifFilled}` : ""}`));
+  }
+  return issues;
+}
+
+/** The writer-facing description of a recipe's hook limits (empty when the template never draws the hook). */
+export function describeHook(mechanismId: MechanismId): string {
+  const spec = getRecipeForMechanism(mechanismId).hook;
+  if (!spec) return "";
+  const rules = spec.whenDrawn.map((w) =>
+    (w.ifFilled ? `with ${w.ifFilled}: ` : "") +
+    [w.maxRows !== undefined ? `${w.field} ≤${w.maxRows} rows` : "", w.maxChars !== undefined ? `${w.field} ≤${w.maxChars} chars in total` : "", w.maxRowText !== undefined ? `${w.field} ≤${w.maxRowText} chars per row` : ""].filter(Boolean).join(", "),
+  );
+  return `Hook: drawn as a headline when it adds words the copy fields don't already carry — then ≤${spec.maxChars} chars${rules.length ? ` and ${rules.join("; ")}` : ""}. A hook that repeats the copy is not drawn.`;
 }

@@ -16,7 +16,7 @@ import { sameClaim, significantTokens } from "@/lib/strategy/claims";
 import { coversTopic, isSensitiveHypothesis, withheldClaimLeak } from "@/lib/strategy/strategy-guards";
 import type { CreativeSafeProductProfile } from "@/lib/types";
 import type { ConceptInputs } from "./concept-inputs";
-import { copyFieldsCanvasText, copyFieldsToText, fieldRows, fieldText, validateCopyFields } from "./copy-fields";
+import { copyFieldsCanvasText, copyFieldsToText, fieldRows, fieldText, validateCopyFields, validateHook } from "./copy-fields";
 import { isComparativeClaim, unsupportedOfferWording, medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
 
 /**
@@ -340,6 +340,12 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
     const structure = validateCopyFields(mechanismId, d.copyFields);
     if (!structure.ok) {
       drop("invalid_copy_structure", structure.issues.slice(0, 3).join(" "));
+      continue;
+    }
+    // A hook the template draws as a headline must fit with the copy (recipe hook limits); otherwise it is metadata.
+    const hookIssues = validateHook(mechanismId, d.hook, structure.fields);
+    if (hookIssues.length) {
+      drop("invalid_copy_structure", hookIssues.slice(0, 3).join(" "));
       continue;
     }
     // Comparisons: every row resolves to an approved / safe input; no named competitors, no invented superiority.

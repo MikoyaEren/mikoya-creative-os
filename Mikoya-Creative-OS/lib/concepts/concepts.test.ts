@@ -573,6 +573,34 @@ describe("us vs them: every factual side of every row has its own approved / saf
   });
 });
 
+describe("hook capacity in the concept guards", () => {
+  it("drops a concept whose drawn hook exceeds its mechanism's hook limits; other mechanisms keep long hooks as metadata", () => {
+    const slot = plan.slots[0];
+    const planWith = { ...plan, slots: [{ ...slot, mechanismId: "imessage" as const, alternatives: [] }, { ...plan.slots[1], mechanismId: "x_post" as const, alternatives: [] }, ...plan.slots.slice(2)] };
+    const ctxWith = { ...ctx, plan: planWith };
+    const thread = [{ key: "messages", text: "", rows: [{ label: "them", text: "you seem different lately", note: "" }, { label: "me", text: "new morning thing", note: "" }] }, { key: "contact", text: "Sam", rows: [] }];
+    const post = [{ key: "post", text: "stopped calling it a habit", rows: [] }, { key: "name", text: "Mara", rows: [] }, { key: "handle", text: "@mara", rows: [] }];
+    const longHook = "an honest little reason every single person deserves a quiet start";
+    const r = validateConcepts(
+      [
+        draft(planWith.slots[0], { mechanismId: "imessage", hook: longHook, copyFields: thread }),
+        draft(planWith.slots[1], { mechanismId: "x_post", hook: `${longHook}, with room to spare for everyone involved in it`, copyFields: post }),
+      ],
+      [],
+      ctxWith,
+    );
+    expect(r.dropped.map((d) => [d.mechanismId, d.reason])).toEqual([["imessage", "invalid_copy_structure"]]);
+    expect(r.dropped[0].detail).toMatch(/hook: \d+ chars \(max 50 when drawn as the headline\)/);
+    expect(r.kept.map((k) => k.draft.mechanism)).toEqual(["x_post"]);
+  });
+
+  it("tells the writer the hook limits of the mechanisms that draw the hook, and only those", () => {
+    const text = buildConceptUserText({ ...plan, slots: [{ ...plan.slots[0], mechanismId: "imessage", alternatives: ["x_post"] }] }, inputs, GLOBAL_CREATIVE_CONSTITUTION);
+    expect(text.match(/Hook: drawn as a headline/g)).toHaveLength(1);
+    expect(text).toMatch(/Hook: drawn as a headline when it adds words the copy fields don't already carry — then ≤50 chars/);
+  });
+});
+
 describe("mechanism coverage: recipes and the concept engine", () => {
   it("keeps every mechanism in concept generation, with or without an HTML template", () => {
     const s = buildStrategySnapshot({ project: MIKOYA_PROJECT, product, brand });

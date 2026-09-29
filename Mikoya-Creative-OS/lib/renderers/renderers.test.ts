@@ -406,6 +406,22 @@ describe("mechanism coverage templates: typed payloads, invalid payloads, concep
   });
 });
 
+describe("hook capacity at render time", () => {
+  it("rejects a drawn hook beyond the recipe's hook limits (invalid_payload), ignores hooks a template never draws", async () => {
+    const long = "honest bright little reason every person deserves a real";
+    const r = await renderVariant(input({ concept: { mechanism: "imessage", renderer: "html", hook: long, cta: "", copyFields: THREAD } }), { rasterizer: fakeRasterizer(), store: memoryStore() });
+    expect(r.record).toMatchObject({ status: "failed", error: { code: "invalid_payload" } });
+    expect(r.record.error?.detail).toMatch(/hook: 56 chars \(max 50/);
+    const ok = await renderVariant(input({ concept: { mechanism: "imessage", renderer: "html", hook: long.slice(0, 50), cta: "", copyFields: THREAD } }), { rasterizer: fakeRasterizer(), store: memoryStore() });
+    expect(ok.record.status).toBe("complete");
+    expect(ok.record.renderedFields).toContain("hook");
+    const post = [t("post", "stopped calling it a habit"), t("name", "Mara"), t("handle", "@mara")];
+    const inert = await renderVariant(input({ concept: { mechanism: "x_post", renderer: "html", hook: long.repeat(3), cta: "", copyFields: post } }), { rasterizer: fakeRasterizer(), store: memoryStore() });
+    expect(inert.record.status).toBe("complete");
+    expect(inert.record.renderedFields).not.toContain("hook");
+  });
+});
+
 describe("render service and concurrency", () => {
   it("isolates failures: one format failing never stops the other", async () => {
     let n = 0;

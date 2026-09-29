@@ -1,7 +1,7 @@
 import type { GlobalCreativeConstitution, MechanismId, SlotPlan } from "@/lib/types";
 import type { ConceptInputs } from "@/lib/concepts/concept-inputs";
 import { MECHANISM_TRAITS, getMechanism, getRecipeForMechanism } from "@/lib/recipes";
-import { describeCopySlots } from "@/lib/concepts/copy-fields";
+import { describeCopySlots, describeHook } from "@/lib/concepts/copy-fields";
 
 /**
  * CONCEPT WRITER PROMPT — compiled from layers (product- and category-agnostic):
@@ -36,6 +36,7 @@ function recipeBlock(id: MechanismId) {
     recipe.description,
     `Structure: ${recipe.structure.layout}`,
     `Copy fields: ${describeCopySlots(recipe.structure.copySlots)}`,
+    describeHook(id) || null,
     recipe.structure.visualRules.length ? `Visual rules: ${recipe.structure.visualRules.join("; ")}` : null,
     `Principles: ${recipe.principles.join("; ")}`,
     `1:1 layout: ${recipe.formatLayouts["1:1"]}`,

@@ -191,6 +191,30 @@ export interface MechanismTraits {
   supportsComparison?: boolean;
 }
 
+/** A tighter limit on one copy field that applies in a given situation (see RecipeCopySlot.whenFilled, RecipeHook.whenDrawn). */
+export interface CapacityRule {
+  field: string;
+  /** Only when the field holds one of these values (default: any value). */
+  values?: string[];
+  maxRows?: number;
+  /** Text fields: max characters. List fields: max characters across all row parts. */
+  maxChars?: number;
+  /** List fields: max characters of each row's text part. */
+  maxRowText?: number;
+}
+
+/**
+ * Mechanisms whose template draws the concept hook as a headline when it adds
+ * words the copy fields don't already carry. The hook stays concept metadata
+ * everywhere; these limits apply only when it is drawn.
+ */
+export interface RecipeHook {
+  /** Max hook characters when drawn. */
+  maxChars: number;
+  /** Tighter limits on copy field `field` when the hook is drawn (the headline takes their room), optionally only when `ifFilled` is also set. */
+  whenDrawn: (Omit<CapacityRule, "values"> & { ifFilled?: string })[];
+}
+
 /** One part of a list row (speaker, quantity, time, state …) as a recipe defines it. */
 export interface RowPartSpec {
   /** What the part means, shown to the writer ("speaker", "quantity", "time"). */
@@ -230,16 +254,7 @@ export interface RecipeCopySlot {
    * Capacity rules: tighter limits that apply when another copy field is filled — what the
    * template can still fit at readable sizes (e.g. fewer messages when a photo is attached).
    */
-  whenFilled?: {
-    field: string;
-    /** Only when the field holds one of these values (default: any value). */
-    values?: string[];
-    maxRows?: number;
-    /** Text fields: max characters. List fields: max characters across all row parts. */
-    maxChars?: number;
-    /** List fields: max characters of each row's text part. */
-    maxRowText?: number;
-  }[];
+  whenFilled?: CapacityRule[];
 }
 
 /** A structured copy row: parts as the recipe's row spec defines them ("" when unused). */
@@ -286,6 +301,8 @@ export interface CreativeRecipe {
    * Never brand positioning, product facts or global philosophy.
    */
   principles: string[];
+  /** Only for mechanisms that draw the hook (see RecipeHook). */
+  hook?: RecipeHook;
 }
 
 // ---------------------------------------------------------------------------

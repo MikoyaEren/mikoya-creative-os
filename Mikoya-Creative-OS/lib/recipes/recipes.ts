@@ -46,7 +46,7 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "active",
-    version: 5,
+    version: 6,
     structure: {
       layout: "iOS Messages UI, 3–6 bubbles, grey incoming and blue outgoing.",
       copySlots: [
@@ -76,6 +76,8 @@ export const RECIPES: CreativeRecipe[] = [
       "Short message bubbles; the payoff lands in the last one",
       "Friend-to-friend recommendation energy, never salesy",
     ],
+    // Capacity: a drawn hook headline (hook adding words the thread doesn't carry) takes the room of about one message.
+    hook: { maxChars: 50, whenDrawn: [{ field: "messages", maxRows: 5, maxChars: 190 }, { field: "messages", ifFilled: "attachment", maxRows: 3, maxChars: 120 }] },
   },
   {
     id: "dont_buy_this",
@@ -168,7 +170,7 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "active",
-    version: 2,
+    version: 3,
     structure: {
       layout: "Slightly rotated receipt on brand background, line items, total, footer message.",
       copySlots: [
@@ -186,6 +188,8 @@ export const RECIPES: CreativeRecipe[] = [
       "The total line is the punchline",
       "Keep the thermal-receipt look authentic",
     ],
+    // Capacity: a drawn hook headline leaves room for four full line items.
+    hook: { maxChars: 50, whenDrawn: [{ field: "items", maxRows: 4 }] },
   },
   {
     id: "warning_label",

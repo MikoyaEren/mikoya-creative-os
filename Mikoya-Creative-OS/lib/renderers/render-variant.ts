@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import sharp from "sharp";
 import type { BrandColors, CopyField, MechanismId, OutputFormat, RenderErrorCode, RenderRecord, RendererType } from "@/lib/types";
-import { copyFieldsCanvasText, validateCopyFields } from "@/lib/concepts/copy-fields";
+import { hookIsDistinct, validateCopyFields, validateHook } from "@/lib/concepts/copy-fields";
 import { PayloadError, type HtmlTemplate, type RenderAsset } from "./types";
 import { RENDERER_VERSION } from "./version";
 import { brandTokens } from "./html/brand-style";
@@ -58,14 +58,8 @@ export interface RenderResult {
 export const LEGACY_MESSAGE = "Legacy concept — regenerate to render";
 const SAFE_ID = /^[A-Za-z0-9_-]{1,120}$/;
 
-const words = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w.length > 1);
-
-/** True when the hook adds words the copy fields do not already carry (then it is drawn as a headline). */
-export function hookIsDistinct(hook: string, fields: CopyField[]) {
-  const copy = new Set(words(copyFieldsCanvasText(fields)));
-  const hookWords = words(hook);
-  return hookWords.length > 0 && hookWords.some((w) => !copy.has(w));
-}
+/** Re-exported: the hook headline rule lives with the copy contract (the concept guards use it too). */
+export { hookIsDistinct };
 
 export function decideHeadline(template: HtmlTemplate<unknown>, hook: string, fields: CopyField[]) {
   const h = hook.trim();
@@ -128,6 +122,9 @@ export async function renderVariant(input: RenderVariantInput, deps: RenderDeps)
     if (err instanceof PayloadError) return fail("invalid_payload", err.message);
     throw err;
   }
+  // A drawn hook must fit with the copy (recipe hook limits); a hook the template never draws is metadata.
+  const hookIssues = template.hookMode === "none" ? [] : validateHook(concept.mechanism, concept.hook, checked.fields);
+  if (hookIssues.length) return fail("invalid_payload", "The concept hook exceeds what this mechanism can draw with its copy.", hookIssues.join(" "));
   if (template.ctaMode === "required" && !concept.cta.trim()) return fail("invalid_payload", "This template requires the concept CTA, which is empty.");
 
   const headline = decideHeadline(template, concept.hook, checked.fields);

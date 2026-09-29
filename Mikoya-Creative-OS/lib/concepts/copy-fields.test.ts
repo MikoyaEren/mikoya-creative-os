@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { CopyField, MechanismId } from "@/lib/types";
 import { ALL_MECHANISM_IDS, RECIPES, getRecipeForMechanism } from "@/lib/recipes";
 import { demoCopyFields } from "@/lib/mock/demo-copy-fields";
-import { copyFieldsCanvasText, copyFieldsToText, describeCopySlots, validateCopyFields } from "./copy-fields";
+import { copyFieldsCanvasText, copyFieldsToText, describeCopySlots, describeHook, validateCopyFields, validateHook } from "./copy-fields";
 
 const text = (key: string, t: string): CopyField => ({ key, text: t, rows: [] });
 const list = (key: string, rows: [string, string, string?][]): CopyField => ({ key, text: "", rows: rows.map(([label, t, note]) => ({ label, text: t, note: note ?? "" })) });
@@ -130,5 +130,43 @@ describe("capacity rules: recipes never promise what their template cannot draw"
     expect(describeCopySlots(getRecipeForMechanism("imessage").structure.copySlots)).toMatch(/when attachment is set: ≤4 rows, ≤170 chars in total/);
     expect(describeCopySlots(getRecipeForMechanism("missing_poster").structure.copySlots)).toMatch(/description \(text ≤150, when visual is lifestyle: ≤100 chars\)/);
     expect(describeCopySlots(getRecipeForMechanism("us_vs_them").structure.copySlots)).toMatch(/when visual is set: ≤3 rows, ≤28 chars per row text/);
+  });
+});
+
+describe("hook capacity: limited only where the template draws the hook", () => {
+  const thread = (n: number, len: number) => list("messages", Array.from({ length: n }, (_, i): [string, string] => [i % 2 ? "me" : "them", `${"word ".repeat(len / 5).trim()}`]));
+  const hook50 = "honest bright little reason every person deserves.";
+  const hookOf = (n: number) => `${"honest bright ".repeat(10)}`.slice(0, n).trim();
+
+  it("iMessage / Receipt: a drawn hook is ≤ 50 chars", () => {
+    expect(hook50.length).toBe(50);
+    const f = [text("contact", "Sam"), thread(3, 20)];
+    expect(validateHook("imessage", hook50, f)).toEqual([]);
+    expect(validateHook("imessage", `${hook50}s`, f).join(" ")).toMatch(/hook: 51 chars \(max 50 when drawn as the headline\)/);
+    expect(validateHook("receipt", hookOf(60), [list("items", [["1x", "slow start"], ["1x", "window seat"], ["1x", "no rush"]]), text("total", "one morning")]).join(" ")).toMatch(/max 50/);
+  });
+
+  it("a drawn hook takes room from the copy (whenDrawn), with or without a photo", () => {
+    expect(validateHook("imessage", hook50, [text("contact", "Sam"), thread(6, 20)]).join(" ")).toMatch(/messages: 6 rows \(max 5 when the hook is drawn\)/);
+    expect(validateHook("imessage", hook50, [text("contact", "Sam"), thread(5, 40)]).join(" ")).toMatch(/max 190 when the hook is drawn/);
+    expect(validateHook("imessage", hook50, [text("contact", "Sam"), thread(4, 20), text("attachment", "product")]).join(" ")).toMatch(/4 rows \(max 3 when the hook is drawn with attachment\)/);
+    expect(validateHook("imessage", hook50, [text("contact", "Sam"), thread(3, 20), text("attachment", "product")])).toEqual([]);
+    const items = (n: number) => list("items", Array.from({ length: n }, (_, i): [string, string] => ["1x", `item number ${"abcdefgh"[i]}`]));
+    expect(validateHook("receipt", hook50, [items(5), text("total", "one morning")]).join(" ")).toMatch(/items: 5 rows \(max 4 when the hook is drawn\)/);
+    expect(validateHook("receipt", hook50, [items(4), text("total", "one morning")])).toEqual([]);
+  });
+
+  it("a hook that repeats the copy is not drawn, so it is never limited", () => {
+    const f = [text("contact", "Sam"), list("messages", [["them", "be honest, did you change something about your mornings lately, you seem different"], ["me", "yes"], ["them", "ok"], ["me", "fine"], ["them", "sure"], ["me", "yes"]])];
+    expect(validateHook("imessage", "be honest, did you change something about your mornings lately, you seem different", f)).toEqual([]);
+  });
+
+  it("mechanisms whose template never draws the hook keep it as unlimited metadata", () => {
+    const long = hookOf(140);
+    expect(validateHook("x_post", long, [text("post", "a thought"), text("name", "Mara"), text("handle", "@mara")])).toEqual([]);
+    expect(validateHook("lock_screen", long, [list("notifications", [["Messages", "hi", "Lena"]]), text("time", "7:12"), text("backgroundAsset", "none")])).toEqual([]);
+    expect(describeHook("x_post")).toBe("");
+    expect(describeHook("imessage")).toMatch(/≤50 chars and messages ≤5 rows, messages ≤190 chars in total; with attachment: messages ≤3 rows, messages ≤120 chars in total/);
+    expect(describeHook("receipt")).toMatch(/≤50 chars and items ≤4 rows/);
   });
 });

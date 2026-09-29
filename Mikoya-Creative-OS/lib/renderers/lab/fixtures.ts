@@ -68,7 +68,8 @@ const IMESSAGE: LabCase[] = [
     cta: false,
     concept: {
       mechanism: "imessage",
-      hook: "be honest with me",
+      // Repeats the first message, so it is not drawn: the maximum thread leaves no room for a headline.
+      hook: "be honest, did you change something?",
       cta: "Try it",
       copyFields: [
         rows("messages", [
@@ -121,7 +122,8 @@ const RECEIPT: LabCase[] = [
     cta: true,
     concept: {
       mechanism: "receipt",
-      hook: "What the first hour actually costs",
+      // Repeats the total, so it is not drawn: five items leave no room for a headline.
+      hook: "a morning you actually keep",
       cta: "Get yours",
       copyFields: [
         rows("items", [
