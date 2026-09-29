@@ -3,7 +3,8 @@ import { z } from "zod";
 import type { ImageMechanismId, ImageRenderMeta, OutputFormat, RenderErrorCode, RenderRecord } from "@/lib/types";
 import { OUTPUT_FORMATS } from "@/lib/pipeline/formats";
 import { fingerprint } from "@/lib/strategy/strategy-inputs";
-import { compileImageRenderBrief, selectReferences, type BriefConcept } from "@/lib/renderers/image/render-brief";
+import { LOCKED_MASTER_ROLES, compileImageRenderBrief, productFidelityModeFor, selectReferences, type BriefConcept } from "@/lib/renderers/image/render-brief";
+import { compositeProduct } from "@/lib/renderers/image/composite";
 import { routeFor } from "@/lib/renderers/image/router";
 import { IMAGE_LOCAL_WAIT_MS, PROVIDER_PENDING_RECHECK_MS, RATE_LIMIT_WAIT_MS, asProviderError, pollOnce, providerPendingNote } from "@/lib/renderers/image/image-renderer";
 import { isUnresolvedImageJob, replacementNeedsConfirmation } from "@/lib/renderers/image/lifecycle";
@@ -21,8 +22,12 @@ import type { ImageJob, ImageJobStore } from "./image-jobs";
  *                      whose latest job is unresolved, ambiguous or complete is
  *                      only resubmitted with explicit confirmation of a new
  *                      paid generation.
+ *                      product_locked (e.g. product hero): the real product cut-out is
+ *                      required up front — without one nothing is submitted; the
+ *                      model only generates the scene, never the package.
  *   pollImageJobs      at most one provider status read per job per call;
- *                      success → provider file kept, exact-ratio copy stored → "complete";
+ *                      success → provider file kept, exact-ratio copy stored (with the
+ *                      real product composited when locked) → "complete";
  *                      provider failure → "failed" (terminal, never resubmitted);
  *                      still pending after the local wait → "provider_pending"
  *                      (NOT terminal: later calls keep checking the same job and
@@ -79,6 +84,20 @@ export interface ImageServiceDeps {
 
 const FIDELITY_WARNING =
   "product_fidelity_unverified: the product reference is followed by reference conditioning, which does not guarantee exact packaging, colours or branding — review before use (Creative QA).";
+const COMPOSITE_WARNING =
+  "product_composited: the real product asset is composited deterministically (package pixels unchanged); how well scene light, perspective and shadow match it is not verified — review before use (Creative QA).";
+const NO_LOCKED_MASTER =
+  "Product-locked rendering needs a transparent cut-out of the real product (PNG or WebP with alpha; role main, packaging or close-up). None was uploaded, so nothing was submitted: the package is never redrawn by the image model instead.";
+
+/** The real product cut-out for a locked render: a product-role upload the store classified as a cut-out (real transparency). */
+async function lockedMasterOf(assets: ImageRenderRequest["assets"], store: RenderStore) {
+  for (const role of LOCKED_MASTER_ROLES) {
+    for (const a of assets.filter((x) => x.role === role)) {
+      if ((await store.assetMeta(a.hash))?.treatment === "cutout") return { assetId: a.hash, role: a.role };
+    }
+  }
+  return null;
+}
 
 const iso = (t: number) => new Date(t).toISOString();
 
@@ -147,14 +166,16 @@ export async function startImageRender(req: ImageRenderRequest, deps: ImageServi
       continue;
     }
     const concept: BriefConcept = { ...req.concept, mechanism: route.mechanism as ImageMechanismId };
-    const refs = selectReferences(route.mechanism, concept, req.assets.map((a) => ({ assetId: a.hash, role: a.role })));
+    const mode = productFidelityModeFor(route.mechanism, concept);
+    const lockedMaster = mode === "product_locked" ? await lockedMasterOf(req.assets, deps.store) : null;
+    const refs = mode === "product_locked" ? [] : selectReferences(route.mechanism, concept, req.assets.map((a) => ({ assetId: a.hash, role: a.role })));
     const references: ReferenceImage[] = [];
     for (const r of refs) {
       const file = await deps.store.readAsset(r.assetId);
       if (file) references.push({ assetId: r.assetId, mime: file.contentType, data: file.body });
     }
     const usable = refs.filter((r) => references.some((x) => x.assetId === r.assetId));
-    const brief = compileImageRenderBrief({ concept, variant, context: req.context, references: usable });
+    const brief = compileImageRenderBrief({ concept, variant, context: req.context, references: usable, lockedMaster });
     const prompt = deps.renderer.prompt(brief);
     const partnerJobId = `cos-${fingerprint(jobId)}-${started.toString(36)}`;
     const meta: ImageRenderMeta = {
@@ -173,11 +194,13 @@ export async function startImageRender(req: ImageRenderRequest, deps: ImageServi
       actualCredits: null,
       estimatedCredits: deps.renderer.estimateCredits?.() ?? null,
       providerStatus: "submitted",
+      productFidelityMode: mode,
       submittedAt: iso(started),
     };
-    record = { ...record, inputHash: brief.briefHash, image: meta, warnings: usable.length ? [FIDELITY_WARNING] : [] };
-    if (route.mechanism === "product_hero" && !usable.length) {
-      record = fail(record, "missing_required_asset", "A product hero needs a product reference image (main, packaging or close-up); none was uploaded.", now(), started);
+    record = { ...record, inputHash: brief.briefHash, image: meta, warnings: mode === "product_locked" ? [COMPOSITE_WARNING] : usable.length ? [FIDELITY_WARNING] : [] };
+    // Locked fidelity has no fallback: without the real cut-out nothing is submitted (never a redrawn package).
+    if (mode === "product_locked" && !brief.lockedProduct) {
+      record = fail(record, "missing_locked_product_asset", NO_LOCKED_MASTER, now(), started);
       await save(null);
       continue;
     }
@@ -274,13 +297,28 @@ async function advance(job: ImageJob, deps: ImageServiceDeps, now: () => number,
     const file = await deps.renderer.fetchImage(r.imageUrl);
     // The provider file is preserved byte-for-byte (PNG); other formats are kept losslessly as PNG.
     const original = file.body.subarray(0, 8).equals(PNG_SIGNATURE) ? file.body : await sharp(file.body).png().toBuffer();
-    const { body, normalization } = await normalizeToFormat(original, job.record.format);
+    const normalized = await normalizeToFormat(original, job.record.format);
+    const { normalization } = normalized;
+    let body = normalized.body;
     const stem = `${job.batchId}/${job.variantId}-${fingerprint(job.jobId)}`;
     await deps.store.putRender(`${stem}.provider.png`, original);
+    const providerOriginalUrl = `/api/renders/${stem}.provider.png`;
+    let productComposite: ImageRenderMeta["productComposite"];
+    const locked = done.brief.lockedProduct;
+    if (done.productFidelityMode === "product_locked") {
+      // The generated file is only the scene: the real product must be composited, or the render fails (never shipped without it).
+      const master = locked ? await deps.store.readAsset(locked.assetId) : null;
+      if (!locked || !master) {
+        return finish({ ...job.record, image: { ...done, normalization: { ...normalization, providerOriginalUrl } }, status: "failed", warnings, error: { code: "missing_locked_product_asset", message: "The product cut-out is no longer available; the generated scene was kept as the provider original but not shipped without the real product." } });
+      }
+      const c = await compositeProduct(body, master.body, locked.placement);
+      body = c.body;
+      productComposite = { masterAssetId: locked.assetId, box: c.box, contactShadow: c.contactShadow };
+    }
     await deps.store.putRender(`${stem}.png`, body);
     return finish({
       ...job.record,
-      image: { ...done, normalization: { ...normalization, providerOriginalUrl: `/api/renders/${stem}.provider.png` } },
+      image: { ...done, normalization: { ...normalization, providerOriginalUrl }, ...(productComposite ? { productComposite } : {}) },
       status: "complete",
       width: normalization.normalizedWidth,
       height: normalization.normalizedHeight,
@@ -291,8 +329,12 @@ async function advance(job: ImageJob, deps: ImageServiceDeps, now: () => number,
       warnings,
     });
   } catch (err) {
-    // The provider produced the image (and charged for it); keep its URL rather than failing the render.
     const reason = err instanceof Error ? err.message : "download failed";
+    // A locked render's provider file is only the scene: showing it would ship an image without the real product.
+    if (done.productFidelityMode === "product_locked") {
+      return finish({ ...job.record, image: done, status: "failed", warnings, error: { code: "output_unavailable", message: `The product-locked composite could not be produced (${reason}); the scene was not shipped without the real product.` } });
+    }
+    // The provider produced the image (and charged for it); keep its URL rather than failing the render.
     return finish({
       ...job.record,
       image: done,

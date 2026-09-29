@@ -2,11 +2,14 @@ import type {
   AssetRole,
   BrandColors,
   CopyField,
+  ImageLockedProduct,
   ImageMechanismId,
   ImageReferenceAsset,
   ImageRenderBrief,
   ImageRenderContext,
   OutputFormat,
+  ProductFidelityMode,
+  ProductPlacement,
   StrategySnapshot,
 } from "@/lib/types";
 import { fingerprint } from "@/lib/strategy/strategy-inputs";
@@ -79,6 +82,45 @@ export function selectReferences(mechanism: ImageMechanismId, concept: { product
   if (bundle && SET.test(`${concept.productRole} ${concept.visualDescription}`)) out.push({ assetId: bundle.assetId, role: "bundle", purpose: "the product set shown in the concept" });
   return out.slice(0, MAX_REFERENCE_IMAGES);
 }
+
+// ---------------------------------------------------------------------------
+// Product fidelity mode (product-agnostic)
+// ---------------------------------------------------------------------------
+
+/** The product only participates in the scene (not the visual centre). */
+const SUPPORTING = /\b(supporting|background|in (?:the )?(?:scene|context|frame edge)|incidental|secondary|at the edge)\b/i;
+
+/**
+ * Lifestyle and POV need the product inside a photographed moment: the model
+ * draws it from references (reference_conditioned). A product hero — and a
+ * choose-your-fighter line-up whose real package is visually central — needs
+ * the exact product: the real asset is composited (product_locked).
+ */
+export function productFidelityModeFor(mechanism: ImageMechanismId, concept: { productRole: string }): ProductFidelityMode {
+  if (mechanism === "product_hero") return "product_locked";
+  if (mechanism === "choose_your_fighter") return ABSENT.test(concept.productRole) || SUPPORTING.test(concept.productRole) ? "reference_conditioned" : "product_locked";
+  return "reference_conditioned";
+}
+
+/** Product roles that can serve as a locked master (a product shot, never a scene or set photo). */
+export const LOCKED_MASTER_ROLES: AssetRole[] = PRODUCT_ROLES;
+
+/** Where the locked product stands in each format (fractions of the frame). */
+export const LOCKED_PLACEMENT: Record<"product_hero" | "choose_your_fighter", Record<OutputFormat, ProductPlacement>> = {
+  product_hero: { "1:1": { centerX: 0.5, bottom: 0.86, height: 0.56 }, "9:16": { centerX: 0.5, bottom: 0.78, height: 0.42 } },
+  // The product takes the last slot of the line-up; the model draws the other options.
+  choose_your_fighter: { "1:1": { centerX: 0.75, bottom: 0.84, height: 0.46 }, "9:16": { centerX: 0.5, bottom: 0.9, height: 0.3 } },
+};
+
+const placementWords = (p: ProductPlacement) =>
+  `${p.centerX < 0.4 ? "left" : p.centerX > 0.6 ? "right" : "centre"} of the frame, standing on the surface about ${Math.round((1 - p.bottom) * 100)}% above the bottom edge, about ${Math.round(p.height * 100)}% of the frame height tall`;
+
+/** Scene-plate instructions: the model builds the set; the real product is composited afterwards. */
+const LOCKED = (p: ProductPlacement) => [
+  "Do not draw the product or any package, bottle, box, pouch, jar or label: a photo of the real product is composited onto this scene afterwards",
+  `Wherever the scene mentions the product, keep its place clear and unobstructed: ${placementWords(p)}`,
+  "Light that spot and its surface so an object standing there sits naturally, with a level surface seen straight-on at product height",
+];
 
 // ---------------------------------------------------------------------------
 // Mechanism visual grammar (product-agnostic)
@@ -274,8 +316,16 @@ export function compileImageRenderBrief(args: {
   variant: { id: string; aspectRatio: OutputFormat };
   context: ImageRenderContext;
   references: ImageReferenceAsset[];
+  /** product_locked: the real cut-out master (from the render store); null / absent when none is available. */
+  lockedMaster?: { assetId: string; role: AssetRole } | null;
 }): ImageRenderBrief {
-  const { concept, variant, context, references } = args;
+  const { concept, variant, context } = args;
+  const productFidelityMode = productFidelityModeFor(concept.mechanism, concept);
+  const locked = productFidelityMode === "product_locked";
+  // A locked product is never sent as a reference: the model must not redraw it.
+  const references = locked ? [] : args.references;
+  const placement = locked ? LOCKED_PLACEMENT[concept.mechanism as keyof typeof LOCKED_PLACEMENT][variant.aspectRatio] : null;
+  const lockedProduct: ImageLockedProduct | null = locked && args.lockedMaster ? { ...args.lockedMaster, placement: placement! } : null;
   const g = GRAMMAR[concept.mechanism];
   const format = variant.aspectRatio;
   const productWord = context.category ? `the ${context.category.toLowerCase()} product` : "the product";
@@ -301,8 +351,10 @@ export function compileImageRenderBrief(args: {
     visualStyle: [g.style, ...direction.map(asScene), `palette hints: ${context.brandColors.dark} and ${context.brandColors.accent}`].join("; "),
     productRole: [neutralizeNames(concept.productRole, names), references.length && looks ? `Product appearance: ${neutralizeNames(looks, names)}` : ""].filter(Boolean).join(". "),
     referenceAssets: references,
-    productFidelityInstructions: references.length ? FIDELITY : NO_PRODUCT,
-    negativeInstructions: [...NEGATIVE_COMMON, ...g.negative],
+    productFidelityMode,
+    lockedProduct,
+    productFidelityInstructions: locked ? LOCKED(placement!) : references.length ? FIDELITY : NO_PRODUCT,
+    negativeInstructions: [...NEGATIVE_COMMON, ...(locked ? ["no product, package, bottle, box, pouch, jar or label anywhere in the image"] : []), ...g.negative],
     textPolicy: "text_free",
     textFreeInstructions: TEXT_FREE,
     choices: choicesOf(concept).map((c) => neutralizeNames(c, names)),

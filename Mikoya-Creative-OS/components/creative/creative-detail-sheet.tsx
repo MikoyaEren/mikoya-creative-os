@@ -136,6 +136,16 @@ function RenderInfo({ record }: { record: NonNullable<CreativeConcept["variants"
               </span>
             </Row>
           )}
+          <Row label="Product fidelity">
+            <span className="font-mono text-xs">
+              {record.image.productFidelityMode ?? "reference_conditioned"}
+              {record.image.productComposite
+                ? ` · real product composited at ${record.image.productComposite.box.left},${record.image.productComposite.box.top} (${record.image.productComposite.box.width}×${record.image.productComposite.box.height})`
+                : record.image.productFidelityMode === "product_locked"
+                  ? " · real product cut-out required"
+                  : " · package drawn from references (text may vary)"}
+            </span>
+          </Row>
           <Row label="Product references">{record.image.referenceAssetIds.length ? record.image.brief.referenceAssets.map((r) => `${r.role} (${r.purpose})`).join(" · ") : "none"}</Row>
           <Row label="Provider prompt">
             <details>

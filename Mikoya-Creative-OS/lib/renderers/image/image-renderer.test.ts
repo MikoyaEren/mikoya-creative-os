@@ -18,6 +18,7 @@ import type { RenderStore } from "../store/fs-store";
 import { FsImageJobStore, MemoryImageJobStore } from "@/lib/server/render/image-jobs";
 import { imageConceptControls, imageVariantAction, isUnresolvedImageJob, NEW_PAID_GENERATION, replacementNeedsConfirmation, unresolvedReplacement } from "./lifecycle";
 import { normalizeToFormat } from "./normalize";
+import { productFidelityModeFor } from "./render-brief";
 import { renderSummary, renderSummaryText } from "@/lib/constants";
 import { knightVisionPrompt } from "../knightvision/prompt";
 import type { RenderRecord } from "@/lib/types";
@@ -238,7 +239,7 @@ describe("KnightVision request (documented Partner API v1)", () => {
     const req = { ...request({ ...lifestyle, mechanism: "product_hero" }), assets: [] };
     const out = await startImageRender(req, { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() });
     expect(kv.calls).toEqual([]);
-    expect(out["1:1"]!.record.error?.code).toBe("missing_required_asset");
+    expect(out["1:1"]!.record.error?.code).toBe("missing_locked_product_asset");
   });
 });
 
@@ -874,5 +875,127 @@ describe("credit accounting", () => {
     const kv = fakeKnightVision({ create: () => json(202, { generation_ids: [7], public_ids: ["kv-00000007"] }) });
     const rec = (await startImageRender(request(lifestyle, ["1:1"]), { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() }))["1:1"]!.record;
     expect(rec.image).toMatchObject({ actualCredits: null, estimatedCredits: 15 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Product fidelity modes: reference_conditioned vs product_locked
+// ---------------------------------------------------------------------------
+
+const MASTER = "d".repeat(64);
+const PACKSHOT = "e".repeat(64);
+/** A transparent product cut-out: an opaque red "package" on a fully transparent canvas. */
+async function cutoutMaster() {
+  const w = 120, h = 200, data = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (x >= 20 && x < 100 && y >= 10 && y < 190) data.set([220, 30, 30, 255], (y * w + x) * 4);
+  return sharp(data, { raw: { width: w, height: h, channels: 4 } }).png().toBuffer();
+}
+/** A store holding an opaque light-studio packshot (like a typical product photo) and, optionally, a real cut-out. */
+async function productStore(withCutout: boolean) {
+  const base = memoryStore();
+  const master = await cutoutMaster();
+  const packshot = await sharp({ create: { width: 100, height: 100, channels: 3, background: "#f8f6f2" } }).png().toBuffer();
+  return {
+    ...base,
+    readAsset: async (hash: string) => (hash === MASTER && withCutout ? { body: master, contentType: "image/png" } : hash === PACKSHOT ? { body: packshot, contentType: "image/png" } : null),
+    assetMeta: async (hash: string) =>
+      hash === MASTER && withCutout ? { hash, mime: "image/png", width: 120, height: 200, treatment: "cutout" as const } : hash === PACKSHOT ? { hash, mime: "image/png", width: 100, height: 100, treatment: "light_studio" as const } : null,
+  };
+}
+const heroConcept = { ...lifestyle, id: "c_hero", mechanism: "product_hero" as const, visualDescription: "the pouch on a stone plinth with morning shadows", productRole: "hero: the package is the subject", variants: [{ id: "c_hero_1x1", aspectRatio: "1:1" as const }, { id: "c_hero_9x16", aspectRatio: "9:16" as const }] };
+const heroRequest = (assets: { hash: string; role: "main" | "packaging" | "lifestyle" }[], formats: ("1:1" | "9:16")[] = ["1:1"]): ImageRenderRequest => ({ ...request(heroConcept, formats), assets });
+
+describe("product fidelity modes", () => {
+  it("routes lifestyle and POV to reference_conditioned, product hero to product_locked", () => {
+    expect(productFidelityModeFor("lifestyle", lifestyle)).toBe("reference_conditioned");
+    expect(productFidelityModeFor("pov", pov)).toBe("reference_conditioned");
+    expect(productFidelityModeFor("product_hero", heroConcept)).toBe("product_locked");
+    expect(productFidelityModeFor("product_hero", { productRole: "supporting" })).toBe("product_locked");
+  });
+
+  it("locks choose-your-fighter when the package is visually central, not when it only supports the scene", () => {
+    expect(productFidelityModeFor("choose_your_fighter", { productRole: "the pouch is one of the fighters" })).toBe("product_locked");
+    expect(productFidelityModeFor("choose_your_fighter", { productRole: "supporting: pouch in the background" })).toBe("reference_conditioned");
+    expect(productFidelityModeFor("choose_your_fighter", { productRole: "none — the options are rituals" })).toBe("reference_conditioned");
+  });
+
+  it("keeps Lifestyle and POV unchanged: references sent, reference fidelity rules, product_fidelity_unverified", async () => {
+    for (const c of [lifestyle, pov]) {
+      const kv = fakeKnightVision();
+      const rec = (await startImageRender(request(c, ["1:1"]), { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() }))["1:1"]!.record;
+      expect(rec.image).toMatchObject({ productFidelityMode: "reference_conditioned", brief: { productFidelityMode: "reference_conditioned", lockedProduct: null } });
+      expect(rec.warnings.join(" ")).toMatch(/product_fidelity_unverified/);
+      const body = kv.calls.find((x) => x.url.endsWith("/generate-image"))!.body as { ref_images?: unknown[]; prompt: string };
+      expect(body.ref_images?.length).toBeGreaterThan(0);
+      expect(body.prompt).toContain("Use the supplied reference image(s) as the real product");
+    }
+  });
+
+  it("product_locked requires a real product cut-out: an opaque packshot is not enough and nothing is submitted", async () => {
+    const kv = fakeKnightVision();
+    const out = await startImageRender(heroRequest([{ hash: PACKSHOT, role: "main" }]), { renderer: renderer(kv.fetchImpl), store: await productStore(false), jobs: new MemoryImageJobStore() });
+    const rec = out["1:1"]!.record;
+    expect(rec).toMatchObject({ status: "failed", error: { code: "missing_locked_product_asset", message: expect.stringMatching(/transparent cut-out.*never redrawn/) }, image: { productFidelityMode: "product_locked" } });
+    expect(kv.calls).toEqual([]);
+  });
+
+  it("product_locked never asks the model to redraw the package: no references, scene-only prompt", async () => {
+    const kv = fakeKnightVision();
+    const out = await startImageRender(heroRequest([{ hash: PACKSHOT, role: "main" }, { hash: MASTER, role: "packaging" }]), { renderer: renderer(kv.fetchImpl), store: await productStore(true), jobs: new MemoryImageJobStore() });
+    const rec = out["1:1"]!.record;
+    expect(rec.status).toBe("rendering");
+    expect(rec.image!.brief).toMatchObject({ productFidelityMode: "product_locked", referenceAssets: [], lockedProduct: { assetId: MASTER, role: "packaging" } });
+    const body = kv.calls.find((x) => x.url.endsWith("/generate-image"))!.body as { ref_images?: unknown[]; prompt: string };
+    expect(body.ref_images).toBeUndefined();
+    expect(body.prompt).toContain("Do not draw the product or any package");
+    expect(body.prompt).toContain("no product, package, bottle, box, pouch, jar or label anywhere in the image");
+    expect(body.prompt).not.toContain("Use the supplied reference image(s) as the real product");
+    expect(rec.warnings.join(" ")).toMatch(/product_composited/);
+    expect(rec.warnings.join(" ")).not.toMatch(/product_fidelity_unverified/);
+  });
+
+  it("composites the real product pixels onto the generated scene (exact ratio, fitted, never stretched)", async () => {
+    const scene = await sharp({ create: { width: 1536, height: 2752, channels: 3, background: "#9a8f80" } }).png().toBuffer();
+    const kv = fakeKnightVision({ download: () => new Response(new Uint8Array(scene), { status: 200, headers: { "content-type": "image/png" } }) });
+    const store = await productStore(true);
+    let t = 0;
+    const deps = { renderer: renderer(kv.fetchImpl), store, jobs: new MemoryImageJobStore(), now: () => t };
+    const { jobId } = (await startImageRender(heroRequest([{ hash: MASTER, role: "main" }], ["9:16"]), deps))["9:16"]!;
+    t += 4000;
+    const r = (await pollImageJobs([jobId], deps))[jobId];
+    expect(r).toMatchObject({ status: "complete", width: 1530, height: 2720, image: { productFidelityMode: "product_locked", productComposite: { masterAssetId: MASTER, contactShadow: true } } });
+    const box = r.image!.productComposite!.box;
+    expect(box.height).toBe(Math.round(2720 * 0.42));
+    expect(box.width / box.height).toBeCloseTo(80 / 180, 2); // the trimmed master's aspect, not stretched
+    const final = store.files.get(r.outputUrl!.replace("/api/renders/", ""))!;
+    const px = await sharp(final).extract({ left: box.left + Math.round(box.width / 2), top: box.top + Math.round(box.height / 2), width: 1, height: 1 }).removeAlpha().raw().toBuffer();
+    expect([...px]).toEqual([220, 30, 30]); // the master's own colour
+    // The provider original is the untouched scene (no product).
+    expect(store.files.get(r.image!.normalization!.providerOriginalUrl.replace("/api/renders/", ""))!.equals(scene)).toBe(true);
+  });
+
+  it("never ships a locked render without the real product (master gone at compositing time → failed)", async () => {
+    const withMaster = await productStore(true);
+    const kv = fakeKnightVision();
+    let t = 0;
+    const jobs = new MemoryImageJobStore();
+    const { jobId } = (await startImageRender(heroRequest([{ hash: MASTER, role: "main" }]), { renderer: renderer(kv.fetchImpl), store: withMaster, jobs, now: () => t }))["1:1"]!;
+    t += 4000;
+    const r = (await pollImageJobs([jobId], { renderer: renderer(kv.fetchImpl), store: await productStore(false), jobs, now: () => t }))[jobId];
+    expect(r).toMatchObject({ status: "failed", error: { code: "missing_locked_product_asset" } });
+    expect(generateCalls(kv.calls)).toBe(1);
+  });
+
+  it("stores the fidelity mode in the render record metadata", async () => {
+    const kv = fakeKnightVision();
+    const deps = { renderer: renderer(kv.fetchImpl), store: await productStore(true), jobs: new MemoryImageJobStore() };
+    expect((await startImageRender(request(pov, ["1:1"]), deps))["1:1"]!.record.image!.productFidelityMode).toBe("reference_conditioned");
+    expect((await startImageRender(heroRequest([{ hash: MASTER, role: "main" }]), deps))["1:1"]!.record.image!.productFidelityMode).toBe("product_locked");
+  });
+
+  it("leaves the HTML renderer untouched by fidelity modes", () => {
+    const html = readdirSync(path.join(process.cwd(), "lib", "renderers", "html"), { recursive: true }).map(String).filter((f) => f.endsWith(".ts"));
+    for (const f of html) expect(readFileSync(path.join(process.cwd(), "lib", "renderers", "html", f), "utf8")).not.toMatch(/productFidelityMode|product_locked|compositeProduct/);
+    expect(routeFor({ mechanism: "x_post", renderer: "html" })).toEqual({ route: "html" });
   });
 });

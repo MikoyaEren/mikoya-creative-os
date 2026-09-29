@@ -345,6 +345,8 @@ export type RenderErrorCode =
   | "safe_zone_violation"
   | "asset_covers_copy"
   | "missing_required_asset"
+  /** product_locked: no transparent cut-out of the real product is available (the package is never redrawn instead). */
+  | "missing_locked_product_asset"
   | "asset_unreadable"
   | "browser_unavailable"
   | "timeout"

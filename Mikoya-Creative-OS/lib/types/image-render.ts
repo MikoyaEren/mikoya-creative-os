@@ -36,6 +36,32 @@ export interface ImageRenderContext {
 
 export type ImageTextPolicy = "text_free";
 
+/**
+ * How the product reaches the final image.
+ *   reference_conditioned  the image model draws the product from reference images, so it can live
+ *                          naturally in a photographed scene (lifestyle, POV). Known limitation: package
+ *                          text and fine branding may vary — every render carries product_fidelity_unverified.
+ *   product_locked         the real uploaded product asset is the product: the model only generates the
+ *                          scene (set, surface, light, props) with the product's place left clear, and the
+ *                          product cut-out is composited deterministically. The package is never redrawn.
+ */
+export type ProductFidelityMode = "reference_conditioned" | "product_locked";
+
+/** Where a locked product is composited, as fractions of the final frame (bottom = where it stands). */
+export interface ProductPlacement {
+  centerX: number;
+  bottom: number;
+  /** Product height as a share of the frame height (fit inside, never stretched). */
+  height: number;
+}
+
+export interface ImageLockedProduct {
+  /** Content hash of the transparent cut-out master (render store). */
+  assetId: string;
+  role: AssetRole;
+  placement: ProductPlacement;
+}
+
 /** One product reference the brief asks the provider to follow. */
 export interface ImageReferenceAsset {
   /** Content hash of the uploaded asset (render store). */
@@ -64,6 +90,9 @@ export interface ImageRenderBrief {
   visualStyle: string;
   productRole: string;
   referenceAssets: ImageReferenceAsset[];
+  productFidelityMode: ProductFidelityMode;
+  /** product_locked only: the real cut-out composited after generation (null when none was available). */
+  lockedProduct: ImageLockedProduct | null;
   productFidelityInstructions: string[];
   negativeInstructions: string[];
   textPolicy: ImageTextPolicy;
@@ -105,6 +134,9 @@ export interface ImageRenderMeta {
   localWaitEndedAt?: string;
   /** How the stored output was fitted to the exact format (the provider's own file is kept alongside). */
   normalization?: ImageNormalization;
+  productFidelityMode: ProductFidelityMode;
+  /** product_locked: the deterministic composite of the real product asset onto the generated scene. */
+  productComposite?: { masterAssetId: string; box: { left: number; top: number; width: number; height: number }; contactShadow: boolean };
   submittedAt: string;
   completedAt?: string;
 }
