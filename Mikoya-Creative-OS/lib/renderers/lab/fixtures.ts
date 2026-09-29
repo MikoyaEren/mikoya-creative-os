@@ -157,7 +157,7 @@ const LOCK_SCREEN: LabCase[] = [
   },
   {
     id: "headline",
-    label: "Distinct hook → headline · Brand B · product on gradient",
+    label: "Distinct hook → headline · Brand B · synthetic scene wallpaper",
     brand: "B",
     withAssets: true,
     cta: false,
