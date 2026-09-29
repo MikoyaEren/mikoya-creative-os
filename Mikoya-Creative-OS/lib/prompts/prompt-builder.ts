@@ -14,7 +14,7 @@ import type {
 import { FORMAT_SPECS } from "@/lib/pipeline/formats";
 import { safeClaimValues, usableAsProof } from "@/lib/strategy/safe-profile";
 import { SOURCE_LABELS, isApprovedInference } from "@/lib/strategy/provenance";
-import { HYPOTHESIS_CATEGORY_LABELS, isUsable } from "@/lib/strategy/strategy-hypotheses";
+import { HYPOTHESIS_CATEGORY_LABELS } from "@/lib/strategy/strategy-hypotheses";
 import type { RendererSpec } from "./renderer-instructions";
 
 /**
@@ -127,8 +127,14 @@ export function brandStrategyLayer(b: BrandStrategyProfile): PromptSection {
   };
 }
 
-export function hypothesesLayer(hypotheses: StrategyHypothesis[]): PromptSection {
-  const usable = hypotheses.filter(isUsable);
+/**
+ * Only hypotheses the dynamic-strategy derivation actually USED may reach a
+ * concept prompt. Hypotheses held back by the brand override, a category
+ * limit, a duplicate or a stale run are excluded even if technically usable.
+ */
+export function hypothesesLayer(hypotheses: StrategyHypothesis[], usedHypothesisIds: string[]): PromptSection {
+  const used = new Set(usedHypothesisIds);
+  const usable = hypotheses.filter((h) => used.has(h.id));
   return {
     key: "hypotheses",
     title: "STRATEGY HYPOTHESES (AI assumptions — explore, never state as fact)",
@@ -199,7 +205,7 @@ export function outputContractLayer(recipe: CreativeRecipe, conceptCount: number
     key: "contract",
     title: "OUTPUT CONTRACT",
     body: [
-      `Return ${conceptCount} concept(s) for mechanism "${recipe.mechanismId}" as JSON matching CREATIVE_CONCEPT_JSON_SCHEMA.`,
+      `Return ${conceptCount} concept(s) for mechanism "${recipe.mechanismId}" as structured JSON (see lib/server/concepts/output-schema.ts).`,
       "Each concept = one idea: angle, hook, subheadline, visual idea and CTA/offer.",
       "Every concept is produced in both mandatory formats, 1:1 and 9:16. Keep the idea and copy identical across formats; use layoutNotes only for composition differences.",
       "Do not use any claim, number or offer that is not in the Creative-Safe Product Profile.",
@@ -212,6 +218,8 @@ export interface ConceptPromptInput {
   creativeSafeProfile: CreativeSafeProductProfile;
   brandStrategyProfile: BrandStrategyProfile;
   strategyHypotheses: StrategyHypothesis[];
+  /** From StrategySnapshot.audit — the only hypotheses allowed into the prompt. */
+  usedHypothesisIds: string[];
   dynamicCreativeStrategy: DynamicCreativeStrategy;
   globalCreativeConstitution: GlobalCreativeConstitution;
   recipe: CreativeRecipe;
@@ -223,7 +231,7 @@ export function buildConceptSections(input: ConceptPromptInput): PromptSection[]
     constitutionLayer(input.globalCreativeConstitution),
     safeProfileLayer(input.creativeSafeProfile),
     brandStrategyLayer(input.brandStrategyProfile),
-    hypothesesLayer(input.strategyHypotheses),
+    hypothesesLayer(input.strategyHypotheses, input.usedHypothesisIds),
     dynamicStrategyLayer(input.dynamicCreativeStrategy),
     PRIORITY_RULE_LAYER,
     recipeLayer(input.recipe),
@@ -246,13 +254,17 @@ export function conceptLayer(concept: CreativeConceptDraft): PromptSection {
     title: "CREATIVE CONCEPT (shared across formats)",
     body: [
       `Mechanism: ${concept.mechanism}`,
-      `Angle: ${concept.angle}`,
+      `Strategic angle: ${concept.angle}`,
       `Hook: ${concept.hook}`,
-      `Subheadline: ${concept.subheadline}`,
+      `Core message: ${concept.subheadline}`,
+      concept.copy ? `Copy (render exactly):\n${concept.copy}` : null,
       `Visual idea: ${concept.visualDescription}`,
+      concept.productRole ? `Product role: ${concept.productRole}` : null,
       `CTA / offer: ${concept.cta}`,
-      "Keep this idea and copy identical in every format; adapt only the layout.",
-    ].join("\n"),
+      "Keep this idea and copy identical in every format; adapt only layout, line breaks, crop, scale, spacing and position.",
+    ]
+      .filter(Boolean)
+      .join("\n"),
   };
 }
 

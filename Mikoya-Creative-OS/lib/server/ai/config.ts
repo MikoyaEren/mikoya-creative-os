@@ -25,6 +25,17 @@ export const AI_CONFIG = {
     /** SDK retries on 408/409/429/5xx/connection errors. */
     maxRetries: 2,
   },
+  conceptGeneration: {
+    /** Override with ANTHROPIC_CONCEPT_MODEL without touching code. */
+    model: process.env.ANTHROPIC_CONCEPT_MODEL || "claude-opus-5-5",
+    /** Creative writing for a whole batch in one call. */
+    effort: effortFromEnv(process.env.ANTHROPIC_CONCEPT_EFFORT, "medium"),
+    /** ~20 concepts × ~500 tokens, with headroom. */
+    maxTokens: 20000,
+    /** One call writes the whole batch; allow minutes, not seconds. */
+    timeoutMs: 420_000,
+    maxRetries: 1,
+  },
   strategyInference: {
     /** Override with ANTHROPIC_STRATEGY_MODEL without touching code. */
     model: process.env.ANTHROPIC_STRATEGY_MODEL || "claude-opus-5-5",

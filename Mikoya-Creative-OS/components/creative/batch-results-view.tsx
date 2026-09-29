@@ -6,6 +6,7 @@ import { CREATIVE_TYPE_LABELS, CREATIVE_TYPE_ORDER, OUTPUT_PRESETS, batchOutputS
 import { getProject } from "@/lib/projects";
 import { useBatch, useHydrated } from "@/lib/store/generations-store";
 import { toast } from "@/lib/store/toast-store";
+import type { CreativeBatch } from "@/lib/types";
 import { formatDateTime, formatRelativeDate } from "@/lib/utils";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -132,6 +133,8 @@ export function BatchResultsView({ id, isNew }: { id: string; isNew: boolean }) 
         </CollapsibleSection>
       </div>
 
+      <ConceptRunPanel batch={batch} />
+
       <div className="mt-8">
         {batch.status === "failed" ? (
           <EmptyState
@@ -167,5 +170,90 @@ function ResultsSkeleton() {
         {Array.from({ length: 8 }, (_, i) => <CreativeCardSkeleton key={i} />)}
       </div>
     </PageContainer>
+  );
+}
+
+/** How the concepts were produced: writer, plan, diversity, drops, unfilled slots, swaps. */
+function ConceptRunPanel({ batch }: { batch: CreativeBatch }) {
+  const run = batch.conceptRun;
+  if (!run) return null;
+  const mechanisms = new Set(batch.concepts.map((c) => c.mechanism)).size;
+  return (
+    <div className="mt-4">
+      <CollapsibleSection
+        title="Concept generation"
+        summary={
+          <span data-testid="concept-run-summary">
+            {run.origin === "ai" ? `AI · ${run.model}` : "Demo templates"} · {batch.concepts.length}/{run.plan.slots.length} concepts · {mechanisms} distinct mechanisms
+            {run.unfilled.length ? ` · ${run.unfilled.length} unfilled` : ""}
+            {run.dropped.length ? ` · ${run.dropped.length} dropped` : ""}
+          </span>
+        }
+        openDescription="Mechanisms and strategy focus were allocated before writing; every kept concept was checked and expanded into exactly 1:1 + 9:16."
+      >
+        <div className="grid gap-3 text-[13px] md:grid-cols-2">
+          <div className="rounded-xl border border-line bg-cream/50 p-4">
+            <p className="text-[11px] font-semibold tracking-[0.12em] text-muted uppercase">Run</p>
+            <ul className="mt-2 flex flex-col gap-1 text-xs text-ink-soft">
+              <li>Writer: {run.origin === "ai" ? `AI (${run.model})` : "demo templates, no AI"} · {run.modelCalls} model call{run.modelCalls === 1 ? "" : "s"}</li>
+              {run.usage && <li>Tokens: {run.usage.inputTokens.toLocaleString()} in / {run.usage.outputTokens.toLocaleString()} out · {(run.durationMs / 1000).toFixed(1)} s</li>}
+              <li>Strategy snapshot: <span className="font-mono">{run.strategySnapshotId}</span></li>
+              <li>Run: <span className="font-mono">{run.id}</span></li>
+              <li>Plan: {run.plan.slots.length} slots · {run.plan.distinctMechanisms} mechanisms planned · max {run.plan.maxPerMechanism} each</li>
+            </ul>
+          </div>
+          <div className="rounded-xl border border-line bg-cream/50 p-4">
+            <p className="text-[11px] font-semibold tracking-[0.12em] text-muted uppercase">Warnings</p>
+            {run.warnings.length ? (
+              <ul className="mt-2 flex flex-col gap-1">
+                {run.warnings.map((w, i) => (
+                  <li key={`${w}${i}`} className="text-xs text-[#8a6212]">{w}</li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-2 text-xs text-faint">None</p>
+            )}
+          </div>
+          {run.unfilled.length > 0 && (
+            <div className="rounded-xl border border-[#e5cf95] bg-[#fbf5e4]/60 p-4" data-testid="unfilled-slots">
+              <p className="text-[11px] font-semibold tracking-[0.12em] text-muted uppercase">Unfilled slots ({run.unfilled.length})</p>
+              <ul className="mt-2 flex flex-col gap-1">
+                {run.unfilled.map((u) => (
+                  <li key={u.slotId} className="text-xs text-ink-soft"><span className="font-mono">{u.slotId}</span> · {u.mechanismId} · {u.reason}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {run.dropped.length > 0 && (
+            <div className="rounded-xl border border-line bg-cream/50 p-4" data-testid="dropped-concepts">
+              <p className="text-[11px] font-semibold tracking-[0.12em] text-muted uppercase">Dropped by validation ({run.dropped.length})</p>
+              <ul className="mt-2 flex flex-col gap-1">
+                {run.dropped.map((d, i) => (
+                  <li key={`${d.slotId}${i}`} className="text-xs text-ink-soft">
+                    <span className="font-mono">{d.slotId}</span> · {d.mechanismId} · “{d.hook}” · <span className="font-medium">{d.reason}</span>: {d.detail}
+                    {d.text && (
+                      <details className="mt-0.5">
+                        <summary className="cursor-pointer text-[11px] text-muted">What it said</summary>
+                        <p className="mt-1 whitespace-pre-line text-[11px] text-muted">{d.text}</p>
+                      </details>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {run.swaps.length > 0 && (
+            <div className="rounded-xl border border-line bg-cream/50 p-4">
+              <p className="text-[11px] font-semibold tracking-[0.12em] text-muted uppercase">Mechanism swaps by the writer</p>
+              <ul className="mt-2 flex flex-col gap-1">
+                {run.swaps.map((w) => (
+                  <li key={w.slotId} className="text-xs text-ink-soft"><span className="font-mono">{w.slotId}</span> · {w.from} → {w.to}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      </CollapsibleSection>
+    </div>
   );
 }

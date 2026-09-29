@@ -1,9 +1,9 @@
 "use client";
 
 import { Check } from "lucide-react";
-import type { MechanismId } from "@/lib/types";
+import type { IneligibleMechanism, MechanismId, SlotPlan } from "@/lib/types";
 import { CREATIVE_TYPE_LABELS } from "@/lib/constants";
-import { ALL_MECHANISM_IDS, MECHANISMS, MOTION_MECHANISM_IDS, STILL_MECHANISM_IDS } from "@/lib/recipes";
+import { ALL_MECHANISM_IDS, MECHANISMS, STILL_MECHANISM_IDS } from "@/lib/recipes";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SectionCard } from "@/components/ui/section-card";
@@ -13,9 +13,13 @@ interface FormatSelectorSectionProps {
   value: MechanismId[];
   onChange: (value: MechanismId[]) => void;
   error?: string;
+  /** Mechanisms that cannot be used with the current inputs, with the reason. */
+  ineligible?: IneligibleMechanism[];
+  /** The deterministic allocation for the current selection. */
+  plan?: SlotPlan;
 }
 
-export function FormatSelectorSection({ value, onChange, error }: FormatSelectorSectionProps) {
+export function FormatSelectorSection({ value, onChange, error, ineligible, plan }: FormatSelectorSectionProps) {
   const selected = new Set(value);
   const toggle = (id: MechanismId) =>
     onChange(selected.has(id) ? value.filter((v) => v !== id) : [...value, id]);
@@ -30,7 +34,6 @@ export function FormatSelectorSection({ value, onChange, error }: FormatSelector
         <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="ghost" onClick={() => onChange(ALL_MECHANISM_IDS)}>Select all</Button>
           <Button size="sm" variant="ghost" onClick={() => onChange(STILL_MECHANISM_IDS)}>Static only</Button>
-          <Button size="sm" variant="ghost" onClick={() => onChange(MOTION_MECHANISM_IDS)}>Video only</Button>
           <Button size="sm" variant="ghost" onClick={() => onChange([])}>Clear</Button>
         </div>
       }
@@ -42,9 +45,21 @@ export function FormatSelectorSection({ value, onChange, error }: FormatSelector
         <span className="rounded-md bg-paper px-1.5 py-0.5 font-mono ring-1 ring-line">9:16</span>
         <span className="text-muted">Same idea and copy, layout adapted to each format.</span>
       </div>
+      {plan && (
+        <div className="mb-5 rounded-xl border border-line bg-paper px-4 py-3 text-xs text-ink-soft" data-testid="allocation-summary">
+          <span className="font-medium text-ink">
+            Plan: {plan.slots.length} image concepts · {plan.distinctMechanisms} distinct mechanisms · max {plan.maxPerMechanism} each
+          </span>
+          <span className="text-muted"> — mechanisms and strategy focus are assigned before writing, so the batch stays diverse.</span>
+          {plan.warnings.map((w) => (
+            <p key={w} className="mt-1 text-[#8a6212]">{w}</p>
+          ))}
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {MECHANISMS.map((m) => {
           const active = selected.has(m.id);
+          const unavailable = m.medium === "motion" ? "Motion — later phase" : ineligible?.find((i) => i.mechanismId === m.id)?.reason;
           return (
             <button
               key={m.id}
@@ -76,6 +91,7 @@ export function FormatSelectorSection({ value, onChange, error }: FormatSelector
                 <span className="mt-2 block text-[10.5px] font-medium tracking-[0.1em] text-faint uppercase">
                   {CREATIVE_TYPE_LABELS[m.type]}
                 </span>
+                {unavailable && <span className="mt-1 block text-[11px] leading-snug text-[#8a6212]" data-unavailable={m.id}>Not used: {unavailable}</span>}
               </span>
             </button>
           );

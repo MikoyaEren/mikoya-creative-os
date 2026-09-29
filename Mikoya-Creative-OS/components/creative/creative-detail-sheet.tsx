@@ -5,6 +5,7 @@ import { Check, Copy, Download, PenLine, RefreshCw, Sparkles } from "lucide-reac
 import type { BrandColors, CreativeConcept, OutputFormat, StrategySnapshot } from "@/lib/types";
 import { GLOBAL_CREATIVE_CONSTITUTION } from "@/lib/prompts/global-creative-constitution";
 import { buildConceptPrompt } from "@/lib/prompts/prompt-builder";
+import { SourceBadge } from "@/components/strategy/source-badge";
 import { CREATIVE_TYPE_LABELS, RENDERER_LABELS, readyOutputs } from "@/lib/constants";
 import { FORMAT_SPECS, OUTPUT_FORMATS } from "@/lib/pipeline/formats";
 import { getMechanism, getRecipeForMechanism } from "@/lib/recipes";
@@ -97,6 +98,7 @@ export function CreativeDetailSheet({
             creativeSafeProfile: strategy.safeProfile,
             brandStrategyProfile: strategy.brandStrategy,
             strategyHypotheses: strategy.hypotheses,
+            usedHypothesisIds: strategy.audit.usedHypothesisIds,
             dynamicCreativeStrategy: strategy.dynamicStrategy,
             globalCreativeConstitution: GLOBAL_CREATIVE_CONSTITUTION,
             recipe: getRecipeForMechanism(concept.mechanism),
@@ -158,12 +160,43 @@ export function CreativeDetailSheet({
                   {getMechanism(concept.mechanism).name}{" "}
                   <span className="text-muted">· recipe {getRecipeForMechanism(concept.mechanism).id} v{getRecipeForMechanism(concept.mechanism).version}</span>
                 </Row>
-                <Row label="Creative angle">{concept.angle}</Row>
+                {concept.title && <Row label="Title">{concept.title}</Row>}
+                <Row label="Strategic angle">{concept.angle}</Row>
+                {concept.objective && <Row label="Objective">{concept.objective}</Row>}
+                {concept.addresses && <Row label="Addresses">{concept.addresses}</Row>}
                 <Row label="Hook"><span className="font-medium">{concept.hook}</span></Row>
-                <Row label="Subheadline">{concept.subheadline}</Row>
+                <Row label="Core message">{concept.subheadline}</Row>
+                {concept.copy && <Row label="Copy"><span className="whitespace-pre-line">{concept.copy}</span></Row>}
                 <Row label="Visual idea">{concept.visualDescription}</Row>
                 <Row label="CTA / Offer">{concept.cta}</Row>
+                {concept.productRole && <Row label="Product role">{concept.productRole}</Row>}
+                {concept.offerRole && <Row label="Offer role">{concept.offerRole}</Row>}
+                {concept.tone && <Row label="Tone">{concept.tone}</Row>}
+                <Row label="Supporting proof">
+                  {concept.supportingProof?.length ? (
+                    <ul className="flex flex-col gap-1">
+                      {concept.supportingProof.map((p) => (
+                        <li key={p.ref} className="flex items-center gap-2"><span>{p.statement}</span><SourceBadge source={p.source} /></li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <span className="text-muted">None stated</span>
+                  )}
+                </Row>
+                {concept.rationale && <Row label="Why this concept">{concept.rationale}</Row>}
+                {concept.focus && <Row label="Strategy focus">{concept.focus.statement} <span className="font-mono text-[11px] text-muted">{concept.focus.ref}</span></Row>}
+                {concept.basis?.length > 0 && (
+                  <Row label="Based on">
+                    <span className="flex flex-wrap gap-1">
+                      {concept.basis.map((b) => (
+                        <span key={b} className="rounded bg-sand px-1.5 py-0.5 font-mono text-[10.5px] text-ink-soft">{b}</span>
+                      ))}
+                    </span>
+                  </Row>
+                )}
+                {concept.confidence !== null && concept.confidence !== undefined && <Row label="Writer confidence">{Math.round(concept.confidence * 100)}%</Row>}
                 <Row label="Renderer"><span className="font-mono text-xs">{RENDERER_LABELS[concept.renderer]}</span></Row>
+                <Row label="Slot · run"><span className="font-mono text-xs">{concept.slotId} · {concept.runId}</span></Row>
               </dl>
               <details className="group mt-2">
                 <summary className="cursor-pointer py-2 text-xs font-medium text-ink-soft hover:text-ink">

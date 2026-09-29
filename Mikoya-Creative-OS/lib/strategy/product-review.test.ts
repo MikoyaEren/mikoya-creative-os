@@ -221,6 +221,7 @@ describe("strategy snapshot and concept prompt", () => {
       creativeSafeProfile: snapshot.safeProfile,
       brandStrategyProfile: snapshot.brandStrategy,
       strategyHypotheses: snapshot.hypotheses,
+      usedHypothesisIds: snapshot.audit.usedHypothesisIds,
       dynamicCreativeStrategy: snapshot.dynamicStrategy,
       globalCreativeConstitution: GLOBAL_CREATIVE_CONSTITUTION,
       recipe: getRecipeForMechanism("x_post"),

@@ -317,6 +317,52 @@ quote stay visible. The safe profile includes an item unless:
 
 Excluded items are listed with their reason.
 
+### Concept generation (Phase 4)
+
+```
+StrategySnapshot (safe profile + brand + reviewed DynamicCreativeStrategy)
+   ↓ allocateSlots()            deterministic, no AI           lib/concepts/allocation.ts
+   ↓ buildConceptInputs()        citable refs: [fact:] [proof:] [brand:] [strategy:]
+   ↓ ONE Claude call             compact tagged output          POST /api/generate-concepts
+   ↓ validateConcepts()          deterministic guards           lib/concepts/concept-guards.ts
+   ↓ toConcept()                 exactly 1:1 + 9:16 per concept lib/concepts/expand-variants.ts
+CreativeBatch { strategy, conceptRun (plan, drops, unfilled, swaps, usage), concepts }
+```
+
+- **Image concepts only.** One concept = one idea = exactly two outputs (1:1 +
+  9:16), so 20 concepts = 40 outputs. Motion mechanisms (Claymation, AI UGC)
+  stay in the catalogue with recipes but are not generated yet.
+- **Recipes** (all 30 authored) describe how a mechanism works, never what a
+  product should say. `MECHANISM_TRAITS` holds generic capabilities:
+  `requiresProductAsset`, `prefersProductAsset`,
+  `requiresApprovedSocialProof`, `prefersOffer`, `supportsComparison`, fit
+  tags and allowed renderers (html / image only).
+- **Allocation:**
+  - only still mechanisms with an authored recipe whose *required* inputs exist
+  - distinct mechanisms first (at least 75% of the batch where possible)
+  - at most 2 per mechanism
+  - strategy foci rotated: angles, objections, desires, motivations,
+    opportunities
+  - each slot lists 2 alternative mechanisms
+- **Writer:** one call for the whole batch, over the full slot plan. It may
+  swap to a listed alternative or decline a slot. Fewer strong concepts beat
+  forced weak ones; there is no repair call. Factual grounding is a strict
+  prompt rule.
+- **Guards** drop a concept, with a reason, for:
+  - an invalid slot or mechanism
+  - the mechanism cap being reached
+  - no grounding in the inputs
+  - withheld or blocked claims
+  - forbidden topics (on what the ad says and shows)
+  - unsupported numbers: ratings, percentages, prices and counts always;
+    durations only next to an effect verb
+  - unsupported sensitive wording (field names and design terms ignored)
+  - made-up testimonials
+  - near-duplicate hooks, messages or angles
+
+  Layout notes that carry copy are replaced by the recipe layout.
+- **Only hypotheses the strategy actually used** reach concept prompts.
+
 ### Strategy inference (Phase 3)
 
 ```

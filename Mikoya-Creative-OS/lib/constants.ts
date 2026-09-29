@@ -15,23 +15,31 @@ export const OUTPUT_PRESETS: OutputPreset[] = [
     id: "quick_test",
     label: "Quick Test",
     description: "A fast read on which angles land.",
-    mix: { static: 2, video: 1, ugc: 1, experimental: 1 },
+    mix: { static: 4, video: 0, ugc: 0, experimental: 1 },
   },
   {
     id: "standard_batch",
     label: "Standard Batch",
     description: "Enough variety for a weekly test.",
-    mix: { static: 6, video: 2, ugc: 1, experimental: 1 },
+    mix: { static: 8, video: 0, ugc: 0, experimental: 2 },
   },
   {
     id: "full_drop",
     label: "Full Creative Drop",
     description: "The complete set across every mechanism.",
-    mix: { static: 12, video: 4, ugc: 2, experimental: 2 },
+    mix: { static: 16, video: 0, ugc: 0, experimental: 4 },
   },
 ];
 
 export const DEFAULT_PRESET = OUTPUT_PRESETS[2];
+
+/**
+ * Motion concepts (video, UGC) are not generated yet: the image invariant
+ * "1 concept = 1:1 + 9:16" must not be forced onto video. They get their own
+ * architecture in a later phase.
+ */
+export const MOTION_TYPES: CreativeType[] = ["video", "ugc"];
+export const isMotionType = (t: CreativeType) => MOTION_TYPES.includes(t);
 
 /** Max concepts per type. */
 export const MAX_PER_TYPE = 30;

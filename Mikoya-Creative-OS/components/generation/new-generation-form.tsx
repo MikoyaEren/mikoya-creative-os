@@ -21,8 +21,8 @@ import { buildStrategySnapshot } from "@/lib/strategy";
 import { analysisInputKey, requestProductAnalysis } from "@/lib/analysis-client";
 import { requestStrategyInference } from "@/lib/strategy-client";
 import { ALL_MECHANISM_IDS, getMechanism } from "@/lib/recipes";
-import { planSlots } from "@/lib/mock/generate-batch";
-import { generationProvider } from "@/lib/pipeline/provider";
+import { allocateSlots, IMAGE_CONCEPT_TYPES } from "@/lib/concepts/allocation";
+import { aiGenerationProvider, generationProvider } from "@/lib/pipeline/provider";
 import { addBatch } from "@/lib/store/generations-store";
 import { toast } from "@/lib/store/toast-store";
 import { isValidUrl } from "@/lib/utils";
@@ -60,7 +60,7 @@ export function NewGenerationForm() {
   const [presetId, setPresetId] = useState<OutputPresetId>(DEFAULT_PRESET.id);
   const [mechanismIds, setMechanismIds] = useState<MechanismId[]>(ALL_MECHANISM_IDS);
   const [submitted, setSubmitted] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [generating, setGenerating] = useState<false | "ai" | "demo">(false);
   const [analysis, setAnalysis] = useState<AnalysisState>({ status: "idle" });
   const [analysisNotes, setAnalysisNotes] = useState("");
   const [analysisContext, setAnalysisContext] = useState<ProductAnalysisContext>(project.analysisContext ?? {});
@@ -103,9 +103,8 @@ export function NewGenerationForm() {
   }
 
   const errors = submitted ? validate(product) : {};
-  const plannedCount = useMemo(() => planSlots({ outputMix: mix, mechanismIds }).length, [mix, mechanismIds]);
   const uncoveredTypes = useMemo<CreativeType[]>(
-    () => CREATIVE_TYPE_ORDER.filter((t) => mix[t] > 0 && !mechanismIds.some((id) => getMechanism(id).type === t)),
+    () => CREATIVE_TYPE_ORDER.filter((t) => IMAGE_CONCEPT_TYPES.includes(t) && mix[t] > 0 && !mechanismIds.some((id) => getMechanism(id).type === t)),
     [mix, mechanismIds],
   );
   // Same resolution the pipeline uses — what you see is what the concept writer gets.
@@ -125,6 +124,9 @@ export function NewGenerationForm() {
     [project, product, brand, reviews, analyzedTruthPack, analyzedReview, factDecisions, inferenceRun],
   );
   const safeProfile = snapshot.safeProfile;
+  // The same deterministic allocation both writers use (preview seed; the batch reseeds with its id).
+  const plan = useMemo(() => allocateSlots({ snapshot, outputMix: mix, mechanismIds, seed: "preview" }), [snapshot, mix, mechanismIds]);
+  const plannedCount = plan.slots.length;
   const inferredInUse = snapshot.audit.usedHypothesisIds.length;
   const acceptedInUse = snapshot.hypotheses.filter((h) => h.reviewStatus === "accepted" && snapshot.audit.usedHypothesisIds.includes(h.id)).length;
 
@@ -169,7 +171,7 @@ export function NewGenerationForm() {
 
   const formatError = submitted && mechanismIds.length === 0 ? "Select at least one creative mechanism." : undefined;
 
-  async function handleGenerate() {
+  async function handleGenerate(writer: "ai" | "demo") {
     setSubmitted(true);
     const currentErrors = validate(product);
     if (Object.keys(currentErrors).length) {
@@ -180,6 +182,11 @@ export function NewGenerationForm() {
       document.getElementById("section-formats")?.scrollIntoView({ behavior: "smooth", block: "start" });
       return;
     }
+    if (snapshot.audit.inferenceStale) {
+      toast("Strategy out of date", "The AI hypotheses were generated for different inputs. Regenerate them before generating concepts.");
+      document.getElementById("section-strategy")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
 
     const request: GenerationRequest = {
       projectId: project.id,
@@ -188,7 +195,8 @@ export function NewGenerationForm() {
       truthPack: analyzedTruthPack ?? undefined,
       productReview: analyzedReview ?? undefined,
       factDecisions,
-      strategyRun: inferenceRun && !snapshot.audit.inferenceStale ? inferenceRun : undefined,
+      // Sent even if stale: the server refuses stale strategies instead of silently falling back.
+      strategyRun: inferenceRun ?? undefined,
       product: { ...product, name: product.name.trim(), url: product.url.trim() },
       brand,
       outputMix: mix,
@@ -196,14 +204,14 @@ export function NewGenerationForm() {
       mechanismIds,
     };
 
-    setGenerating(true);
+    setGenerating(writer);
     try {
-      const batch = await generationProvider.createBatch(request);
+      const batch = await (writer === "ai" ? aiGenerationProvider : generationProvider).createBatch(request);
       addBatch(batch);
       router.push(`/generations/${batch.id}?new=1`);
-    } catch {
+    } catch (err) {
       setGenerating(false);
-      toast("Generation failed", "Something went wrong creating the batch. Please try again.");
+      toast("Generation failed", err instanceof Error && err.message ? err.message : "Something went wrong creating the batch. Please try again.");
     }
   }
 
@@ -289,7 +297,7 @@ export function NewGenerationForm() {
           setPresetId(p);
         }}
       />
-      <FormatSelectorSection value={mechanismIds} onChange={setMechanismIds} error={formatError} />
+      <FormatSelectorSection value={mechanismIds} onChange={setMechanismIds} error={formatError} ineligible={plan.ineligible} plan={plan} />
 
       <div className="mt-3 flex flex-col gap-5 rounded-[var(--radius-card)] bg-ink p-6 text-cream sm:flex-row sm:items-center sm:justify-between sm:p-8">
         <div>
@@ -297,7 +305,7 @@ export function NewGenerationForm() {
             {plural(plannedCount, "concept")} · {plural(outputsFor(plannedCount), "output")}
           </p>
           <p className="mt-1 text-[13px] text-cream/70">
-            {plural(mechanismIds.length, "mechanism")} · every concept in 1:1 and 9:16
+            {plural(plan.distinctMechanisms, "distinct mechanism")} planned · every image concept in 1:1 and 9:16
           </p>
           <p className="mt-1 text-[13px] text-cream/70">
             Product facts:{" "}
@@ -324,23 +332,28 @@ export function NewGenerationForm() {
           <p className="mt-1.5 text-[13px] text-cream/60">
             {missing.length
               ? `Missing: ${missing.map((m) => m.replace(/^(Add|Upload) (a |the )?/, "").replace(/\.$/, "")).join(", ")}`
-              : "Concept generation is still simulated — only product analysis uses AI."}
+              : "AI writes every concept in one call from the reviewed strategy; variants are built by code. Demo uses templates."}
           </p>
         </div>
-        <Button
-          size="lg"
-          variant="primary"
-          onClick={handleGenerate}
-          disabled={generating}
-          className="h-14 bg-[#2f7342] px-7 text-base hover:bg-[#357d49]"
-        >
-          <Sparkles />
-          Generate Creative Batch
-          <ArrowRight />
-        </Button>
+        <div className="flex flex-col items-stretch gap-2 sm:items-end">
+          <Button
+            size="lg"
+            variant="primary"
+            onClick={() => handleGenerate("ai")}
+            disabled={Boolean(generating)}
+            className="h-14 bg-[#2f7342] px-7 text-base hover:bg-[#357d49]"
+          >
+            <Sparkles />
+            Generate with AI
+            <ArrowRight />
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => handleGenerate("demo")} disabled={Boolean(generating)} className="text-cream/80 hover:bg-cream/10 hover:text-cream">
+            Demo batch (templates, no AI)
+          </Button>
+        </div>
       </div>
 
-      {generating && <GeneratingOverlay productName={product.name} concepts={plannedCount} />}
+      {generating && <GeneratingOverlay productName={product.name} concepts={plannedCount} ai={generating === "ai"} />}
     </div>
   );
 }
