@@ -16,6 +16,8 @@ import { allocateSlots, mechanismIneligibility } from "./allocation";
 import { buildConceptInputs } from "./concept-inputs";
 import { nearDuplicate, unsupportedNumbers, validateConcepts, type RawConceptDraft } from "./concept-guards";
 import { toConcept } from "./expand-variants";
+import { medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
+import { classifyRisk, isBlockedStatement } from "@/lib/strategy/claims";
 
 const FULL_DROP: OutputMix = { static: 16, video: 0, ugc: 0, experimental: 4 };
 const product = MIKOYA_PROJECT.exampleProduct;
@@ -226,10 +228,57 @@ describe("concept guards", () => {
     );
     expect(more.dropped).toEqual([]);
     expect(unsupportedNumbers("2x more energy", inputs.groundText)).toEqual(["2x more"]);
-    // Kept strict on purpose: unapproved superlatives about the product.
-    expect(validateConcepts([draft(slots[3], { hook: "the best-looking thing in my apartment isn't the plants" })], [], ctx).dropped[0].reason).toBe("unsupported_claim");
+    // Unapproved superlatives about the product stay strict.
+    expect(validateConcepts([draft(slots[3], { hook: "the best-looking matcha in my apartment" })], [], ctx).dropped[0].reason).toBe("unsupported_claim");
     // Real claims inside a copy field are still caught.
     expect(validateConcepts([draft(slots[4], { copy: "bio: It helps you focus all day" })], [], ctx).dropped[0].reason).toBe("unsupported_claim");
+  });
+
+  it("reads 'best' and 'treat' in context: the two live-run phrases pass (Full Drop 5)", () => {
+    const r = validateConcepts(
+      [
+        draft(slots[0], { hook: "The best routines end with four slow steps", copy: "headline: The best routines end with four slow steps that are yours." }),
+        draft(slots[1], { hook: "A mild, bright green switch", coreMessage: "A mild, bright green switch that feels like a treat." }),
+      ],
+      [],
+      ctx,
+    );
+    expect(r.dropped).toEqual([]);
+    expect(r.kept).toHaveLength(2);
+  });
+
+  it("does not read everyday 'best' or 'treat' as claims", () => {
+    const everyday = [
+      "the best part of my morning",
+      "my best friend sent me this",
+      "The best routines end with four slow steps",
+      "bestie, look at this",
+      "feels like a treat",
+      "a little afternoon treat",
+      "treat yourself",
+      "my weekend treat",
+    ];
+    for (const [i, hook] of everyday.entries()) {
+      const r = validateConcepts([draft(slots[i], { hook })], [], ctx);
+      expect(r.dropped, hook).toEqual([]);
+    }
+    expect(neutralizeNonProductSuperlatives("my best friend sent me this", productTerms(snapshot.safeProfile))).toBe("my friend sent me this");
+    expect(neutralizeNonMedicalTreat("feels like a treat")).not.toMatch(/treat/);
+    expect(medicalTreatmentWording("feels like a treat, treat yourself")).toBeNull();
+  });
+
+  it("still blocks or holds real superlative product claims and medical treatment claims", () => {
+    const superlative = ["the best matcha", "better than Brand X", "#1 serum", "works better than your usual", "the most effective way to start"];
+    const medical = ["treats acne", "treatment for eczema", "helps treat inflammation", "zur Behandlung von Akne"];
+    for (const [i, hook] of [...superlative, ...medical].entries()) {
+      const r = validateConcepts([draft(slots[i], { hook })], [], ctx);
+      expect(r.kept, hook).toEqual([]);
+      expect(["unsupported_claim", "withheld_claim"], hook).toContain(r.dropped[0]?.reason);
+    }
+    for (const text of medical) expect(medicalTreatmentWording(text), text).not.toBeNull();
+    // The Phase 2 product-claim classifier is unchanged: "treat" and "best" still classify there.
+    expect(isBlockedStatement("feels like a treat")).toBe(true);
+    expect(classifyRisk("the best routines")).toBe("comparative");
   });
 
   it("keeps composition numbers in layout notes but replaces notes that add copy", () => {

@@ -15,6 +15,7 @@ import { sameClaim, significantTokens } from "@/lib/strategy/claims";
 import { coversTopic, isSensitiveHypothesis, withheldClaimLeak } from "@/lib/strategy/strategy-guards";
 import type { CreativeSafeProductProfile } from "@/lib/types";
 import type { ConceptInputs } from "./concept-inputs";
+import { isComparativeClaim, medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
 
 /**
  * CONCEPT GUARDS — deterministic checks on the concept writer's output.
@@ -118,13 +119,16 @@ export function unsupportedNumbers(text: string, groundText: string): string[] {
 /** Photography / design terms that are not claims ("soft focus", "heart icon"). */
 const COMPOSITION_TERMS = /\b(soft|shallow|sharp|selective|rack|deep|out of)\s+focus\b|\bin focus\b|\bfocal (point|length|plane)\b|\bhearts?[- ](icon|emoji|sticker|shape|shaped)s?\b/gi;
 
-/** Sentences with sensitive wording that no approved claim supports. */
-export function unsupportedSensitive(text: string, inputs: Pick<ConceptInputs, "approvedClaims">): string[] {
-  return text
+/**
+ * Sentences with sensitive wording that no approved claim supports.
+ * Superlatives that do not modify the product (`terms`) are not claims here.
+ */
+export function unsupportedSensitive(text: string, inputs: Pick<ConceptInputs, "approvedClaims">, terms: Set<string> = new Set()): string[] {
+  return neutralizeNonProductSuperlatives(text, terms)
     .replace(COMPOSITION_TERMS, " ")
     .split(/(?<=[.!?])\s+|\n/)
     .map((s) => s.trim())
-    .filter((s) => s && isSensitiveHypothesis(s) && !inputs.approvedClaims.some((c) => sameClaim(s, c.value)));
+    .filter((s) => s && (isSensitiveHypothesis(s) || isComparativeClaim(s)) && !inputs.approvedClaims.some((c) => sameClaim(s, c.value)));
 }
 
 /** Copy is written as "field: text" lines; checks read the text, never the recipe's field names (e.g. "bio"). */
@@ -160,6 +164,7 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
   const swaps: MechanismSwap[] = [];
   const warnings: string[] = [];
   const perMechanism = new Map<string, number>();
+  const terms = productTerms(safeProfile);
   const filled = new Set<string>();
   const dropReason = new Map<string, string>();
 
@@ -190,7 +195,13 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
     }
     const text = onCanvas(d);
     const all = `${text}\n${describing(d)}`;
-    const leak = withheldClaimLeak(all, safeProfile);
+    // Everyday "treat" ("feels like a treat") is not medical wording; therapeutic uses stay.
+    const medical = medicalTreatmentWording(all);
+    if (medical) {
+      drop("withheld_claim", `Medical treatment wording: "${medical}".`);
+      continue;
+    }
+    const leak = withheldClaimLeak(neutralizeNonMedicalTreat(all), safeProfile);
     if (leak) {
       drop("withheld_claim", leak);
       continue;
@@ -215,7 +226,7 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
       drop("unsupported_claim", `Numbers not in approved inputs: ${numbers.join(", ")}.`);
       continue;
     }
-    const sensitive = unsupportedSensitive(all, inputs);
+    const sensitive = unsupportedSensitive(all, inputs, terms);
     if (sensitive.length) {
       drop("unsupported_claim", `Sensitive wording without an approved claim: "${sensitive[0]}".`);
       continue;
