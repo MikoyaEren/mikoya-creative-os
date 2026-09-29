@@ -3,13 +3,18 @@ import type { HtmlTemplate } from "../types";
 import { imessageTemplate } from "./templates/imessage";
 import { lockScreenTemplate } from "./templates/lock-screen";
 import { receiptTemplate } from "./templates/receipt";
+import { searchBarTemplate } from "./templates/search-bar";
+import { xPostTemplate } from "./templates/x-post";
+import { warningLabelTemplate } from "./templates/warning-label";
+import { checklistTemplate } from "./templates/checklist";
+import { dictionaryTemplate } from "./templates/dictionary";
 
 /**
  * TEMPLATE REGISTRY — one proper template per HTML mechanism (no generic
  * "ad card"). A mechanism without a template is not renderable yet and
  * says so (`no_template`); it is never drawn with another template.
  */
-const TEMPLATES: HtmlTemplate<never>[] = [imessageTemplate, receiptTemplate, lockScreenTemplate] as HtmlTemplate<never>[];
+const TEMPLATES: HtmlTemplate<never>[] = [imessageTemplate, receiptTemplate, lockScreenTemplate, xPostTemplate, searchBarTemplate, warningLabelTemplate, checklistTemplate, dictionaryTemplate] as HtmlTemplate<never>[];
 
 const BY_MECHANISM = new Map<MechanismId, HtmlTemplate<unknown>>(TEMPLATES.map((t) => [t.mechanismId, t as HtmlTemplate<unknown>]));
 

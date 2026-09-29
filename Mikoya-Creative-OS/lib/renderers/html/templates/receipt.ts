@@ -85,10 +85,10 @@ ${ASSET_CSS}${CTA_CSS}
 .rule.double{border-top:0.18em double #1b1b1b;opacity:1}
 .row{display:grid;grid-template-columns:2.4em 1fr auto;column-gap:0.45em;line-height:1.2;margin:0.2em 0;align-items:start}
 .qty{white-space:nowrap}
-.item{overflow-wrap:break-word}
+.item{}
 .amt{white-space:nowrap;text-align:right}
 .total{display:grid;grid-template-columns:auto 1fr;column-gap:0.8em;align-items:baseline;font-weight:700;font-size:1.16em;line-height:1.2}
-.total .value{text-align:right;overflow-wrap:break-word}
+.total .value{text-align:right}
 .barcode{margin:${byFormat(frame, "18px", "36px")} auto 0;display:block;flex:0 0 auto}
 .product{flex:0 0 auto;width:${productSize}px;height:${productSize}px;display:flex;${v ? "align-self:flex-end;margin-right:24px" : "align-self:flex-end"}}
 .cta{flex:0 0 auto;${v ? "" : "font-size:36px;padding:24px 48px"}}

@@ -9,6 +9,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import type { OutputFormat, RenderRecord } from "@/lib/types";
 import { OUTPUT_FORMATS } from "@/lib/pipeline/formats";
 import { TEMPLATE_MECHANISMS } from "./html/template-registry";
+import { getRecipeForMechanism } from "@/lib/recipes";
 import { ROLE_FLOOR_PX, FONT_FILES, type TypeRole } from "./html/typography";
 import { fitAndMeasure } from "./html/fit-script";
 import { labCases, renderLabCase } from "./lab/run-lab";
@@ -41,8 +42,13 @@ describe.skipIf(!hasChromium)(`HTML renderer in Chromium (${hasChromium ? "avail
         for (const format of OUTPUT_FORMATS) {
           const { record, html } = await renderLabCase(c, format, { rasterizer, store });
           const key = `${mechanism}_${c.id}_${format.replace(":", "x")}`;
-          // Structural choices (attachment, backgroundAsset) are not drawn as words.
-          const copy = (c.concept.copyFields ?? []).filter((f) => f.key !== "attachment" && f.key !== "backgroundAsset").flatMap((f) => (f.rows.length ? f.rows.flatMap((r) => [r.label, r.text, r.note]) : [f.text])).filter(Boolean);
+          const slots = getRecipeForMechanism(mechanism).structure.copySlots;
+          const enumerated = (key: string, part: "label" | "text" | "note") => Boolean(slots.find((sl) => sl.key === key)?.row?.[part]?.values);
+          // Structural choices are not drawn as words: value fields (attachment, backgroundAsset, visual) and enumerated row parts (speaker, state).
+          const copy = (c.concept.copyFields ?? [])
+            .filter((f) => !slots.find((sl) => sl.key === f.key)?.values)
+            .flatMap((f) => (f.rows.length ? f.rows.flatMap((r) => (["label", "text", "note"] as const).filter((p) => !enumerated(f.key, p)).map((p) => r[p])) : [f.text]))
+            .filter(Boolean);
           results.push({ key, record, html, copy, brand: c.brand });
           expect(record.status, `${key}: ${record.error?.code} ${record.error?.detail ?? record.error?.message ?? ""}`).toBe("complete");
           const png = await store.readRender(record.outputUrl!.replace("/api/renders/", ""));
@@ -62,7 +68,9 @@ describe.skipIf(!hasChromium)(`HTML renderer in Chromium (${hasChromium ? "avail
 
   it("draws every word of the copy, identically, in both formats", () => {
     const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-    for (const r of results) for (const word of r.copy) expect(r.html, `${r.key}: "${word}"`).toContain(esc(word));
+    // Visible text (tags stripped): styling may split a line into spans, the words stay intact and in order.
+    const visible = (h: string) => h.replace(/<style[\s\S]*?<\/style>/g, "").replace(/<[^>]+>/g, "");
+    for (const r of results) for (const word of r.copy) expect(visible(r.html!), `${r.key}: "${word}"`).toContain(esc(word));
     const byCase = new Map<string, typeof results>();
     for (const r of results) byCase.set(r.key.replace(/_(1x1|9x16)$/, ""), [...(byCase.get(r.key.replace(/_(1x1|9x16)$/, "")) ?? []), r]);
     for (const [k, pair] of byCase) {
@@ -99,7 +107,16 @@ describe.skipIf(!hasChromium)(`HTML renderer in Chromium (${hasChromium ? "avail
       <div data-key="product" style="position:absolute;top:600px;left:0;width:300px;height:300px"><img data-slot="product" style="width:100%;height:100%;object-fit:contain" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></div>
       <div data-key="copy" style="position:absolute;top:700px;left:100px;width:300px;height:100px">covered words</div>`);
     const report = await page.evaluate(fitAndMeasure, { safe: { top: 250, right: 60, bottom: 340, left: 60 }, width: 1080, height: 1920, families: FONT_FILES.map((f) => f.family) });
+    // Regressions from the Phase 5A template work: words are never split to fit, and an image escaping
+    // its slot (unbounded surface card) is measured by what it paints, not by the slot's box.
+    await page.setContent(`<!doctype html><style>*{margin:0;overflow-wrap:normal;word-break:normal}[data-fit]{font-size:var(--fs)}</style><div id="canvas">
+      <div data-fit="w" data-role="headline" data-max="200" data-min="64" style="width:300px;height:400px;overflow:hidden"><span style="display:block">CAUTIONARY</span></div>
+      <div data-key="product" style="position:absolute;top:600px;left:100px;width:200px;height:100px"><div style="width:900px;height:900px"><img data-slot="p" style="width:900px;height:900px;object-fit:contain" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="></div></div>
+      <div data-key="effects" style="position:absolute;top:1000px;left:100px;width:400px;height:60px">covered words</div></div>`);
+    const report2 = await page.evaluate(fitAndMeasure, { safe: { top: 250, right: 60, bottom: 340, left: 60 }, width: 1080, height: 1920, families: [] });
     await b.close();
+    expect(report2.units[0]).toMatchObject({ unit: "w", fits: false });
+    expect(report2.assetOverCopy).toEqual(["product over effects"]);
     expect(report.units[0]).toMatchObject({ unit: "u", px: 34, fits: false });
     expect(report.outsideSafe.map((o) => o.id)).toEqual(expect.arrayContaining(["cta", "product"]));
     expect(report.assetOverCopy).toEqual(["product over copy"]);

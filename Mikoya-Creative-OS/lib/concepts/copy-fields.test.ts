@@ -41,7 +41,7 @@ describe("structured copy fields", () => {
   });
 
   it("describes every list slot to the writer with its row parts", () => {
-    expect(describeCopySlots(getRecipeForMechanism("checklist").structure.copySlots)).toMatch(/items \(list, 3–7 rows; label = state \(done \| todo\) ≤4; text = one checklist item ≤40; note = ""\)/);
+    expect(describeCopySlots(getRecipeForMechanism("checklist").structure.copySlots)).toMatch(/items \(list, 3–7 rows; label = state \(done \| todo\) ≤4; text = one list item ≤40; note = ""\)/);
   });
 
   it("every recipe's list slots declare a row spec, and demo fields are valid for every image mechanism", () => {

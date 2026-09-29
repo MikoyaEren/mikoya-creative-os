@@ -102,7 +102,7 @@ ${ASSET_CSS}
 .title{font-weight:650;letter-spacing:-0.01em;white-space:nowrap;overflow:hidden}
 .when{font-size:0.72em;color:#6b6b70;white-space:nowrap}
 .source{font-size:0.66em;color:#6b6b70;letter-spacing:0.02em;margin-top:0.08em}
-.note p{font-weight:420;line-height:1.24;letter-spacing:-0.012em;margin-top:0.12em;overflow-wrap:break-word}
+.note p{font-weight:420;line-height:1.24;letter-spacing:-0.012em;margin-top:0.12em}
 .light .stage{color:var(--brand-ink)}
 .light .clock{text-shadow:none}
 .light .home{background:var(--brand-ink);opacity:0.7}

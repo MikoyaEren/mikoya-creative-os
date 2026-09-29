@@ -21,6 +21,8 @@ html,body{width:${frame.width}px;height:${frame.height}px;overflow:hidden;backgr
 body{font-family:var(--font-ui);-webkit-font-smoothing:antialiased;text-rendering:geometricPrecision;font-kerning:normal;font-synthesis:none}
 #canvas{position:relative;width:${frame.width}px;height:${frame.height}px;overflow:hidden;background:var(--brand-bg);color:var(--brand-ink)}
 [data-fit]{font-size:var(--fs)}
+/* Never split a word to make it fit: a word that is too long overflows, and the fitter shrinks it or fails the render. */
+*{overflow-wrap:normal;word-break:normal;hyphens:manual}
 img{display:block;max-width:none}
 p,h1,h2{text-wrap:pretty}
 `;

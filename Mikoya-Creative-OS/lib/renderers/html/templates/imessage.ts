@@ -79,7 +79,7 @@ ${ASSET_CSS}${CTA_CSS}
 .msg.turn{margin-top:0.55em}
 .msg.them{justify-content:flex-start}
 .msg.me{justify-content:flex-end}
-.msg p{position:relative;max-width:78%;font:400 1em/1.27 var(--font-ui);letter-spacing:-0.012em;padding:0.4em 0.7em 0.44em;border-radius:0.92em;overflow-wrap:break-word}
+.msg p{position:relative;max-width:78%;font:400 1em/1.27 var(--font-ui);letter-spacing:-0.012em;padding:0.4em 0.7em 0.44em;border-radius:0.92em}
 .msg.them p{background:#E9E9EB;color:#111}
 .msg.me p{background:#0A84FF;color:#fff}
 .msg.tail.them p{border-bottom-left-radius:0.3em}

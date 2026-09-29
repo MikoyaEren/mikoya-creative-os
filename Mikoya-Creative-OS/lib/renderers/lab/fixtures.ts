@@ -227,8 +227,250 @@ const LOCK_SCREEN: LabCase[] = [
   },
 ];
 
+const X_POST: LabCase[] = [
+  {
+    id: "short",
+    label: "Short thought · Brand A · text only",
+    brand: "A",
+    withAssets: true,
+    cta: false,
+    concept: { mechanism: "x_post", hook: "", cta: "", copyFields: [t("post", "stopped calling it a habit. it's the only 10 minutes of the day nobody else gets"), t("name", "Mara"), t("handle", "@maraslowly")] },
+  },
+  {
+    id: "lifestyle",
+    label: "Observation · Brand A · lifestyle attachment",
+    brand: "A",
+    withAssets: true,
+    cta: false,
+    concept: { mechanism: "x_post", hook: "", cta: "", copyFields: [t("post", "unpopular opinion: the first drink of the day should be a little bit of a ceremony"), t("name", "Jules"), t("handle", "@julesatnine"), t("visual", "lifestyle")] },
+  },
+  {
+    id: "long_product",
+    label: "Long valid post (180) · Brand B · product attachment",
+    brand: "B",
+    withAssets: true,
+    cta: false,
+    concept: {
+      mechanism: "x_post",
+      hook: "",
+      cta: "",
+      copyFields: [
+        t("post", "confession: I bought the thing everyone kept posting about, fully expecting to be disappointed. two weeks in and I have become the person who posts about it. I'm sorry. it's good"),
+        t("name", "Alexandra Winterberg"),
+        t("handle", "@alexwinterberg"),
+        t("visual", "product"),
+      ],
+    },
+  },
+  {
+    id: "brand_b_text",
+    label: "Short thought · Brand B · text only",
+    brand: "B",
+    withAssets: false,
+    cta: false,
+    concept: { mechanism: "x_post", hook: "", cta: "", copyFields: [t("post", "my evening routine is just dimming every light in the flat and pretending I live in a film"), t("name", "Sam"), t("handle", "@samafterdark")] },
+  },
+];
+
+const SEARCH: LabCase[] = [
+  {
+    id: "short",
+    label: "Problem-led query · Brand A · no visual",
+    brand: "A",
+    withAssets: true,
+    cta: false,
+    concept: { mechanism: "search_bar", hook: "", cta: "", copyFields: [t("query", "why does my morning drink taste bitter"), rows("suggestions", [["", "why does my morning drink taste bitter always"], ["", "why does my morning drink taste bitter cold"], ["", "morning drink that isn't bitter"]])] },
+  },
+  {
+    id: "product",
+    label: "Direct intent · Brand A · product visual · CTA",
+    brand: "A",
+    withAssets: true,
+    cta: true,
+    concept: { mechanism: "search_bar", hook: "", cta: "See the one people mean", copyFields: [t("query", "a calm morning ritual"), rows("suggestions", [["", "a calm morning ritual that takes 5 minutes"], ["", "a calm morning ritual without my phone"]]), t("visual", "product")] },
+  },
+  {
+    id: "long_bundle",
+    label: "Long query + 4 suggestions (max) · Brand B · bundle requested but not uploaded",
+    brand: "B",
+    withAssets: true,
+    cta: false,
+    concept: {
+      mechanism: "search_bar",
+      hook: "",
+      cta: "",
+      copyFields: [
+        t("query", "how to actually wind down after work without scrolling"),
+        rows("suggestions", [
+          ["", "how to actually wind down after work fast"],
+          ["", "how to actually wind down after a shift"],
+          ["", "how to wind down without scrolling"],
+          ["", "evening routine with no screens"],
+        ]),
+        t("visual", "bundle"),
+      ],
+    },
+  },
+  {
+    id: "brand_b_product",
+    label: "Discovery query · Brand B · product visual",
+    brand: "B",
+    withAssets: true,
+    cta: false,
+    concept: { mechanism: "search_bar", hook: "", cta: "", copyFields: [t("query", "best way to make evenings feel slower"), rows("suggestions", [["", "best way to make evenings feel slower and calmer"], ["", "best way to make evenings feel cosy"]]), t("visual", "product")] },
+  },
+];
+
+const WARNING: LabCase[] = [
+  {
+    id: "short",
+    label: "Short · Brand A · product · lead line",
+    brand: "A",
+    withAssets: true,
+    cta: false,
+    concept: { mechanism: "warning_label", hook: "", cta: "", copyFields: [t("header", "Warning"), t("lead", "May cause:"), rows("effects", [["", "a morning you actually look forward to"], ["", "friends asking where it's from"], ["", "a new favourite mug"]]), t("visual", "product")] },
+  },
+  {
+    id: "max",
+    label: "Maximum effects (5), long header · Brand A · no visual · CTA",
+    brand: "A",
+    withAssets: true,
+    cta: true,
+    concept: {
+      mechanism: "warning_label",
+      hook: "",
+      cta: "Proceed with care",
+      copyFields: [
+        t("header", "Handle with care"),
+        t("lead", "Known side effects:"),
+        rows("effects", [
+          ["", "saving your morning as a story draft"],
+          ["", "choosing mugs by colour, not by size"],
+          ["", "refusing to rush the first ten minutes"],
+          ["", "friends asking what that green thing is"],
+          ["", "suddenly owning a whisk holder"],
+        ]),
+      ],
+    },
+  },
+  {
+    id: "brand_b",
+    label: "Caution · Brand B · product",
+    brand: "B",
+    withAssets: true,
+    cta: false,
+    concept: { mechanism: "warning_label", hook: "", cta: "", copyFields: [t("header", "Caution"), rows("effects", [["", "evenings that feel twice as long"], ["", "going to bed before midnight on purpose"]]), t("visual", "product")] },
+  },
+];
+
+const CHECKLIST: LabCase[] = [
+  {
+    id: "short",
+    label: "Identity list (3) · Brand A · product beside / below",
+    brand: "A",
+    withAssets: true,
+    cta: false,
+    concept: { mechanism: "checklist", hook: "", cta: "", copyFields: [t("title", "Signs you're a slow-morning person"), rows("items", [["done", "the good mug, every time"], ["done", "no email before the first sip"], ["todo", "the bright green thing on the counter"]]), t("visual", "product")] },
+  },
+  {
+    id: "max",
+    label: "Maximum rows (7), long items · Brand A · no visual · CTA",
+    brand: "A",
+    withAssets: true,
+    cta: true,
+    concept: {
+      mechanism: "checklist",
+      hook: "",
+      cta: "Complete the list",
+      copyFields: [
+        t("title", "Things that just belong together"),
+        rows("items", [
+          ["done", "linen sheets, slow Sundays"],
+          ["done", "a window seat, nowhere to be"],
+          ["done", "one good candle, not five"],
+          ["done", "a playlist you never skip"],
+          ["todo", "a bowl, a whisk, ten minutes"],
+          ["todo", "phone in the other room"],
+          ["todo", "a first cup that feels yours"],
+        ]),
+      ],
+    },
+  },
+  {
+    id: "lifestyle",
+    label: "Recognition (4) · Brand A · lifestyle photo",
+    brand: "A",
+    withAssets: true,
+    cta: false,
+    concept: { mechanism: "checklist", hook: "", cta: "", copyFields: [t("title", "Your morning, honestly"), rows("items", [["done", "alarm off before it rings"], ["done", "window open, just a crack"], ["todo", "something green in a glass"], ["todo", "ten minutes nobody gets"]]), t("visual", "lifestyle")] },
+  },
+  {
+    id: "brand_b",
+    label: "Short · Brand B · no visual",
+    brand: "B",
+    withAssets: false,
+    cta: false,
+    concept: { mechanism: "checklist", hook: "", cta: "", copyFields: [t("title", "Evening, sorted"), rows("items", [["done", "lamps on, big lights off"], ["done", "phone on the charger, not the pillow"], ["todo", "the last ten minutes just for you"]])] },
+  },
+];
+
+const DICTIONARY: LabCase[] = [
+  {
+    id: "full",
+    label: "All fields · Brand A · product",
+    brand: "A",
+    withAssets: true,
+    cta: false,
+    concept: {
+      mechanism: "dictionary",
+      hook: "",
+      cta: "",
+      copyFields: [
+        t("word", "slow-morninger"),
+        t("pronunciation", "/sloʊ ˈmɔːr.nɪŋ.ər/"),
+        rows("definition", [["noun", "a person who protects the first ten minutes of the day from everyone, including their phone."]]),
+        t("example", "“don't call before nine, she's a slow-morninger now.”"),
+        t("visual", "product"),
+      ],
+    },
+  },
+  {
+    id: "two_defs",
+    label: "Two definitions + example · Brand A · no visual · CTA",
+    brand: "A",
+    withAssets: true,
+    cta: true,
+    concept: {
+      mechanism: "dictionary",
+      hook: "",
+      cta: "Become one",
+      copyFields: [
+        t("word", "ritualist"),
+        rows("definition", [
+          ["noun", "someone who turns an ordinary drink into the best part of the day."],
+          ["adj.", "describing a morning that runs on intention instead of notifications."],
+        ]),
+        t("example", "“I'm not late, I'm being ritualist about it.”"),
+      ],
+    },
+  },
+  {
+    id: "minimal",
+    label: "Word + one definition only · Brand B · no visual",
+    brand: "B",
+    withAssets: false,
+    cta: false,
+    concept: { mechanism: "dictionary", hook: "", cta: "", copyFields: [t("word", "unwind"), rows("definition", [["verb", "to let the evening take longer than it needs to, on purpose."]])] },
+  },
+];
+
 export const LAB_CASES: Partial<Record<MechanismId, LabCase[]>> = {
   imessage: IMESSAGE,
   receipt: RECEIPT,
   lock_screen: LOCK_SCREEN,
+  x_post: X_POST,
+  search_bar: SEARCH,
+  warning_label: WARNING,
+  checklist: CHECKLIST,
+  dictionary: DICTIONARY,
 };

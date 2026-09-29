@@ -92,13 +92,15 @@ describe("formats", () => {
 
 describe("template registry and contracts", () => {
   it("has one proper template per implemented mechanism, and none for the rest", () => {
-    expect(TEMPLATE_MECHANISMS.sort()).toEqual(["imessage", "lock_screen", "receipt"]);
-    expect(templateFor("x_post")).toBeNull();
+    expect([...TEMPLATE_MECHANISMS].sort()).toEqual(["checklist", "dictionary", "imessage", "lock_screen", "receipt", "search_bar", "warning_label", "x_post"]);
+    expect(templateFor("notes_app")).toBeNull();
   });
 
   it("declares CTA policies per template (never on for native lock screens)", () => {
     const modes = Object.fromEntries(listTemplates().map((tpl) => [tpl.id, tpl.ctaMode]));
-    expect(modes).toEqual({ imessage: "optional", receipt: "optional", lock_screen: "none" });
+    expect(modes).toEqual({ imessage: "optional", receipt: "optional", lock_screen: "none", x_post: "none", search_bar: "optional", warning_label: "optional", checklist: "optional", dictionary: "optional" });
+    // None of these draw the concept hook as a separate headline: the native copy carries it.
+    expect(listTemplates().filter((tpl) => tpl.hookMode !== "none" && !["imessage", "receipt"].includes(tpl.id)).map((tpl) => tpl.id)).toEqual([]);
   });
 
   it("maps copy fields to typed payloads and rejects shapes it cannot draw", () => {
@@ -180,7 +182,7 @@ describe("renderVariant (fake rasterizer)", () => {
       [{}, { outsideSafe: [{ id: "cta", rect: [0, 0, 10, 10] }] }, "safe_zone_violation"],
       [{}, { assetOverCopy: ["product over receipt"] }, "asset_covers_copy"],
       [{ concept: { ...input().concept, copyFields: undefined } }, {}, "legacy_copy"],
-      [{ concept: { ...input().concept, mechanism: "x_post" } }, {}, "no_template"],
+      [{ concept: { ...input().concept, mechanism: "notes_app" } }, {}, "no_template"],
       [{ concept: { ...input().concept, renderer: "image" } }, {}, "renderer_not_html"],
       [{ concept: { ...input().concept, copyFields: [t("contact", "Jules"), t("messages", "me: hi / them: hey")] } }, {}, "invalid_payload"],
     ];
@@ -282,6 +284,45 @@ describe("who decides what exists: the concept (assets and headline), the templa
     // Product shots are never repositioned or cropped.
     const product = await docFor({ concept: { ...concept, copyFields: [...concept.copyFields.slice(0, 2), t("backgroundAsset", "product")] }, assets: [{ ...ASSETS[0], focus: { "9:16": [10, 10] } }], format: "9:16", variantId: "v2_9x16" });
     expect(product.doc).toMatch(/object-fit:contain;object-position:50% 50%/);
+  });
+});
+
+describe("Phase 5A templates: typed payloads and concept-chosen visuals", () => {
+  const ALL: RenderAsset[] = [
+    { hash: "a".repeat(64), role: "main", width: 2000, height: 2000, mime: "image/webp", treatment: "light_studio" },
+    { hash: "b".repeat(64), role: "lifestyle", width: 2000, height: 2000, mime: "image/webp", treatment: "photo" },
+    { hash: "c".repeat(64), role: "bundle", width: 2000, height: 2000, mime: "image/webp", treatment: "photo" },
+  ];
+  const render = async (mechanism: RenderVariantInput["concept"]["mechanism"], copyFields: CopyField[], cta = "") => {
+    let doc = "";
+    const r = await renderVariant(input({ assets: ALL, concept: { mechanism, renderer: "html", hook: "an unrelated hook line", cta, copyFields }, options: { cta: true } }), { rasterizer: fakeRasterizer({}, (d) => (doc = d)), store: memoryStore() });
+    return { doc, record: r.record };
+  };
+
+  it("maps each template's copy fields to its typed payload", () => {
+    expect(templateFor("x_post")!.payload([t("post", "a thought"), t("name", "Mara"), t("handle", "mara")])).toEqual({ post: "a thought", name: "Mara", handle: "@mara", visual: null });
+    expect(templateFor("search_bar")!.payload([t("query", "q"), rows("suggestions", [["", "q one"], ["", "q two"]]), t("visual", "bundle")])).toEqual({ query: "q", suggestions: ["q one", "q two"], visual: "bundle" });
+    expect(templateFor("warning_label")!.payload([t("header", "Warning"), rows("effects", [["", "a"], ["", "b"]])])).toEqual({ header: "Warning", lead: "", effects: ["a", "b"], visual: null });
+    expect(templateFor("checklist")!.payload([t("title", "T"), rows("items", [["done", "x"], ["todo", "y"], ["done", "z"]])])).toEqual({ title: "T", items: [{ done: true, text: "x" }, { done: false, text: "y" }, { done: true, text: "z" }], visual: null });
+    expect(templateFor("dictionary")!.payload([t("word", "w"), rows("definition", [["noun", "d"]])])).toEqual({ word: "w", pronunciation: "", definitions: [{ pos: "noun", text: "d" }], example: "", visual: null });
+  });
+
+  it("draws a visual only when the concept names its role, never the hook, and only the fields present", async () => {
+    const post = [t("post", "stopped calling it a habit"), t("name", "Mara"), t("handle", "@mara")];
+    expect((await render("x_post", post)).doc).not.toContain("data-slot");
+    const withLifestyle = await render("x_post", [...post, t("visual", "lifestyle")]);
+    expect(withLifestyle.doc).toContain(`assets/${"b".repeat(64)}`);
+    expect(withLifestyle.doc).not.toContain(`assets/${"a".repeat(64)}`);
+    const searchBundle = await render("search_bar", [t("query", "a calm evening"), rows("suggestions", [["", "a calm evening routine"], ["", "a calm evening at home"]]), t("visual", "bundle")], "Try it");
+    expect(searchBundle.doc).toMatch(new RegExp(`assets/${"c".repeat(64)}[^>]*object-fit:contain`));
+    expect(searchBundle.record.cta).toBe(true);
+    const tweetCta = await render("x_post", post, "Try it");
+    expect(tweetCta.record.cta).toBe(false);
+    for (const d of [withLifestyle, searchBundle, tweetCta]) expect(d.doc).not.toContain("an unrelated hook line");
+    const dict = await render("dictionary", [t("word", "unwind"), rows("definition", [["verb", "to let the evening take longer"]])]);
+    expect(dict.doc).not.toContain('class="pron"');
+    expect(dict.doc).not.toContain('class="example"');
+    expect(dict.doc).not.toContain('class="num"');
   });
 });
 

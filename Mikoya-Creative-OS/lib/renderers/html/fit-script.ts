@@ -49,6 +49,12 @@ export function fitAndMeasure(args: MeasureArgs): MeasureReport {
   const over = (el: HTMLElement) => {
     if (el.scrollWidth > el.clientWidth + 1) return true;
     const r = el.getBoundingClientRect();
+    // Clipped by an ancestor (a card or label with overflow:hidden that got squeezed) counts as overflow too.
+    for (let a = el.parentElement; a && a.id !== "canvas"; a = a.parentElement) {
+      if (getComputedStyle(a).overflow === "visible") continue;
+      const ar = a.getBoundingClientRect();
+      if (r.bottom > ar.bottom + 1 || r.right > ar.right + 1) return true;
+    }
     const cs = getComputedStyle(el);
     const bottom = r.bottom - Number.parseFloat(cs.paddingBottom) - Number.parseFloat(cs.borderBottomWidth);
     const right = r.right - Number.parseFloat(cs.paddingRight) - Number.parseFloat(cs.borderRightWidth);
@@ -57,6 +63,8 @@ export function fitAndMeasure(args: MeasureArgs): MeasureReport {
       if (display === "none" || display.startsWith("inline")) continue;
       const dr = d.getBoundingClientRect();
       if (dr.bottom > bottom + 1 || dr.right > right + 1) return true;
+      // A word wider than its own box (bubble, label, card) — words are never split.
+      if (d.scrollWidth > d.clientWidth + 1 && d.clientWidth > 0) return true;
     }
     return false;
   };
@@ -114,8 +122,18 @@ export function fitAndMeasure(args: MeasureArgs): MeasureReport {
     if (el.scrollWidth > el.clientWidth + 1) report.lineOverflow.push(el.dataset.line || el.className);
   }
   const { safe, width, height } = args;
+  // What actually paints: a key's own box united with the boxes of its images (an image may escape its slot).
+  const paintRect = (el: HTMLElement) => {
+    const rects = [el.getBoundingClientRect(), ...Array.from(el.querySelectorAll("img")).map((i) => i.getBoundingClientRect())];
+    return {
+      left: Math.min(...rects.map((x) => x.left)),
+      top: Math.min(...rects.map((x) => x.top)),
+      right: Math.max(...rects.map((x) => x.right)),
+      bottom: Math.max(...rects.map((x) => x.bottom)),
+    };
+  };
   for (const el of Array.from(document.querySelectorAll<HTMLElement>("[data-key]"))) {
-    const r = el.getBoundingClientRect();
+    const r = paintRect(el);
     const inside = r.left >= safe.left - 0.5 && r.top >= safe.top - 0.5 && r.right <= width - safe.right + 0.5 && r.bottom <= height - safe.bottom + 0.5;
     if (!inside) report.outsideSafe.push({ id: el.dataset.key || "", rect: [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] });
   }
@@ -123,7 +141,7 @@ export function fitAndMeasure(args: MeasureArgs): MeasureReport {
   const assetKeys = keys.filter((k) => k.querySelector("img[data-slot]"));
   const copyKeys = keys.filter((k) => !k.querySelector("img[data-slot]") && (k.textContent || "").trim());
   for (const a of assetKeys) {
-    const ar = a.getBoundingClientRect();
+    const ar = paintRect(a);
     for (const c of copyKeys) {
       if (a.contains(c) || c.contains(a)) continue;
       const cr = c.getBoundingClientRect();
@@ -142,14 +160,18 @@ export function fitAndMeasure(args: MeasureArgs): MeasureReport {
       objectFit: getComputedStyle(img).objectFit,
     });
   }
-  // Only the bundled families this page actually uses (unused faces are never fetched).
-  const used = new Set<string>();
+  // Only the bundled faces this page actually uses (unused faces are never fetched), at the weight / style in use.
+  const used = new Map<string, string>();
   for (const el of Array.from(document.querySelectorAll<HTMLElement>("#canvas *"))) {
-    const first = getComputedStyle(el).fontFamily.split(",")[0].trim().replace(/^["']|["']$/g, "");
+    const cs = getComputedStyle(el);
+    const first = cs.fontFamily.split(",")[0].trim().replace(/^["']|["']$/g, "");
     const ownText = Array.from(el.childNodes).some((n) => n.nodeType === Node.TEXT_NODE && n.textContent && n.textContent.trim());
-    if (args.families.includes(first) && ownText) used.add(first);
+    if (args.families.includes(first) && ownText) used.set(`${first}|${cs.fontStyle}|${cs.fontWeight}`, `${cs.fontStyle} ${cs.fontWeight} 32px "${first}"`);
   }
-  for (const family of used) report.fonts[family] = document.fonts.check(`32px "${family}"`);
+  for (const [key, spec] of used) {
+    const family = key.split("|")[0];
+    report.fonts[family] = (report.fonts[family] ?? true) && document.fonts.check(spec);
+  }
 
   // Smallest rendered text anywhere (chrome included), for the minimum-size audit.
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
