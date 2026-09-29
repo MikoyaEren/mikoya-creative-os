@@ -1,3 +1,4 @@
+import type { OutputFormat } from "@/lib/types";
 import type { AssetSlot, PlacedAsset, RenderAsset } from "../types";
 
 /**
@@ -16,7 +17,7 @@ export interface Placement {
 /** Roles that are scene photos and may be cropped by a cover slot. */
 const PHOTO_ROLES = new Set(["lifestyle", "other"]);
 
-export function placeAssets(slots: AssetSlot[], available: RenderAsset[], baseUrl: string): Placement {
+export function placeAssets(slots: AssetSlot[], available: RenderAsset[], baseUrl: string, format: OutputFormat = "1:1"): Placement {
   const used = new Set<string>();
   const out: Placement = { assets: {}, missingRequired: [], warnings: [] };
   for (const slot of slots) {
@@ -36,7 +37,9 @@ export function placeAssets(slots: AssetSlot[], available: RenderAsset[], baseUr
     }
     // Product shots (packaging, bundle, main, close-up) are never cropped: always contain.
     const fit = PHOTO_ROLES.has(asset.role) ? slot.fit : "contain";
-    out.assets[slot.id] = { ...asset, slot: slot.id, fit, url: `${baseUrl}assets/${asset.hash}` };
+    // Cover crops keep the photo's most detailed region for THIS format (focal point from the store).
+    const [px, py] = fit === "cover" ? (asset.focus?.[format] ?? [50, 50]) : [50, 50];
+    out.assets[slot.id] = { ...asset, slot: slot.id, fit, position: `${px}% ${py}%`, url: `${baseUrl}assets/${asset.hash}` };
   }
   return out;
 }

@@ -136,12 +136,12 @@ export async function renderVariant(input: RenderVariantInput, deps: RenderDeps)
   record.renderedFields = ["copyFields", ...(headline ? ["hook"] : []), ...(cta ? ["cta"] : [])];
 
   const slots = template.assetSlotsFor ? template.assetSlotsFor(payload as never) : template.assetSlots;
-  const placement = placeAssets(slots, input.assets, RENDER_ORIGIN);
+  const placement = placeAssets(slots, input.assets, RENDER_ORIGIN, input.format);
   for (const slot of slots) if (!placement.assets[slot.id] && slot.requirement === "optional") record.warnings.push(`asset_unavailable: ${slot.id} requested but no ${slot.accepts.join("/")} asset was uploaded.`);
   record.warnings.push(...placement.warnings);
   record.assets = Object.values(placement.assets)
     .filter((a) => a !== null)
-    .map((a) => ({ slot: a.slot, assetHash: a.hash, role: a.role, fit: a.fit, treatment: a.treatment }));
+    .map((a) => ({ slot: a.slot, assetHash: a.hash, role: a.role, fit: a.fit, treatment: a.treatment, position: a.position }));
   const brand = brandTokens(input.brand.colors, input.brand.brandName);
   record.inputHash = createHash("sha256")
     .update(JSON.stringify({ t: template.id, tv: template.version, rv: RENDERER_VERSION, f: input.format, payload, headline, cta, brand, assets: record.assets }))

@@ -41,8 +41,8 @@ describe.skipIf(!hasChromium)(`HTML renderer in Chromium (${hasChromium ? "avail
         for (const format of OUTPUT_FORMATS) {
           const { record, html } = await renderLabCase(c, format, { rasterizer, store });
           const key = `${mechanism}_${c.id}_${format.replace(":", "x")}`;
-          // Structural choices (attachment) are not drawn as words; the lock-screen headline only when it adds words.
-          const copy = (c.concept.copyFields ?? []).filter((f) => f.key !== "attachment" && !(mechanism === "lock_screen" && f.key === "headline" && c.id === "headline_repeat")).flatMap((f) => (f.rows.length ? f.rows.flatMap((r) => [r.label, r.text, r.note]) : [f.text])).filter(Boolean);
+          // Structural choices (attachment, backgroundAsset) are not drawn as words.
+          const copy = (c.concept.copyFields ?? []).filter((f) => f.key !== "attachment" && f.key !== "backgroundAsset").flatMap((f) => (f.rows.length ? f.rows.flatMap((r) => [r.label, r.text, r.note]) : [f.text])).filter(Boolean);
           results.push({ key, record, html, copy, brand: c.brand });
           expect(record.status, `${key}: ${record.error?.code} ${record.error?.detail ?? record.error?.message ?? ""}`).toBe("complete");
           const png = await store.readRender(record.outputUrl!.replace("/api/renders/", ""));

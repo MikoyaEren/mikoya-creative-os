@@ -2,7 +2,7 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import sharp from "sharp";
-import type { RenderAssetTreatment } from "@/lib/types";
+import type { OutputFormat, RenderAssetTreatment } from "@/lib/types";
 
 /**
  * LOCAL RENDER STORE (Phase 5A, temporary).
@@ -19,6 +19,8 @@ export interface StoredAsset {
   width: number;
   height: number;
   treatment: RenderAssetTreatment;
+  /** Photos: object-position (% x, % y) that keeps the most detailed region when cover-cropped to each format. */
+  focus?: Partial<Record<OutputFormat, [number, number]>>;
 }
 
 export interface RenderStore {
@@ -57,7 +59,51 @@ async function classify(body: Buffer): Promise<{ width: number; height: number; 
   let treatment: RenderAssetTreatment = "photo";
   if (meta.hasAlpha && corners.every((c) => c[3] < 16)) treatment = "cutout";
   else if (corners.every((c) => c[3] > 240 && Math.min(c[0], c[1], c[2]) > 228 && Math.max(c[0], c[1], c[2]) - Math.min(c[0], c[1], c[2]) < 14)) treatment = "light_studio";
-  return { width: meta.width, height: meta.height, mime, treatment };
+  const focus = treatment === "photo" ? await focusFor(body, meta.width, meta.height) : undefined;
+  return { width: meta.width, height: meta.height, mime, treatment, ...(focus ? { focus } : {}) };
+}
+
+const FORMAT_ASPECT: Record<OutputFormat, number> = { "1:1": 1, "9:16": 9 / 16 };
+
+/**
+ * Deterministic focal point per format for cover-cropped photos: slide the
+ * crop window over an edge-energy map and keep the window with the most
+ * detail. Returned as CSS object-position percentages; 50% when the photo
+ * already has the format's aspect ratio along that axis.
+ */
+async function focusFor(body: Buffer, width: number, height: number): Promise<Partial<Record<OutputFormat, [number, number]>>> {
+  const N = 96;
+  // Blur first so fine texture (fabric, patterns) counts less than objects and edges.
+  const { data } = await sharp(body).greyscale().resize(N, N, { fit: "fill" }).blur(2).raw().toBuffer({ resolveWithObject: true });
+  const energy = new Float64Array(N * N);
+  for (let y = 1; y < N - 1; y++) {
+    for (let x = 1; x < N - 1; x++) {
+      const i = y * N + x;
+      energy[i] = Math.abs(data[i + 1] - data[i - 1]) + Math.abs(data[i + N] - data[i - N]);
+    }
+  }
+  // Mild centre bias: photographers frame subjects near the middle.
+  const bias = (i: number) => 1 - 0.35 * Math.abs(i / (N - 1) - 0.5) * 2;
+  const cols = Array.from({ length: N }, (_, x) => bias(x) * Array.from({ length: N }, (_, y) => energy[y * N + x]).reduce((a, b) => a + b, 0));
+  const rows = Array.from({ length: N }, (_, y) => bias(y) * energy.slice(y * N, y * N + N).reduce((a, b) => a + b, 0));
+  const best = (sums: number[], span: number) => {
+    const w = Math.max(1, Math.min(N, Math.round(span * N)));
+    if (w >= N) return 50;
+    let top = -1;
+    let at = 0;
+    for (let start = 0; start + w <= N; start++) {
+      const e = sums.slice(start, start + w).reduce((a, b) => a + b, 0);
+      if (e > top) [top, at] = [e, start];
+    }
+    return Math.round((at / (N - w)) * 100);
+  };
+  const aspect = width / height;
+  const out: Partial<Record<OutputFormat, [number, number]>> = {};
+  for (const [format, target] of Object.entries(FORMAT_ASPECT) as [OutputFormat, number][]) {
+    // Cover crop keeps the full height when the photo is wider than the format, else the full width.
+    out[format] = aspect > target ? [best(cols, target / aspect), 50] : [50, best(rows, aspect / target)];
+  }
+  return out;
 }
 
 export class FsRenderStore implements RenderStore {
@@ -90,7 +136,8 @@ export class FsRenderStore implements RenderStore {
     if (body.length > MAX_ASSET_BYTES) throw new AssetRejected("Image is larger than 15 MB.");
     const hash = createHash("sha256").update(body).digest("hex");
     const existing = await this.assetMeta(hash);
-    if (existing) return existing;
+    // Re-analyse photos stored before focal points existed.
+    if (existing && (existing.treatment !== "photo" || existing.focus)) return existing;
     const info = await classify(body).catch((err) => {
       throw err instanceof AssetRejected ? err : new AssetRejected("The image could not be read.");
     });

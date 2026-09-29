@@ -48,7 +48,7 @@ export async function labAssets(brand: LabBrand, store: RenderStore): Promise<Re
   const out: RenderAsset[] = [];
   for (const f of files) {
     const meta = await store.putAsset(f.body);
-    out.push({ hash: meta.hash, role: f.role, width: meta.width, height: meta.height, mime: meta.mime, treatment: meta.treatment });
+    out.push({ hash: meta.hash, role: f.role, width: meta.width, height: meta.height, mime: meta.mime, treatment: meta.treatment, ...(meta.focus ? { focus: meta.focus } : {}) });
   }
   return out;
 }

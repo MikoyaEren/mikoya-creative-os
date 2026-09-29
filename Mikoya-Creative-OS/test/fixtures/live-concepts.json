@@ -6,7 +6,7 @@
     "concept": {
       "mechanism": "imessage",
       "renderer": "html",
-      "hook": "what's your morning thing now, you seem so… calm",
+      "hook": "what's your morning thing now, you seem so\u2026 calm",
       "cta": "Make it yours",
       "copyFields": [
         {
@@ -15,7 +15,7 @@
           "rows": [
             {
               "label": "them",
-              "text": "what's your morning thing now, you seem so… calm",
+              "text": "what's your morning thing now, you seem so\u2026 calm",
               "note": ""
             },
             {
@@ -42,161 +42,6 @@
         }
       ],
       "subheadline": "The one part of the day that's only yours."
-    }
-  },
-  {
-    "source": "Real Mikoya lock-screen validation run (2026-09-29T12:51:43.147Z)",
-    "batchId": "batch_bb0f520a",
-    "conceptId": "batch_bb0f520a_c01",
-    "concept": {
-      "mechanism": "lock_screen",
-      "renderer": "html",
-      "hook": "ok your mornings have an aesthetic now and I need to know why",
-      "cta": "Start your ritual",
-      "copyFields": [
-        {
-          "key": "notifications",
-          "text": "",
-          "rows": [
-            {
-              "label": "Messages",
-              "text": "ok your mornings have an aesthetic now and I need to know why",
-              "note": "Maya"
-            },
-            {
-              "label": "Messages",
-              "text": "is that the black pouch from your story",
-              "note": "Maya"
-            },
-            {
-              "label": "Messages",
-              "text": "send it. I want in",
-              "note": "Maya"
-            }
-          ]
-        },
-        {
-          "key": "time",
-          "text": "7:42",
-          "rows": []
-        }
-      ],
-      "subheadline": "Your matcha ritual becomes part of your personal style, and people notice."
-    }
-  },
-  {
-    "source": "Real Mikoya lock-screen validation run (2026-09-29T12:51:43.147Z)",
-    "batchId": "batch_bb0f520a",
-    "conceptId": "batch_bb0f520a_c02",
-    "concept": {
-      "mechanism": "lock_screen",
-      "renderer": "html",
-      "hook": "ok I was SO sure matcha tasted like lawn clippings",
-      "cta": "Try it for 30 days",
-      "copyFields": [
-        {
-          "key": "notifications",
-          "text": "",
-          "rows": [
-            {
-              "label": "Messages",
-              "text": "ok I was SO sure matcha tasted like lawn clippings",
-              "note": "Nora"
-            },
-            {
-              "label": "Messages",
-              "text": "this one's mild? like smooth, almost velvety. I'm converted",
-              "note": "Nora"
-            },
-            {
-              "label": "Reminders",
-              "text": "Mikoya: 30-day trial, money back if it's not for you",
-              "note": ""
-            }
-          ]
-        },
-        {
-          "key": "time",
-          "text": "8:15",
-          "rows": []
-        }
-      ],
-      "subheadline": "This one is mild and velvety, with an umami note, and you can try it risk-free for 30 days."
-    }
-  },
-  {
-    "source": "Real Mikoya lock-screen validation run (2026-09-29T12:51:43.147Z)",
-    "batchId": "batch_bb0f520a",
-    "conceptId": "batch_bb0f520a_c03",
-    "concept": {
-      "mechanism": "lock_screen",
-      "renderer": "html",
-      "hook": "Sift. Whisk. Sip. Phone stays face down.",
-      "cta": "Build your morning ritual",
-      "copyFields": [
-        {
-          "key": "notifications",
-          "text": "",
-          "rows": [
-            {
-              "label": "Reminders",
-              "text": "Sift. Whisk. Sip. Phone stays face down.",
-              "note": ""
-            },
-            {
-              "label": "Reminders",
-              "text": "Tomorrow: same slow start, same green cup",
-              "note": ""
-            }
-          ]
-        },
-        {
-          "key": "time",
-          "text": "6:58",
-          "rows": []
-        }
-      ],
-      "subheadline": "A better routine can start with a few calm minutes and a whisk."
-    }
-  },
-  {
-    "source": "Real Mikoya lock-screen validation run (2026-09-29T12:51:43.147Z)",
-    "batchId": "batch_bb0f520a",
-    "conceptId": "batch_bb0f520a_c04",
-    "concept": {
-      "mechanism": "lock_screen",
-      "renderer": "html",
-      "hook": "Just me and my matcha, 7:00 to 7:15",
-      "cta": "Claim your fifteen",
-      "copyFields": [
-        {
-          "key": "notifications",
-          "text": "",
-          "rows": [
-            {
-              "label": "Calendar",
-              "text": "Just me and my matcha, 7:00 to 7:15",
-              "note": ""
-            },
-            {
-              "label": "Messages",
-              "text": "call you after your matcha? I know that 15 min is sacred",
-              "note": "Jess"
-            }
-          ]
-        },
-        {
-          "key": "time",
-          "text": "6:55",
-          "rows": []
-        },
-        {
-          "key": "headline",
-          "text": "Fifteen minutes that belong to you.",
-          "rows": []
-        }
-      ],
-      "subheadline": "Fifteen minutes that belong to you: a ritual, not just a habit."
     }
   }
 ]

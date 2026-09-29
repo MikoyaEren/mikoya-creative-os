@@ -54,6 +54,24 @@ describe("structured copy fields", () => {
     }
   });
 
+  it("Lock Screen: Messages and Reminders only, a required background choice, no headline field", () => {
+    const slots = getRecipeForMechanism("lock_screen").structure.copySlots;
+    const described = describeCopySlots(slots);
+    expect(described).toMatch(/source \(Messages \| Reminders\)/);
+    expect(described).not.toMatch(/Calendar/);
+    expect(slots.map((s) => s.key)).toEqual(["notifications", "time", "backgroundAsset"]);
+    const base = [text("time", "7:12"), text("backgroundAsset", "lifestyle")];
+    expect(validateCopyFields("lock_screen", [list("notifications", [["Messages", "wait did you see this?", "Mia"]]), ...base]).ok).toBe(true);
+    const calendar = validateCopyFields("lock_screen", [list("notifications", [["Calendar", "Just me and my matcha, 7:00", ""]]), ...base]);
+    expect(calendar.ok ? "" : calendar.issues.join(" ")).toMatch(/source must be one of Messages \/ Reminders/);
+    const headline = validateCopyFields("lock_screen", [list("notifications", [["Messages", "hi", "Mia"]]), ...base, text("headline", "Fifteen minutes")]);
+    expect(headline.ok ? "" : headline.issues.join(" ")).toMatch(/Unknown copy field "headline"/);
+    const noBackground = validateCopyFields("lock_screen", [list("notifications", [["Messages", "hi", "Mia"]]), text("time", "7:12")]);
+    expect(noBackground.ok ? "" : noBackground.issues.join(" ")).toMatch(/backgroundAsset: required/);
+    const badBackground = validateCopyFields("lock_screen", [list("notifications", [["Messages", "hi", "Mia"]]), text("time", "7:12"), text("backgroundAsset", "video")]);
+    expect(badBackground.ok ? "" : badBackground.issues.join(" ")).toMatch(/must be one of lifestyle \/ product \/ bundle \/ none/);
+  });
+
   it("never lets a recipe's format layout change the copy between 1:1 and 9:16", () => {
     const DIVERGENT = /\b(condensed|cropped to \d|only \d|fewer|first \d|\d (bubbles|entries|rows|items) only)\b/i;
     for (const recipe of RECIPES) expect(recipe.formatLayouts["1:1"], recipe.id).not.toMatch(DIVERGENT);

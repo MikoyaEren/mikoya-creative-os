@@ -157,78 +157,72 @@ const RECEIPT: LabCase[] = [
   },
 ];
 
+const lock = (notifications: [string, string, string?][], time: string, backgroundAsset: string) => [rows("notifications", notifications), t("time", time), t("backgroundAsset", backgroundAsset)];
+
 const LOCK_SCREEN: LabCase[] = [
   {
-    id: "headline_repeat",
-    label: "Headline field only repeats the notification → not drawn · Brand A",
+    id: "friend_discovery",
+    label: "Friend discovery (3 Messages) · Brand A · lifestyle",
     brand: "A",
     withAssets: true,
     cta: false,
     concept: {
       mechanism: "lock_screen",
-      hook: "ok you need to see this",
+      hook: "wait did you see this?",
       cta: "",
-      copyFields: [rows("notifications", [["Messages", "ok you need to see this", "Lena"]]), t("time", "8:05"), t("headline", "You need to see this")],
+      copyFields: lock([["Messages", "wait did you see this?", "Mia"], ["Messages", "they put the whole set together", "Mia"], ["Messages", "ok i'm ordering", "Mia"]], "9:41", "lifestyle"),
     },
   },
   {
-    id: "friend",
-    label: "Friend notification · Brand A · lifestyle wallpaper",
+    id: "conversation",
+    label: "Conversation tease (2 Messages) · Brand A · lifestyle",
     brand: "A",
     withAssets: true,
     cta: false,
     concept: {
       mechanism: "lock_screen",
-      hook: "ok you need to see this",
+      hook: "is that the black pouch from your story?",
       cta: "",
-      copyFields: [rows("notifications", [["Messages", "ok you need to see this", "Lena"], ["Messages", "i think i found my new morning thing", "Lena"]]), t("time", "7:12")],
+      copyFields: lock([["Messages", "is that the black pouch from your story?", "Lena"], ["Messages", "send it", "Lena"]], "7:42", "lifestyle"),
     },
   },
   {
-    id: "tease",
-    label: "Conversation tease (3) · Brand A · lifestyle wallpaper",
+    id: "guarantee_reminder",
+    label: "Approved guarantee reminder · Brand A · product (assumes an approved guarantee)",
     brand: "A",
     withAssets: true,
     cta: false,
     concept: {
       mechanism: "lock_screen",
-      hook: "wait did you see what they added?",
+      hook: "ok I was so sure I'd hate it",
       cta: "",
-      copyFields: [
-        rows("notifications", [
-          ["Messages", "wait did you see what they added?", "Mia"],
-          ["Messages", "the whole set is in there", "Mia"],
-          ["Messages", "ok i'm ordering", "Mia"],
-        ]),
-        t("time", "9:41"),
-      ],
+      copyFields: lock([["Messages", "ok I was so sure I'd hate it", "Nora"], ["Reminders", "30 days to try it. Money back if it's not for you", ""]], "8:15", "product"),
     },
   },
   {
-    id: "reminder",
-    label: "Reminder · Brand B · product on brand gradient (no lifestyle photo)",
+    id: "bundle",
+    label: "Friend discovery · Brand A · bundle background",
+    brand: "A",
+    withAssets: true,
+    cta: false,
+    concept: {
+      mechanism: "lock_screen",
+      hook: "you got the whole set??",
+      cta: "",
+      copyFields: lock([["Messages", "you got the whole set??", "Jess"], ["Messages", "ok that bowl is so pretty", "Jess"]], "18:05", "bundle"),
+    },
+  },
+  {
+    id: "brand_only",
+    label: "Conversation tease · Brand B · no asset (brand background)",
     brand: "B",
     withAssets: true,
-    assetRoles: ["main", "packaging", "bundle"],
-    cta: false,
-    concept: {
-      mechanism: "lock_screen",
-      hook: "Reminder: your starter kit is still in the cart",
-      cta: "",
-      copyFields: [rows("notifications", [["Reminders", "Your starter kit is still in the cart", ""]]), t("time", "21:42")],
-    },
-  },
-  {
-    id: "headline",
-    label: "Tease + concept headline field · Brand B · no asset",
-    brand: "B",
-    withAssets: false,
     cta: false,
     concept: {
       mechanism: "lock_screen",
       hook: "did you try it yet",
       cta: "",
-      copyFields: [rows("notifications", [["Messages", "did you try it yet", "Sam"], ["Messages", "i'm not saying i told you so. but", "Sam"]]), t("time", "22:10"), t("headline", "The text you'll want to get")],
+      copyFields: lock([["Messages", "did you try it yet", "Sam"], ["Messages", "i'm not saying i told you so. but", "Sam"]], "22:10", "none"),
     },
   },
 ];

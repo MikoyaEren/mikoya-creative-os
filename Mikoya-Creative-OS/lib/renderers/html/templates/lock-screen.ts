@@ -2,26 +2,27 @@ import { fieldRows, fieldText } from "@/lib/concepts/copy-fields";
 import { PayloadError, type HtmlTemplate } from "../../types";
 import { html, raw, type SafeHtml } from "../escape";
 import { byFormat } from "../format-adapter";
-import { ASSET_CSS, assetImg, headlineBlock } from "../primitives";
+import { ASSET_CSS, assetImg } from "../primitives";
 
 /**
  * PHONE LOCK SCREEN — notification-first.
  *
- * The notifications are the ad: 1–3 native-looking cards whose copy (from
- * the concept) carries the hook, the curiosity or the offer. The wallpaper
- * carries the product / lifestyle visual (a lifestyle photo is preferred; the
- * product shot on a brand gradient is the fallback). A separate headline
- * appears only when the concept writes one that adds something beyond the
- * notification copy. Chrome is neutral: generic source glyphs (no platform
- * logos), fictional sender names from the concept, relative times ("now",
- * "2m ago") that state nothing about the product.
+ * Background + lock icon + time + 1–3 notifications, nothing else: the
+ * notifications are the ad. The CONCEPT chooses the background visual
+ * (`backgroundAsset`: lifestyle | product | bundle | none); the template only
+ * lays it out — a lifestyle photo full-bleed (cover, per-format focal point),
+ * a product or bundle shot contained on the brand background (never cropped),
+ * or the brand background alone. It never swaps in another asset. Chrome is
+ * neutral: generic source glyphs (no platform logos), fictional sender names
+ * from the concept, relative times ("now", "2m ago").
  */
-export type NotificationSource = "Messages" | "Reminders" | "Calendar";
+export type NotificationSource = "Messages" | "Reminders";
+export type LockBackground = "lifestyle" | "product" | "bundle" | "none";
 
 export interface LockScreenPayload {
   time: string;
   notifications: { source: NotificationSource; text: string; sender: string }[];
-  headline: string;
+  background: LockBackground;
 }
 
 const LOCK = raw(`<svg viewBox="0 0 24 30" width="30" height="38" aria-hidden="true"><rect x="3" y="12" width="18" height="15" rx="3.5" fill="currentColor"/><path d="M7 12V8.5a5 5 0 0 1 10 0V12" fill="none" stroke="currentColor" stroke-width="2.6"/></svg>`);
@@ -30,42 +31,44 @@ const LOCK = raw(`<svg viewBox="0 0 24 30" width="30" height="38" aria-hidden="t
 const GLYPH: Record<NotificationSource, SafeHtml> = {
   Messages: raw(`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4.2c-4.9 0-8.8 3.2-8.8 7.2 0 2.2 1.2 4.2 3.1 5.5-.2 1.2-.8 2.4-1.7 3.3 1.9-.1 3.6-.8 4.8-1.8.8.2 1.7.3 2.6.3 4.9 0 8.8-3.2 8.8-7.3S16.9 4.2 12 4.2z" fill="#fff"/></svg>`),
   Reminders: raw(`<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.5" cy="7" r="2" fill="#f2994a"/><circle cx="6.5" cy="12" r="2" fill="#2d9cdb"/><circle cx="6.5" cy="17" r="2" fill="#eb5757"/><rect x="10.5" y="6.1" width="9" height="1.8" rx=".9" fill="#b9b9be"/><rect x="10.5" y="11.1" width="9" height="1.8" rx=".9" fill="#b9b9be"/><rect x="10.5" y="16.1" width="9" height="1.8" rx=".9" fill="#b9b9be"/></svg>`),
-  Calendar: raw(`<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3" fill="#fff" stroke="#d6d6db"/><rect x="3.5" y="4.5" width="17" height="5" rx="2.5" fill="#eb5757"/><rect x="3.5" y="7.5" width="17" height="2" fill="#eb5757"/><rect x="7" y="12.5" width="3" height="3" rx=".7" fill="#b9b9be"/><rect x="11" y="12.5" width="3" height="3" rx=".7" fill="#b9b9be"/><rect x="15" y="12.5" width="3" height="3" rx=".7" fill="#b9b9be"/></svg>`),
 };
-const TILE: Record<NotificationSource, string> = { Messages: "#3dbb5c", Reminders: "#ffffff", Calendar: "#ffffff" };
+const TILE: Record<NotificationSource, string> = { Messages: "#3dbb5c", Reminders: "#ffffff" };
 const WHEN = ["now", "2m ago", "5m ago"];
 
 export const lockScreenTemplate: HtmlTemplate<LockScreenPayload> = {
   id: "lock_screen",
   mechanismId: "lock_screen",
-  version: 3,
+  version: 4,
   name: "Lock screen",
   ctaMode: "none",
-  // Notification-first: the hook lives in the notifications; an extra line only via the concept's `headline` field.
+  // Notification-first: the hook lives in the notifications; no headline is ever drawn.
   hookMode: "none",
   brandInfluence: "native",
   assetSlots: [
-    { id: "wallpaper", accepts: ["lifestyle"], requirement: "optional", fit: "cover", minSourcePx: 1080 },
-    { id: "product", accepts: ["main", "packaging", "bundle"], requirement: "optional", fit: "contain", minSourcePx: 600 },
+    { id: "background", accepts: ["lifestyle"], requirement: "optional", fit: "cover", minSourcePx: 1080 },
+    { id: "background", accepts: ["main", "packaging"], requirement: "optional", fit: "contain", minSourcePx: 600 },
+    { id: "background", accepts: ["bundle"], requirement: "optional", fit: "contain", minSourcePx: 600 },
   ],
+  // The concept's backgroundAsset decides which role is used; "none" → brand background only.
+  assetSlotsFor(payload) {
+    const accepts = { lifestyle: "lifestyle", product: "main", bundle: "bundle", none: null }[payload.background];
+    return accepts ? this.assetSlots.filter((s) => s.accepts.includes(accepts as never)) : [];
+  },
 
   payload(fields) {
     const time = fieldText(fields, "time");
     const notifications = fieldRows(fields, "notifications").map((r) => ({ source: r.label as NotificationSource, text: r.text, sender: r.label === "Messages" ? r.note : "" }));
     if (!time || !notifications.length) throw new PayloadError("A lock screen needs a time and at least one notification.");
-    if (notifications.some((n) => !(n.source in GLYPH))) throw new PayloadError("Notification source must be Messages, Reminders or Calendar.");
-    // The optional headline is drawn only when it adds words beyond the notifications.
-    const headline = fieldText(fields, "headline");
-    const words = (x: string) => x.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w.length > 1);
-    const said = new Set(notifications.flatMap((n) => words(n.text)));
-    return { time, notifications, headline: words(headline).some((w) => !said.has(w)) ? headline : "" };
+    if (notifications.some((n) => !(n.source in GLYPH))) throw new PayloadError("Notification source must be Messages or Reminders.");
+    const background = fieldText(fields, "backgroundAsset") as LockBackground;
+    if (!["lifestyle", "product", "bundle", "none"].includes(background)) throw new PayloadError("backgroundAsset must be lifestyle, product, bundle or none.");
+    return { time, notifications, background };
   },
 
   render({ payload, frame, brand, assets }) {
-    const v = frame.vertical;
-    const wallpaper = assets.wallpaper;
-    // The product becomes the wallpaper subject only when there is no lifestyle photo — the same in both formats.
-    const product = wallpaper ? null : assets.product;
+    const bg = assets.background;
+    const wallpaper = bg && bg.fit === "cover" ? bg : null;
+    const product = bg && bg.fit === "contain" ? bg : null;
     const cards = payload.notifications.map(
       (n, i) => html`<div class="note" data-key="notification">
         <div class="icon" style="background:${TILE[n.source]}">${GLYPH[n.source]}</div>
@@ -100,11 +103,8 @@ ${ASSET_CSS}
 .when{font-size:0.72em;color:#6b6b70;white-space:nowrap}
 .source{font-size:0.66em;color:#6b6b70;letter-spacing:0.02em;margin-top:0.08em}
 .note p{font-weight:420;line-height:1.24;letter-spacing:-0.012em;margin-top:0.12em;overflow-wrap:break-word}
-.headline-box{flex:0 0 auto;max-height:${byFormat(frame, 150, 260)}px;overflow:hidden;width:100%}
-.headline{font:400 1em/1.02 var(--font-display);letter-spacing:-0.015em;color:#fff;text-align:center;text-wrap:balance;text-shadow:0 2px 24px rgba(0,0,0,0.35)}
 .light .stage{color:var(--brand-ink)}
-.light .clock,.light .headline{text-shadow:none}
-.light .headline{color:var(--brand-ink)}
+.light .clock{text-shadow:none}
 .light .home{background:var(--brand-ink);opacity:0.7}
 .home{position:absolute;left:50%;bottom:${byFormat(frame, 18, 26)}px;transform:translateX(-50%);width:${byFormat(frame, 230, 300)}px;height:10px;border-radius:5px;background:rgba(255,255,255,0.88)}
 `;
@@ -119,7 +119,6 @@ ${light ? null : html`<div class="shade ${wallpaper ? "" : "soft"}"></div>`}
   <div class="middle">
     ${product ? html`<div class="product-box" data-key="product">${assetImg(product, brand)}</div>` : null}
     <div class="stack" data-fit="notifications" data-role="body" data-max="${byFormat(frame, 44, 56)}" data-min="34">${cards}</div>
-    ${payload.headline ? headlineBlock(payload.headline, byFormat(frame, 64, 84), 56) : null}
   </div>
 </div>
 <div class="home"></div></div>`;

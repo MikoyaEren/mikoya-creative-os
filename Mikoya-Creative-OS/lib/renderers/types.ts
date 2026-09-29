@@ -42,11 +42,15 @@ export interface RenderAsset {
   height: number;
   mime: string;
   treatment: RenderAssetTreatment;
+  /** Photos: object-position per format for cover crops (from the store's focal analysis). */
+  focus?: Partial<Record<OutputFormat, [number, number]>>;
 }
 
 export interface PlacedAsset extends RenderAsset {
   slot: string;
   fit: "contain" | "cover";
+  /** CSS object-position for this format ("50% 50%" unless a cover crop has a focal point). */
+  position: string;
   url: string;
 }
 

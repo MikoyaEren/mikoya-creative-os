@@ -105,12 +105,12 @@ describe("template registry and contracts", () => {
     expect(templateFor("imessage")!.payload(THREAD)).toEqual({ contact: "Jules", messages: [{ from: "them", text: "you look rested" }, { from: "me", text: "new morning thing" }], attachment: null });
     expect(() => templateFor("imessage")!.payload([t("contact", "Jules")])).toThrow(/two messages/);
     expect(templateFor("receipt")!.payload([rows("items", [["1x", "slow start", "free"]]), t("total", "one morning")])).toEqual({ items: [{ qty: "1x", item: "slow start", amount: "free" }], total: "one morning" });
-    expect(templateFor("lock_screen")!.payload([rows("notifications", [["Messages", "did you see this", "Lena"], ["Reminders", "check the set", ""]]), t("time", "7:12")])).toEqual({
+    expect(templateFor("lock_screen")!.payload([rows("notifications", [["Messages", "did you see this", "Lena"], ["Reminders", "30 days to try it", ""]]), t("time", "7:12"), t("backgroundAsset", "product")])).toEqual({
       time: "7:12",
-      notifications: [{ source: "Messages", text: "did you see this", sender: "Lena" }, { source: "Reminders", text: "check the set", sender: "" }],
-      headline: "",
+      notifications: [{ source: "Messages", text: "did you see this", sender: "Lena" }, { source: "Reminders", text: "30 days to try it", sender: "" }],
+      background: "product",
     });
-    expect(() => templateFor("lock_screen")!.payload([rows("notifications", [["Notes", "hello", ""]]), t("time", "7:12")])).toThrow(/Messages, Reminders or Calendar/);
+    expect(() => templateFor("lock_screen")!.payload([rows("notifications", [["Calendar", "7:00 me time", ""]]), t("time", "7:12"), t("backgroundAsset", "none")])).toThrow(/Messages or Reminders/);
   });
 
   it("never sets a fit unit below its type-role floor, in either format", () => {
@@ -237,16 +237,51 @@ describe("who decides what exists: the concept (assets and headline), the templa
     expect(dense.doc).not.toContain('data-slot="product"');
   });
 
-  it("Lock screen: lifestyle wallpaper preferred, product on gradient as fallback, headline only when it adds words", async () => {
-    const lock = (extra: CopyField[] = []) => ({ mechanism: "lock_screen" as const, renderer: "html" as const, hook: "x", cta: "", copyFields: [rows("notifications", [["Messages", "ok you need to see this", "Lena"]]), t("time", "8:05"), ...extra] });
-    const photo = await docFor({ concept: lock() });
-    expect(photo.doc).toContain('data-slot="wallpaper"');
-    expect(photo.doc).not.toContain('data-slot="product"');
-    const fallback = await docFor({ concept: lock(), assets: [ASSETS[0]] });
-    expect(fallback.doc).toContain('data-slot="product"');
-    expect((await docFor({ concept: lock() })).doc).not.toContain('class="headline"');
-    expect((await docFor({ concept: lock([t("headline", "You need to see this")]) })).doc).not.toContain('class="headline"');
-    expect((await docFor({ concept: lock([t("headline", "The text you'll want to get")]) })).doc).toContain("The text you&#39;ll want to get");
+  it("Lock screen: backgroundAsset decides the asset role; product and bundle are contained; no headline is ever drawn", async () => {
+    const BUNDLE: RenderAsset = { hash: "c".repeat(64), role: "bundle", width: 2000, height: 2000, mime: "image/webp", treatment: "light_studio" };
+    const lock = (background: string, extra: CopyField[] = []) => ({
+      mechanism: "lock_screen" as const,
+      renderer: "html" as const,
+      hook: "a hook that is not in the notifications",
+      cta: "",
+      copyFields: [rows("notifications", [["Messages", "ok you need to see this", "Lena"]]), t("time", "8:05"), t("backgroundAsset", background), ...extra],
+    });
+    const all = [...ASSETS, BUNDLE];
+    const lifestyle = await docFor({ concept: lock("lifestyle"), assets: all });
+    expect(lifestyle.doc).toContain(`assets/${"b".repeat(64)}`);
+    expect(lifestyle.doc).toMatch(/object-fit:cover/);
+    // The concept asked for the product: a lifestyle photo being available must not replace it.
+    const product = await docFor({ concept: lock("product"), assets: all });
+    expect(product.doc).toContain(`assets/${"a".repeat(64)}`);
+    expect(product.doc).not.toContain(`assets/${"b".repeat(64)}`);
+    expect(product.doc).toMatch(/data-slot="background"[^>]*object-fit:contain/);
+    const bundle = await docFor({ concept: lock("bundle"), assets: all });
+    expect(bundle.doc).toContain(`assets/${"c".repeat(64)}`);
+    expect(bundle.doc).toMatch(/data-slot="background"[^>]*object-fit:contain/);
+    // Light brand backgrounds use dark ink for the clock — never a painted block behind it.
+    expect(product.doc).not.toMatch(/\.clock[^{]*\{[^}]*background/);
+    const none = await docFor({ concept: lock("none"), assets: all });
+    expect(none.doc).not.toContain('data-slot="background"');
+    // No headline: not from the hook, and a headline field is not part of the recipe any more.
+    for (const d of [lifestyle, product, bundle, none]) {
+      expect(d.doc).not.toContain('class="headline');
+      expect(d.doc).not.toContain("a hook that is not in the notifications");
+    }
+    const withHeadline = await docFor({ concept: lock("none", [t("headline", "An editorial line")]) });
+    expect(withHeadline.record.error?.code).toBe("invalid_payload");
+    expect(withHeadline.record.error?.detail).toMatch(/Unknown copy field "headline"/);
+  });
+
+  it("Lock screen: a lifestyle wallpaper can take a different focal position per format", async () => {
+    const PHOTO: RenderAsset = { hash: "d".repeat(64), role: "lifestyle", width: 2000, height: 2000, mime: "image/webp", treatment: "photo", focus: { "1:1": [50, 50], "9:16": [72, 50] } };
+    const concept = { mechanism: "lock_screen" as const, renderer: "html" as const, hook: "", cta: "", copyFields: [rows("notifications", [["Messages", "is that the pouch from your story?", "Lena"]]), t("time", "7:42"), t("backgroundAsset", "lifestyle")] };
+    const square = await docFor({ concept, assets: [PHOTO] });
+    const vertical = await docFor({ concept, assets: [PHOTO], format: "9:16", variantId: "v_9x16" });
+    expect(square.doc).toMatch(/object-fit:cover;object-position:50% 50%/);
+    expect(vertical.doc).toMatch(/object-fit:cover;object-position:72% 50%/);
+    // Product shots are never repositioned or cropped.
+    const product = await docFor({ concept: { ...concept, copyFields: [...concept.copyFields.slice(0, 2), t("backgroundAsset", "product")] }, assets: [{ ...ASSETS[0], focus: { "9:16": [10, 10] } }], format: "9:16", variantId: "v2_9x16" });
+    expect(product.doc).toMatch(/object-fit:contain;object-position:50% 50%/);
   });
 });
 

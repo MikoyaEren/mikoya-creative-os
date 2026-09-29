@@ -19,9 +19,14 @@ export function assetImg(asset: PlacedAsset, brand: BrandTokens, className = "",
   const blend = asset.fit === "contain" && asset.treatment === "light_studio" && (brand.lightBackground || onSurface);
   // Blending needs an un-isolated backdrop: templates must not put transforms/filters on a blended asset's ancestors.
   const shadow = asset.treatment === "cutout" ? "cutout-shadow" : "";
-  const img = html`<img data-slot="${asset.slot}" class="asset ${className} ${blend ? "blend" : ""} ${shadow}" src="${asset.url}" alt="" style="object-fit:${asset.fit}" />`;
+  const img = html`<img data-slot="${asset.slot}" class="asset ${className} ${blend ? "blend" : ""} ${shadow}" src="${asset.url}" alt="" style="object-fit:${asset.fit};object-position:${asset.position}" />`;
   if (asset.fit === "contain" && asset.treatment === "light_studio" && !brand.lightBackground && !onSurface) {
     return html`<div class="asset-surface ${className}">${img}</div>`;
+  }
+  // A contained PHOTO (e.g. a bundle shot with its own backdrop) is framed deliberately — a rounded
+  // print at its natural aspect ratio — instead of showing as a raw rectangle on the canvas.
+  if (asset.fit === "contain" && asset.treatment === "photo" && !onSurface) {
+    return html`<div class="asset-frame ${className}"><img data-slot="${asset.slot}" class="asset framed" src="${asset.url}" alt="" style="object-fit:contain;object-position:50% 50%" /></div>`;
   }
   return img;
 }
@@ -32,6 +37,8 @@ export const ASSET_CSS = `
 .asset.cutout-shadow{filter:drop-shadow(0 22px 24px rgba(0,0,0,0.18))}
 .asset-surface{background:#F7F5F1;border-radius:40px;padding:6%;display:flex}
 .asset-surface .asset{mix-blend-mode:darken}
+.asset-frame{width:100%;height:100%;display:flex;align-items:center;justify-content:center;min-height:0}
+.asset.framed{width:auto;height:auto;max-width:100%;max-height:100%;border-radius:28px;box-shadow:0 24px 50px -24px rgba(0,0,0,0.35),0 0 0 1px rgba(0,0,0,0.04)}
 `;
 
 /** The concept hook as an ad headline: a fit unit stepping from `max` down to at least the headline floor. */

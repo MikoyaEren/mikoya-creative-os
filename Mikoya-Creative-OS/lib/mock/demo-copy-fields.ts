@@ -35,6 +35,7 @@ export function demoCopyFields(mechanismId: MechanismId, phrases: string[]): Cop
     .structure.copySlots.filter((slot) => slot.required)
     .map((slot) => {
       if (slot.kind !== "list") {
+        if (slot.values) return { key: slot.key, text: slot.values[0], rows: [] };
         return { key: slot.key, text: slot.example && (slot.maxChars ?? 99) <= 8 ? slot.example : next(slot.maxChars ?? 120), rows: [] };
       }
       const count = Math.min(slot.maxRows ?? 3, Math.max(slot.minRows ?? 1, 3));

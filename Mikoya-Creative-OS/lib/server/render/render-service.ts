@@ -52,7 +52,7 @@ export async function renderConcept(req: RenderRequest, deps: RenderDeps & { sto
   const assets: RenderAsset[] = [];
   for (const a of req.assets) {
     const meta = await deps.store.assetMeta(a.hash);
-    if (meta) assets.push({ hash: meta.hash, role: a.role, width: meta.width, height: meta.height, mime: meta.mime, treatment: meta.treatment });
+    if (meta) assets.push({ hash: meta.hash, role: a.role, width: meta.width, height: meta.height, mime: meta.mime, treatment: meta.treatment, ...(meta.focus ? { focus: meta.focus } : {}) });
   }
   const formats = OUTPUT_FORMATS.filter((f) => req.formats.includes(f));
   const results = await Promise.all(

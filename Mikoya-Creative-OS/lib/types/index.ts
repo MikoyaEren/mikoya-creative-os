@@ -322,6 +322,8 @@ export interface RenderAssetUse {
   role: AssetRole;
   fit: "contain" | "cover";
   treatment: RenderAssetTreatment;
+  /** object-position used in this format. */
+  position?: string;
 }
 
 /** How an uploaded asset can sit on a canvas: transparent cut-out, packshot on a light studio background, or a photo. */
