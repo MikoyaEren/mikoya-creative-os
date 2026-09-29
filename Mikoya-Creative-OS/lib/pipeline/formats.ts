@@ -4,6 +4,8 @@ export interface FormatSpec {
   id: OutputFormat;
   label: string;
   canvas: { width: number; height: number };
+  /** Margins (px) that key content (copy, CTA, product) must stay inside. 9:16: platform UI overlays. */
+  safeZone: { top: number; right: number; bottom: number; left: number };
   placements: string;
   /** Generic composition rules for this format, added to every variant prompt. */
   instructions: string[];
@@ -20,6 +22,7 @@ export const FORMAT_SPECS: Record<OutputFormat, FormatSpec> = {
     id: "1:1",
     label: "Square",
     canvas: { width: 1080, height: 1080 },
+    safeZone: { top: 54, right: 54, bottom: 54, left: 54 },
     placements: "Feed (Meta, TikTok feed, carousel)",
     instructions: [
       "Square 1080×1080 canvas.",
@@ -32,6 +35,7 @@ export const FORMAT_SPECS: Record<OutputFormat, FormatSpec> = {
     id: "9:16",
     label: "Vertical",
     canvas: { width: 1080, height: 1920 },
+    safeZone: { top: 250, right: 60, bottom: 340, left: 60 },
     placements: "Stories, Reels, TikTok",
     instructions: [
       "Vertical 1080×1920 canvas.",

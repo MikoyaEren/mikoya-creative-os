@@ -1,7 +1,7 @@
 import {
   AtSign, Ban, BookOpen, Box, CalendarDays, Clapperboard, Eye, Flag, Flame, Heart, IdCard, Lightbulb,
   ListChecks, Megaphone, MessageCircle, MessageSquareQuote, Newspaper, Package, Receipt, Scale, Search,
-  SearchX, Send, Smartphone, Star, StickyNote, Sun, Swords, TriangleAlert, Video, type LucideIcon,
+  SearchX, Send, Columns2, Smartphone, Star, StickyNote, Sun, Swords, TriangleAlert, Video, type LucideIcon,
 } from "lucide-react";
 import type { MechanismId } from "@/lib/types";
 
@@ -30,6 +30,7 @@ export const MECHANISM_ICONS: Record<MechanismId, LucideIcon> = {
   relationship_status: Heart,
   warning_label: TriangleAlert,
   membership_card: IdCard,
+  us_vs_them: Columns2,
   calendar: CalendarDays,
   review: Star,
   product_hero: Box,

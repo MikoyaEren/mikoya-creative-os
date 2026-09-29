@@ -1,0 +1,47 @@
+[
+  {
+    "source": "Real Mikoya Full Drop (structured copyFields run, 2026-09-29T11:49:06.105Z)",
+    "batchId": "batch_a4ed2547",
+    "conceptId": "batch_a4ed2547_c11",
+    "concept": {
+      "mechanism": "imessage",
+      "renderer": "html",
+      "hook": "what's your morning thing now, you seem so\u2026 calm",
+      "cta": "Make it yours",
+      "copyFields": [
+        {
+          "key": "messages",
+          "text": "",
+          "rows": [
+            {
+              "label": "them",
+              "text": "what's your morning thing now, you seem so\u2026 calm",
+              "note": ""
+            },
+            {
+              "label": "me",
+              "text": "honestly just matcha. sift, whisk, sip",
+              "note": ""
+            },
+            {
+              "label": "them",
+              "text": "that's it??",
+              "note": ""
+            },
+            {
+              "label": "me",
+              "text": "that's it. it's the one part of the day that's only mine",
+              "note": ""
+            }
+          ]
+        },
+        {
+          "key": "contact",
+          "text": "Maya",
+          "rows": []
+        }
+      ],
+      "subheadline": "The one part of the day that's only yours."
+    }
+  }
+]

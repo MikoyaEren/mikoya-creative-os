@@ -16,7 +16,7 @@ export const MECHANISM_TRAITS: Record<MechanismId, MechanismTraits> = {
   confession: { fits: ["objection", "identity"], renderers: ["html"] },
   hot_take: { fits: ["objection", "identity"], renderers: ["html"] },
   red_green_flag: { fits: ["identity", "objection"], renderers: ["html"], supportsComparison: true },
-  starter_pack: { fits: ["identity", "desire"], renderers: ["image", "html"], prefersProductAsset: true },
+  starter_pack: { fits: ["identity", "desire"], renderers: ["html", "image"], prefersProductAsset: true },
   checklist: { fits: ["habit", "desire", "proof"], renderers: ["html"] },
   receipt: { fits: ["offer", "desire", "proof"], renderers: ["html"], prefersOffer: true },
   breaking_news: { fits: ["reveal", "offer"], renderers: ["html"] },
@@ -29,6 +29,8 @@ export const MECHANISM_TRAITS: Record<MechanismId, MechanismTraits> = {
   relationship_status: { fits: ["identity", "desire"], renderers: ["html"] },
   warning_label: { fits: ["desire", "reveal"], renderers: ["html"] },
   membership_card: { fits: ["identity", "offer"], renderers: ["html"], prefersOffer: true },
+  // Every row must rest on an approved / safe input reference (see comparisonIssues in the concept guards).
+  us_vs_them: { fits: ["objection", "proof", "product"], renderers: ["html"], supportsComparison: true },
   calendar: { fits: ["habit"], renderers: ["html"] },
   review: { fits: ["proof", "social"], renderers: ["html"], requiresApprovedSocialProof: true },
   product_hero: { fits: ["product", "proof"], renderers: ["image"], requiresProductAsset: true },

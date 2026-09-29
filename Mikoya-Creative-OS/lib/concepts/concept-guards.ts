@@ -1,5 +1,6 @@
 import type {
   BrandStrategyProfile,
+  CopyField,
   ConceptDropReason,
   ConceptProofRef,
   CreativeConceptDraft,
@@ -15,7 +16,8 @@ import { sameClaim, significantTokens } from "@/lib/strategy/claims";
 import { coversTopic, isSensitiveHypothesis, withheldClaimLeak } from "@/lib/strategy/strategy-guards";
 import type { CreativeSafeProductProfile } from "@/lib/types";
 import type { ConceptInputs } from "./concept-inputs";
-import { isComparativeClaim, medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
+import { copyFieldsCanvasText, copyFieldsToText, fieldRows, fieldText, validateCopyFields, validateHook } from "./copy-fields";
+import { isComparativeClaim, unsupportedOfferWording, medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
 
 /**
  * CONCEPT GUARDS — deterministic checks on the concept writer's output.
@@ -25,7 +27,8 @@ import { isComparativeClaim, medicalTreatmentWording, neutralizeNonMedicalTreat,
  *   slot / mechanism validity and caps, basis grounding, withheld or blocked
  *   claims, forbidden topics, unsupported numbers / ratings / percentages,
  *   unsupported sensitive (health, performance, comparative, regulated)
- *   wording, fabricated testimonials, near-duplicate hooks, messages and angles.
+ *   wording, invented offer / urgency wording, fabricated testimonials, near-duplicate hooks, messages and angles,
+ *   and the structure of the copy fields (recipe keys, row parts, limits).
  * Layout notes that carry copy are replaced (variant drift).
  */
 
@@ -39,7 +42,7 @@ export interface RawConceptDraft {
   addresses: string;
   hook: string;
   coreMessage: string;
-  copy: string;
+  copyFields: CopyField[];
   cta: string;
   supportingProof: string[];
   visualIdea: string;
@@ -96,8 +99,9 @@ export function nearDuplicate(a: string, b: string) {
  * hours", "ready in 2 minutes") — not in situations ("give me 20 minutes").
  * Times ("07:30"), dates and list numbering are never claims.
  */
+// Counts of reviews / customers must be one phrase: same line, whole word ("12 stars", not "7:12⏎Start …").
 const ALWAYS_NUMBER =
-  /(\d+(?:[.,]\d+)?\s?%|\b\d(?:[.,]\d)?\s?(?:\/|out of)\s?5\b|\b\d+(?:[.,]\d+)?\s?(?:x|times)\s+(?:more|less|faster|better|stronger|longer|the)\b|[€$£]\s?\d+(?:[.,]\d+)?|\b\d+(?:[.,]\d+)?\s?(?:€|eur|usd|gbp)\b|\b\d[\d.,]*\+?\s*(?:reviews?|ratings?|stars?|customers?|people|users?|buyers?|substances?))/gi;
+  /(\d+(?:[.,]\d+)?\s?%|\b\d(?:[.,]\d)?\s?(?:\/|out of)\s?5\b|\b\d+(?:[.,]\d+)?\s?(?:x|times)\s+(?:more|less|faster|better|stronger|longer|the)\b|[€$£]\s?\d+(?:[.,]\d+)?|\b\d+(?:[.,]\d+)?\s?(?:€|eur|usd|gbp)\b|\b\d[\d.,]*\+?[ \t]*(?:reviews?|ratings?|stars?|customers?|people|users?|buyers?|substances?)\b)/gi;
 const CONTEXTUAL_NUMBER = /\b\d[\d.,]*\+?\s*(?:hours?|hrs?|h\b|days?|weeks?|minutes?|mins?|years?|times|cups?|servings?|mg|g\b|kg|ml|l\b)/gi;
 const CLAIM_CONTEXT = /\b(lasts?|lasting|keeps?|works?|ready|takes?|within|up to|in just|only takes|results?|effects?|kicks? in|contains?|per (day|serving|cup)|each (pouch|pack|bottle))\b/i;
 
@@ -131,14 +135,8 @@ export function unsupportedSensitive(text: string, inputs: Pick<ConceptInputs, "
     .filter((s) => s && (isSensitiveHypothesis(s) || isComparativeClaim(s)) && !inputs.approvedClaims.some((c) => sameClaim(s, c.value)));
 }
 
-/** Copy is written as "field: text" lines; checks read the text, never the recipe's field names (e.g. "bio"). */
-export const copyText = (copy: string) =>
-  copy
-    .split("\n")
-    .map((l) => l.replace(/^\s*[a-z][a-z0-9_ ]{0,23}:\s*/i, ""))
-    .join("\n");
-
-const onCanvas = (d: RawConceptDraft) => [d.hook, d.coreMessage, copyText(d.copy), d.cta].join("\n");
+/** Checks read the copy fields' text and row parts, never the recipe's field names (e.g. "bio"). */
+const onCanvas = (d: RawConceptDraft) => [d.hook, d.coreMessage, copyFieldsCanvasText(d.copyFields), d.cta].join("\n");
 const describing = (d: RawConceptDraft) => [d.visualIdea, d.productRole, d.offerRole].join("\n");
 
 /**
@@ -154,6 +152,100 @@ function cleanLayoutNote(note: string, d: RawConceptDraft): string | null {
   const claimNumbers = [...text.matchAll(ALWAYS_NUMBER)].map((m) => m[0]).filter((n) => !/%$/.test(n.trim()) && !copy.includes(n.toLowerCase()));
   if (text.length > 400 || quoted.some((q) => !copy.includes(q)) || claimNumbers.length) return null;
   return text;
+}
+
+/**
+ * COMPARISON GROUNDING (us_vs_them) — per SIDE, not per row. Each side of
+ * each row is a factual assertion or subjective / rhetorical framing. A side
+ * is factual when the writer says so OR when its wording is factual
+ * (attributes such as origin, grade, ingredients, additives, quality,
+ * production, price, contents; comparatives; numbers) — framing can never
+ * smuggle a fact through. A factual side needs its OWN references: facts,
+ * approved claims or approved proof that state it (word overlap with the
+ * cited lines, comparatives only as the lines use them). The other side's
+ * facts additionally need category / competitor evidence (a cited line that
+ * speaks about others). One reference never justifies both sides of a row.
+ * Deterministic floor — the semantic truth of each side is Creative QA's job.
+ */
+const COMPARATIVE_WORD =
+  /\b(better|best|cheaper|stronger|healthier|faster|cleaner|purer|fresher|smoother|richer|tastier|safer|superior|inferior|worse|weaker|more|fewer|less|higher|lower|besser|stärker|gesünder|schneller|reiner|mehr|weniger)\b/giu;
+const FACTUAL_WORDING =
+  /\b(origins?|sourc(?:e|ed|es|ing)|grades?|ingredients?|additives?|preservatives?|fillers?|flavou?rings?|sugars?|sweeten\w*|chemicals?|pesticides?|quality|qualities|produc(?:ed|tion)|manufactur\w*|factory|industrial|mass[- ]?produced|artificial|synthetic|natural|organic|certifi\w*|tested|pure|purity|stale|harvest\w*|farms?|farmed|estates?|region|country|imported|made (?:in|from|with|by)|hand[- ]?(?:made|picked)|small[- ]batch|process(?:ed|ing)?|contains?|free (?:of|from)|included|includes|comes with|in the box|prices?|priced|costs?|cheap|expensive|premium|budget|guarantee[ds]?|warrant(?:y|ies)|shipping|delivery|stated|labell?ed|unclear|unknown|unlisted|hidden|generic|percent|grams?|servings?|calories?|caffeine|vitamins?|proteins?|nutrients?)\b/iu;
+const OTHER_SIDE_EVIDENCE = /\b(typical(?:ly)?|most|other|others|conventional|many|standard|regular|usual(?:ly)?|commercial|mass[- ]market|unlike|compared|than|competitors?|category|industry|market|elsewhere|alternatives?)\b/iu;
+const GENERIC_SIDE =
+  /\b(typical|usual|regular|standard|ordinary|conventional|generic|average|other|others|most|many|old|older|previous|before|after|new|mass[- ]market|store[- ]bought|supermarket|everyday|them|they|us|ours|this|that|way|alone|yourself)\b/i;
+const tokenStems = (s: string) => new Set([...significantTokens(s)].map((t) => (t.length > 4 ? t.replace(/(es|s)$/, "") : t)));
+const refsIn = (note: string) => note.split(/[\s,;|]+/).map((r) => r.replace(/^\[|\]$/g, "")).filter(Boolean);
+
+/** Why a side's text is a factual assertion (its factual wording, comparative or number), or null for framing. */
+export function factualSignal(text: string): string | null {
+  return text.match(FACTUAL_WORDING)?.[0] ?? text.match(new RegExp(COMPARATIVE_WORD.source, "iu"))?.[0] ?? text.match(/\d+/)?.[0] ?? null;
+}
+
+/** References that may carry a factual assertion: product facts, approved / verified claims, approved proof — never strategy or brand intent. */
+function factBasis(ref: string, inputs: ConceptInputs, safeProfile: CreativeSafeProductProfile): boolean {
+  const line = inputs.byRef.get(ref);
+  if (!line) return false;
+  if (line.kind === "fact" || line.kind === "proof") return true;
+  if (line.kind === "claim") {
+    const claim = safeProfile.claims.find((c) => `fact:${c.id}` === ref);
+    return Boolean(claim && (claim.approved || ["product_fact", "verified_claim", "user_approved_claim"].includes(claim.claimType)));
+  }
+  return false;
+}
+
+/** Looks like a named brand: a trademark sign, or capitalised words that are neither generic nor in the inputs. */
+function namedBrand(text: string, groundText: string): boolean {
+  if (/[®™©]/.test(text)) return true;
+  if (GENERIC_SIDE.test(text)) return false;
+  const ground = groundText.toLowerCase();
+  const words = text.split(/\s+/).filter(Boolean);
+  return words.some((w, i) => (i > 0 || words.length === 1) && /^\p{Lu}/u.test(w) && !ground.includes(w.toLowerCase().replace(/[^\p{L}\p{N}'’-]/gu, "")));
+}
+
+export function comparisonIssue(fields: CopyField[], inputs: ConceptInputs, safeProfile: CreativeSafeProductProfile): string | null {
+  const leftLabel = fieldText(fields, "leftLabel");
+  if (namedBrand(leftLabel, inputs.groundText)) return `Left label "${leftLabel}" looks like a named brand; compare against a generic category or behaviour.`;
+  const left = fieldRows(fields, "left");
+  const right = fieldRows(fields, "right");
+  if (!left.length || left.length !== right.length) return "Comparison sides must have the same number of rows.";
+  const cited: string[] = [];
+  let groundedOurs = 0;
+  for (let i = 0; i < left.length; i++) {
+    const refsBySide: string[][] = [];
+    for (const [side, row] of [["left", left[i]], ["right", right[i]]] as const) {
+      const where = `Row ${i + 1} ${side === "left" ? "other side" : "our side"} ("${row.text}")`;
+      if (namedBrand(row.text, inputs.groundText)) return `${where} looks like a named brand.`;
+      const signal = factualSignal(row.text);
+      const factual = row.label === "fact" || signal !== null;
+      const refs = refsIn(row.note);
+      refsBySide.push(factual ? refs : []);
+      if (!factual) continue;
+      const as = row.label === "fact" ? "is a factual assertion" : `reads as a factual assertion ("${signal}") though marked framing`;
+      if (!refs.length) return `${where} ${as} without its own input reference.`;
+      if (!refs.every((r) => factBasis(r, inputs, safeProfile))) return `${where} cites ${refs.join(", ")} — factual sides need product facts, approved claims or approved proof.`;
+      const lines = refs.map((r) => inputs.byRef.get(r)!.text);
+      const stems = tokenStems(lines.join("\n"));
+      if (![...tokenStems(row.text)].some((t) => stems.has(t))) return `${where} is not stated by ${refs.join(", ")}.`;
+      if (side === "left" && !lines.some((l) => OTHER_SIDE_EVIDENCE.test(l))) return `${where} states a fact about others, but ${refs.join(", ")} is not category / competitor evidence.`;
+      for (const m of row.text.matchAll(COMPARATIVE_WORD)) {
+        if (!lines.some((l) => new RegExp(`\\b${m[0]}\\b`, "iu").test(l))) return `${where}: comparative "${m[0]}" is not stated by ${refs.join(", ")}.`;
+      }
+      cited.push(...lines);
+      if (side === "right") groundedOurs += 1;
+    }
+    const shared = refsBySide[0].filter((r) => refsBySide[1].includes(r));
+    if (shared.length) return `Row ${i + 1}: ${shared.join(", ")} cannot justify both sides — each factual side needs its own reference.`;
+  }
+  if (!groundedOurs) return "The comparison states no grounded fact for our side.";
+  // Labels and headline: comparative or factual wording only as a cited line states it.
+  const citedText = cited.join("\n");
+  for (const text of [leftLabel, fieldText(fields, "rightLabel"), fieldText(fields, "headline")]) {
+    for (const m of text.matchAll(new RegExp(`${COMPARATIVE_WORD.source}|${FACTUAL_WORDING.source}`, "giu"))) {
+      if (!new RegExp(`\\b${m[0]}\\b`, "iu").test(citedText)) return `"${text}": "${m[0]}" is not stated by the comparison's cited inputs.`;
+    }
+  }
+  return null;
 }
 
 export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: string; reason: string }[], ctx: GuardContext): GuardResult {
@@ -226,6 +318,12 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
       drop("unsupported_claim", `Numbers not in approved inputs: ${numbers.join(", ")}.`);
       continue;
     }
+    // Offers, free items, discounts, deadlines, scarcity, shipping, availability: only as approved inputs state them.
+    const offer = unsupportedOfferWording(all, inputs.groundText);
+    if (offer) {
+      drop("unsupported_claim", `Offer or urgency wording not in the approved inputs: "${offer}".`);
+      continue;
+    }
     const sensitive = unsupportedSensitive(all, inputs, terms);
     if (sensitive.length) {
       drop("unsupported_claim", `Sensitive wording without an approved claim: "${sensitive[0]}".`);
@@ -237,6 +335,25 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
       .map((ref) => ({ ref, statement: inputs.proofRefs.get(ref)!.statement, source: inputs.proofRefs.get(ref)!.source }));
     const invalidProof = d.supportingProof.filter((r) => !inputs.proofRefs.has(r.trim()));
     if (invalidProof.length) warnings.push(`${slot.slotId}: ignored proof references that are not approved proof (${invalidProof.join(", ")}).`);
+
+    // The renderer reads these fields as typed data, so their structure must match the recipe.
+    const structure = validateCopyFields(mechanismId, d.copyFields);
+    if (!structure.ok) {
+      drop("invalid_copy_structure", structure.issues.slice(0, 3).join(" "));
+      continue;
+    }
+    // A hook the template draws as a headline must fit with the copy (recipe hook limits); otherwise it is metadata.
+    const hookIssues = validateHook(mechanismId, d.hook, structure.fields);
+    if (hookIssues.length) {
+      drop("invalid_copy_structure", hookIssues.slice(0, 3).join(" "));
+      continue;
+    }
+    // Comparisons: every row resolves to an approved / safe input; no named competitors, no invented superiority.
+    const comparison = mechanismId === "us_vs_them" ? comparisonIssue(structure.fields, inputs, safeProfile) : null;
+    if (comparison) {
+      drop("unsupported_claim", comparison);
+      continue;
+    }
 
     const dupHook = kept.find((k) => nearDuplicate(k.draft.hook, d.hook));
     if (dupHook) {
@@ -278,7 +395,8 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
       addresses: d.addresses.trim(),
       hook: d.hook.trim(),
       subheadline: d.coreMessage.trim(),
-      copy: d.copy.trim(),
+      copy: copyFieldsToText(structure.fields),
+      copyFields: structure.fields,
       visualDescription: d.visualIdea.trim(),
       cta: d.cta.trim(),
       supportingProof: proof,

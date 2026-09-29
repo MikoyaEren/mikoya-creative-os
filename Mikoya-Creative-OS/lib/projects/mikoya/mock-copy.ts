@@ -107,6 +107,9 @@ const COPY: Record<MechanismId, CopyFn> = {
     { hook: `${b} Matcha Club`, sub: "Member since today · Morning ritual tier" },
     { hook: "The Slow Morning Society", sub: "Perks: calm energy, zero crash, better days" },
   ],
+  us_vs_them: () => [
+    { hook: "Old morning vs. new morning", sub: "Scrolling in bed → one bowl, one whisk, ten quiet minutes." },
+  ],
   calendar: () => [
     { hook: "30 mornings, 30 matchas", sub: "Watch the habit build itself." },
     { hook: "Day 1 vs Day 30", sub: "Consistency tastes better." },

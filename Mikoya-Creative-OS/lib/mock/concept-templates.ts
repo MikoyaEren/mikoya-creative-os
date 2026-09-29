@@ -119,11 +119,14 @@ export const GENERIC_TEMPLATES: Record<MechanismId, CopyTemplate> = {
   membership_card: (c) => [
     { hook: `${c.brand} Club`, sub: `Member since today · ${cap(c.desire)} tier` },
   ],
+  us_vs_them: (c) => [
+    { hook: "The usual way vs. ours", sub: `${cap(c.benefit)} — as ${c.product} is described, nothing added.` },
+  ],
   calendar: (c) => [
     { hook: "30 days in", sub: `${cap(c.benefit)}, one day at a time.` },
   ],
   review: (c) => [
-    { hook: `“I was sceptical about ${c.category}. Not anymore.”`, sub: `★★★★★ — verified buyer` },
+    { hook: `“I was sceptical about ${c.category}. Not anymore.”`, sub: "— from an approved review (demo placeholder)" },
   ],
   product_hero: (c) => [
     { hook: cap(c.lead), sub: c.product },

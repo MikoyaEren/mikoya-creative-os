@@ -66,6 +66,7 @@ export type MechanismId =
   | "relationship_status"
   | "warning_label"
   | "membership_card"
+  | "us_vs_them"
   | "calendar"
   | "review"
   | "product_hero"
@@ -190,11 +191,84 @@ export interface MechanismTraits {
   supportsComparison?: boolean;
 }
 
+/** A tighter limit on one copy field that applies in a given situation (see RecipeCopySlot.whenFilled, RecipeHook.whenDrawn). */
+export interface CapacityRule {
+  field: string;
+  /** Only when the field holds one of these values (default: any value). */
+  values?: string[];
+  maxRows?: number;
+  /** Text fields: max characters. List fields: max characters across all row parts. */
+  maxChars?: number;
+  /** List fields: max characters of each row's text part. */
+  maxRowText?: number;
+}
+
+/**
+ * Mechanisms whose template draws the concept hook as a headline when it adds
+ * words the copy fields don't already carry. The hook stays concept metadata
+ * everywhere; these limits apply only when it is drawn.
+ */
+export interface RecipeHook {
+  /** Max hook characters when drawn. */
+  maxChars: number;
+  /** Tighter limits on copy field `field` when the hook is drawn (the headline takes their room), optionally only when `ifFilled` is also set. */
+  whenDrawn: (Omit<CapacityRule, "values"> & { ifFilled?: string })[];
+}
+
+/** One part of a list row (speaker, quantity, time, state …) as a recipe defines it. */
+export interface RowPartSpec {
+  /** What the part means, shown to the writer ("speaker", "quantity", "time"). */
+  meaning: string;
+  maxChars: number;
+  /** Allowed values (normalised case-insensitively), e.g. ["me", "them"]. */
+  values?: string[];
+  /** Must be non-empty in every row. */
+  required?: boolean;
+  /** A short neutral example shown to the writer. */
+  example?: string;
+  /**
+   * Structural data that is never drawn (e.g. the input reference a comparison row rests on).
+   * Validated like any part, left out of the on-canvas text.
+   */
+  internal?: boolean;
+}
+
 export interface RecipeCopySlot {
   key: string;
   label: string;
+  /** Text fields: max characters. List fields: max characters across all row parts. */
   maxChars?: number;
   required: boolean;
+  /** "text" (default): one text. "list": rows of up to three parts (label · text · note). */
+  kind?: "text" | "list";
+  row?: { label?: RowPartSpec; text: RowPartSpec; note?: RowPartSpec };
+  /** A short neutral example (text fields), shown to the writer. */
+  example?: string;
+  /** Allowed values (text fields), normalised case-insensitively — for structural choices such as an attachment. */
+  values?: string[];
+  minRows?: number;
+  maxRows?: number;
+  /** List fields: rows pair 1:1 with the rows of this other list field (same count, same order). */
+  pairedWith?: string;
+  /**
+   * Capacity rules: tighter limits that apply when another copy field is filled — what the
+   * template can still fit at readable sizes (e.g. fewer messages when a photo is attached).
+   */
+  whenFilled?: CapacityRule[];
+}
+
+/** A structured copy row: parts as the recipe's row spec defines them ("" when unused). */
+export interface CopyRow {
+  label: string;
+  text: string;
+  note: string;
+}
+
+/** One recipe copy field as written by the concept writer. Text fields use `text`, list fields use `rows`. */
+export interface CopyField {
+  key: string;
+  text: string;
+  rows: CopyRow[];
 }
 
 /**
@@ -227,6 +301,8 @@ export interface CreativeRecipe {
    * Never brand positioning, product facts or global philosophy.
    */
   principles: string[];
+  /** Only for mechanisms that draw the hook (see RecipeHook). */
+  hook?: RecipeHook;
 }
 
 // ---------------------------------------------------------------------------
@@ -250,6 +326,75 @@ export interface CreativeVariant {
   outputUrl: string | null;
   status: VariantStatus;
   error?: string;
+  /** Render state and audit of the last render attempt (HTML renderer). */
+  render?: RenderRecord;
+}
+
+export type RenderErrorCode =
+  | "no_template"
+  | "renderer_not_html"
+  | "legacy_copy"
+  | "invalid_payload"
+  | "text_overflow"
+  | "safe_zone_violation"
+  | "asset_covers_copy"
+  | "missing_required_asset"
+  | "asset_unreadable"
+  | "browser_unavailable"
+  | "timeout"
+  | "internal";
+
+/** Final size of one fitted text unit (after deterministic step-down). */
+export interface RenderFitResult {
+  unit: string;
+  role: string;
+  px: number;
+  minPx: number;
+  maxPx: number;
+  fits: boolean;
+}
+
+/** Which product asset filled which template slot, and how. */
+export interface RenderAssetUse {
+  slot: string;
+  assetHash: string;
+  role: AssetRole;
+  fit: "contain" | "cover";
+  treatment: RenderAssetTreatment;
+  /** object-position used in this format. */
+  position?: string;
+}
+
+/** How an uploaded asset can sit on a canvas: transparent cut-out, packshot on a light studio background, or a photo. */
+export type RenderAssetTreatment = "cutout" | "light_studio" | "photo";
+
+/** Audit of one render attempt of one variant. */
+export interface RenderRecord {
+  status: VariantStatus;
+  renderer: "html";
+  templateId: string | null;
+  templateVersion: number | null;
+  rendererVersion: string;
+  format: OutputFormat;
+  width: number;
+  height: number;
+  mime: "image/png";
+  bytes: number | null;
+  outputUrl: string | null;
+  /** Fingerprint of everything that shaped the render; a different hash means the render is stale. */
+  inputHash: string;
+  /** Concept fields drawn on the canvas (e.g. hook, copyFields, cta). */
+  renderedFields: string[];
+  cta: boolean;
+  assets: RenderAssetUse[];
+  fontSizes: RenderFitResult[];
+  /** Smallest rendered text on the canvas (chrome included), px. */
+  minTextPx?: number;
+  queuedAt?: string;
+  renderedAt?: string;
+  durationMs?: number;
+  error?: { code: RenderErrorCode; message: string; detail?: string };
+  warnings: string[];
 }
 
 /**
@@ -281,8 +426,16 @@ export interface CreativeConceptDraft {
   hook: string;
   /** Core message (kept as `subheadline` for renderers and previews). */
   subheadline: string;
-  /** All on-canvas copy as "field: text" lines. */
+  /**
+   * All on-canvas copy as readable "field: text" lines. DERIVED from
+   * `copyFields` for display and audit; never parsed back.
+   */
   copy: string;
+  /**
+   * Structured on-canvas copy, one entry per recipe copy field (validated
+   * against the recipe). Absent on legacy concepts, which cannot be rendered.
+   */
+  copyFields?: CopyField[];
   visualDescription: string;
   cta: string;
   supportingProof: ConceptProofRef[];
