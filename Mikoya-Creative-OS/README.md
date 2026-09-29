@@ -317,6 +317,68 @@ quote stay visible. The safe profile includes an item unless:
 
 Excluded items are listed with their reason.
 
+### Strategy inference (Phase 3)
+
+```
+CreativeSafeProductProfile + effective BrandStrategyProfile + assets + batch direction
+   ↓  buildStrategyInputs(): citable lines [fact:…] [brand:…] [asset:…] [review:…] + fingerprint
+   ↓  POST /api/infer-strategy  → ONE Claude call (compact tagged-list output)
+toHypotheses(): grounding, normalisation, caps, guards     lib/server/strategy/schema.ts
+   ↓  StrategyInferenceRun (stored as-is; reviews kept separately)
+UI review: Accept / Reject                                  AI inferences tab
+   ↓
+deriveDynamicCreativeStrategy()  → StrategySnapshot (+ audit)
+```
+
+- **Inputs:** only the safe profile reaches the model: no raw truth pack, no
+  withheld items. Withheld values are used only to drop hypotheses that
+  would restate them.
+- **Grounding:** every hypothesis must cite at least one provided input
+  reference. Ungrounded, unknown-category, duplicate and over-limit
+  hypotheses are dropped, with a reason (3 per category, 20 in total).
+- **Guards** (`lib/strategy/strategy-guards.ts`) never change a hypothesis's
+  origin or review status:
+  - A hypothesis restating a withheld or blocked claim is dropped.
+  - A hypothesis touching a brand "never mention" topic is never used, even
+    if accepted.
+  - A contradiction of explicit brand intent is recorded and never merged.
+  - Health, performance, comparative or regulated wording is never used
+    unless accepted.
+- **Brand override:** where the brand defines audience, positioning or
+  desired identity, unreviewed AI hypotheses of that category are not
+  merged. Accepted ones are added below the brand values. An AI item that
+  restates an explicit item is dropped: the explicit item must have 2 or more
+  significant words, and the AI item must contain at least 75% of them.
+- **Sensitive wording** reuses the product-claim classifier, but isolated
+  emotional words (calm, peaceful, relaxed…) are ignored unless the
+  hypothesis states or implies an effect ("reduces stress and keeps you
+  calm"). Product-claim classification itself is unchanged.
+- **Usage result:** the derivation returns `usedHypothesisIds` and
+  `excludedHypotheses` (with a reason: `rejected`, `below_confidence`,
+  `requires_review`, `brand_override`, `brand_conflict`, `forbidden_topic`,
+  `category_limit`, `duplicate`, `stale_run`). Both are stored in the
+  snapshot audit, and the UI only renders them.
+- **Social proof** (ratings, review or customer counts, testimonials, in any
+  claim field) is supporting proof only once approved, verified or
+  user-approved. The concept prompt applies the same rule, and customer
+  reviews are passed as context only.
+- **Provenance:** hypotheses are always `source = ai_inference`. Accepting
+  one sets `reviewStatus = accepted` and `approvedByUser`; it never becomes
+  user input.
+- **Auditability:** each `StrategySnapshot` carries an `audit` record with
+  - the snapshot id and time
+  - the safe-profile and brand ids
+  - the input fingerprint
+  - the inference run id, model and time
+  - whether the run is stale
+  - every review decision
+  - the hypothesis ids that entered the strategy
+
+  A run whose input fingerprint no longer matches is **out of date**: its
+  hypotheses stay visible but are not used.
+- **Demo mode:** "Demo" returns the workspace's stored hypotheses through the
+  same guards. There is no network call and no AI.
+
 **Mock vs real analyzer.** Both implement `ProductAnalyzer`:
 
 | Analyzer | When | What it does |

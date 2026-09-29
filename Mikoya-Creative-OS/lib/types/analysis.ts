@@ -1,5 +1,6 @@
 import type { AssetRole, ProductTruthPack } from "./index";
-import type { ProductAnalysisContext, ProductReviewBundle } from "./review";
+import type { BrandStrategyProfile, CreativeDirectionInput, StrategyInferenceRun } from "./strategy";
+import type { CreativeSafeProductProfile, ProductAnalysisContext, ProductReviewBundle } from "./review";
 
 /**
  * Product analysis API contract (shared by the client and POST /api/analyze-product).
@@ -63,3 +64,24 @@ export interface ProductAnalysisFailure {
 }
 
 export type ProductAnalysisResponse = ProductAnalysisSuccess | ProductAnalysisFailure;
+
+// ---------------------------------------------------------------------------
+// Strategy inference API contract (POST /api/infer-strategy)
+// ---------------------------------------------------------------------------
+
+export interface StrategyInferenceRequest {
+  projectId: string;
+  analyzer: AnalyzerKind;
+  /** Reviewed product information only — never the raw truth pack. */
+  safeProfile: CreativeSafeProductProfile;
+  /** Effective brand profile (stored profile + this batch's brand context). */
+  brandStrategy: BrandStrategyProfile;
+  direction?: CreativeDirectionInput;
+}
+
+export interface StrategyInferenceSuccess {
+  ok: true;
+  run: StrategyInferenceRun;
+}
+
+export type StrategyInferenceResponse = StrategyInferenceSuccess | ProductAnalysisFailure;

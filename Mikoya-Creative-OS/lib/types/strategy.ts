@@ -201,7 +201,9 @@ export type HypothesisCategory =
   | "positioning"
   | "messaging_angle"
   | "visual_opportunity"
-  | "creative_opportunity";
+  | "creative_opportunity"
+  | "desired_identity"
+  | "emotional_driver";
 
 /**
  * An AI assumption. `source` stays "ai_inference" forever; accepting it only
@@ -216,6 +218,64 @@ export interface StrategyHypothesis {
   rationale: string;
   reviewStatus: ReviewStatus;
   approvedByUser: boolean;
+  /** Input references the inference is grounded in (fact:…, brand:…, asset:…). */
+  basis?: string[];
+  /** Inference run that produced it (absent for workspace demo hypotheses). */
+  runId?: string;
+  /** Sensitive wording (health, performance, comparative, regulated): never used unless accepted. */
+  requiresReview?: boolean;
+  /** Explicit brand statements this contradicts. Never merged, even if accepted — the brand stays authoritative. */
+  brandConflicts?: string[];
+  /** Matches a forbidden brand topic: never used, even if accepted. */
+  forbidden?: boolean;
+}
+
+/** Why a (validated) hypothesis did not enter the dynamic strategy. */
+export type HypothesisExclusionReason =
+  | "rejected"
+  | "below_confidence"
+  | "requires_review"
+  | "brand_override"
+  | "brand_conflict"
+  | "forbidden_topic"
+  | "category_limit"
+  | "duplicate"
+  | "stale_run";
+
+/** Deterministic usage result of one derivation — the UI reads this, it never recomputes it. */
+export interface HypothesisUsageResult {
+  usedHypothesisIds: string[];
+  excludedHypotheses: { hypothesisId: string; reason: HypothesisExclusionReason }[];
+}
+
+/** Why a hypothesis was dropped during validation (audit only). */
+export interface DroppedHypothesis {
+  category: string;
+  statement: string;
+  reason: string;
+}
+
+/**
+ * One AI strategy inference ("Generate AI hypotheses"): one model call.
+ * Stored as-is; user reviews are kept separately and applied on read.
+ */
+export interface StrategyInferenceRun {
+  id: string;
+  origin: "ai" | "mock";
+  model: string | null;
+  createdAt: string;
+  /** Fingerprint of the exact inputs (safe profile + brand + direction). Stale when it no longer matches. */
+  inputKey: string;
+  safeProfileId: string;
+  brandStrategyId: string;
+  hypotheses: StrategyHypothesis[];
+  /** Areas the model could not support from the inputs — they stay unknown. */
+  unknowns: string[];
+  dropped: DroppedHypothesis[];
+  warnings: string[];
+  modelCalls: number;
+  durationMs: number;
+  usage: { inputTokens: number; outputTokens: number } | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -246,6 +306,13 @@ export interface DynamicCreativeStrategy {
   desiredEmotions: SourcedStatement[];
   visualDirection: SourcedStatement[];
   creativeOpportunities: SourcedStatement[];
+  /** To whom: explicit brand audience first; AI audience only if the brand has none, or accepted as secondary. */
+  audience: SourcedStatement[];
+  positioning: SourcedStatement[];
+  desiredIdentity: SourcedStatement[];
+  purchaseMotivations: SourcedStatement[];
+  /** Accepted AI hypotheses that contradict explicit brand intent. Kept visible, never merged. */
+  brandConflicts: { hypothesisId: string; statement: string; conflictsWith: string[] }[];
   rationale: string;
 }
 
@@ -263,4 +330,27 @@ export interface StrategySnapshot {
   hypotheses: StrategyHypothesis[];
   dynamicStrategy: DynamicCreativeStrategy;
   constitutionVersion: number;
+  /** What this strategy was built from — for later performance comparison. */
+  audit: StrategyAudit;
+}
+
+export interface StrategyAudit {
+  snapshotId: string;
+  createdAt: string;
+  safeProfileId: string;
+  brandStrategyId: string;
+  /** Fingerprint of safe profile + brand + direction at build time. */
+  inputKey: string;
+  /** ai / mock = an inference run; workspace = demo hypotheses stored in project data. */
+  hypothesisSource: "ai" | "mock" | "workspace";
+  inferenceRunId: string | null;
+  model: string | null;
+  inferredAt: string | null;
+  /** True when the inference run was made for different inputs; its hypotheses are then not used. */
+  inferenceStale: boolean;
+  hypothesisReviews: Record<string, ReviewStatus>;
+  /** Hypotheses that actually entered the dynamic strategy. */
+  usedHypothesisIds: string[];
+  /** Every other hypothesis, with the reason it was not used. */
+  excludedHypotheses: HypothesisUsageResult["excludedHypotheses"];
 }
