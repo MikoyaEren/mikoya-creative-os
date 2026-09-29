@@ -44,17 +44,17 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "active",
-    version: 2,
+    version: 3,
     structure: {
       layout: "iOS Messages UI, 3–6 bubbles, grey incoming and blue outgoing.",
       copySlots: [
-        { key: "messages", label: "Message thread", maxChars: 320, required: true },
+        { key: "messages", label: "Message thread", maxChars: 320, required: true, kind: "list", minRows: 2, maxRows: 6, row: { label: { meaning: "speaker", values: ["me", "them"], maxChars: 4, required: true }, text: { meaning: "one message bubble", maxChars: 90, required: true } } },
         { key: "contact", label: "Contact name", maxChars: 16, required: true },
       ],
       visualRules: ["Pixel-accurate iOS styling", "Last bubble carries the payoff", "Optional product photo as attachment"],
     },
     formatLayouts: {
-      "1:1": "Condensed thread: 2 bubbles plus product attachment, header cropped to contact name.",
+      "1:1": "The full thread at a smaller scale (same messages as 9:16), compact header; optional photo attachment kept small.",
       "9:16": "Full thread with 3–6 bubbles, iOS header and keyboard hint; product attachment as the last bubble.",
     },
     principles: [
@@ -71,12 +71,12 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "active",
-    version: 2,
+    version: 3,
     structure: {
       layout: "Oversized headline top, 3 'unless' reasons, product cut-out bottom right.",
       copySlots: [
         { key: "headline", label: "Headline", maxChars: 32, required: true },
-        { key: "reasons", label: "Unless… reasons", maxChars: 160, required: true },
+        { key: "reasons", label: "Unless… reasons", maxChars: 160, required: true, kind: "list", minRows: 2, maxRows: 3, row: { text: { meaning: "one 'unless…' reason", maxChars: 60, required: true } } },
       ],
       visualRules: ["Typography-led", "High contrast", "Product small but crisp"],
     },
@@ -125,12 +125,12 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "active",
-    version: 1,
+    version: 2,
     structure: {
       layout: "Search pill at top third, 3–4 suggestions, answer card with product below.",
       copySlots: [
         { key: "query", label: "Search query", maxChars: 60, required: true },
-        { key: "suggestions", label: "Suggestions", maxChars: 160, required: true },
+        { key: "suggestions", label: "Autocomplete suggestions", maxChars: 160, required: true, kind: "list", minRows: 2, maxRows: 4, row: { text: { meaning: "one suggestion", maxChars: 48, required: true } } },
       ],
       visualRules: ["Generic search UI, no Google branding", "Product appears as the answer"],
     },
@@ -152,12 +152,12 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "active",
-    version: 1,
+    version: 2,
     structure: {
       layout: "Slightly rotated receipt on brand background, line items, total, footer message.",
       copySlots: [
-        { key: "items", label: "Line items", maxChars: 220, required: true },
-        { key: "total", label: "Total line", maxChars: 30, required: true },
+        { key: "items", label: "Line items", maxChars: 220, required: true, kind: "list", minRows: 3, maxRows: 6, row: { label: { meaning: "quantity", maxChars: 4, example: "1x" }, text: { meaning: "item", maxChars: 38, required: true }, note: { meaning: "amount column: a grounded price or a word, never an invented price", maxChars: 10, example: "free" } } },
+        { key: "total", label: "Total value (the template prints the word TOTAL itself)", maxChars: 30, required: true },
       ],
       visualRules: ["Monospace type", "Subtle paper texture", "Total line is the hook"],
     },
@@ -179,12 +179,12 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "beta",
-    version: 1,
+    version: 2,
     structure: {
       layout: "Hazard triangle, WARNING header, 3–5 side effects, small print.",
       copySlots: [
         { key: "header", label: "Header", maxChars: 24, required: true },
-        { key: "effects", label: "Side effects", maxChars: 200, required: true },
+        { key: "effects", label: "Side effects", maxChars: 200, required: true, kind: "list", minRows: 2, maxRows: 5, row: { text: { meaning: "one side effect", maxChars: 60, required: true } } },
       ],
       visualRules: ["Yellow/black safety palette allowed", "Must stay compliant — no health claims"],
     },
@@ -206,12 +206,12 @@ export const RECIPES: CreativeRecipe[] = [
     type: "static",
     renderer: "html",
     status: "beta",
-    version: 1,
+    version: 2,
     structure: {
       layout: "Embossed card floating over brand background, member name, tier, perks list.",
       copySlots: [
         { key: "club", label: "Club name", maxChars: 28, required: true },
-        { key: "perks", label: "Perks", maxChars: 140, required: false },
+        { key: "perks", label: "Perks", maxChars: 140, required: false, kind: "list", minRows: 1, maxRows: 3, row: { text: { meaning: "one perk", maxChars: 48, required: true } } },
       ],
       visualRules: ["Premium card material", "Dark brand color as card base"],
     },

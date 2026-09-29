@@ -15,6 +15,8 @@ import { allocateSlots } from "@/lib/concepts/allocation";
 import { buildConceptInputs } from "@/lib/concepts/concept-inputs";
 import { rendererFor } from "@/lib/concepts/concept-guards";
 import { toConcept } from "@/lib/concepts/expand-variants";
+import { copyFieldsToText } from "@/lib/concepts/copy-fields";
+import { demoCopyFields } from "./demo-copy-fields";
 import { createId, createRandom } from "@/lib/utils";
 import { GENERIC_CTAS, GENERIC_TEMPLATES, copyContextFrom } from "./concept-templates";
 
@@ -111,6 +113,8 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
     const lines = template(copyContextFrom(safeProfile, dynamicStrategy, request.brand.brandName, i + used));
     const line = lines[used % lines.length];
     const mechanism = getMechanism(slot.mechanismId);
+    const ctx = copyContextFrom(safeProfile, dynamicStrategy, request.brand.brandName, i + used);
+    const copyFields = demoCopyFields(slot.mechanismId, [line.hook, line.sub, ctx.desire, ctx.lead, ctx.benefit, ctx.objection]);
 
     const draft: CreativeConceptDraft = {
       recipeId: getRecipeForMechanism(slot.mechanismId).id,
@@ -121,7 +125,8 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
       addresses: slot.focus.statement,
       hook: line.hook,
       subheadline: line.sub,
-      copy: `headline: ${line.hook}\nbody: ${line.sub}`,
+      copy: copyFieldsToText(copyFields),
+      copyFields,
       visualDescription: describeVisual(slot.mechanismId, safeProfile.productName, snapshot),
       cta: ctas[Math.floor(rand() * ctas.length)],
       supportingProof: dynamicStrategy.supportingProof.slice(0, 1).map((s) => ({ ref: "proof:0", statement: s.statement, source: s.source })),

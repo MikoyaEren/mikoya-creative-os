@@ -23,7 +23,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     structure: {
       layout: "Generic DM screen: header with avatar and first name, 3–5 bubbles, optional shared-post card.",
       copySlots: [
-        { key: "messages", label: "Messages (one per line, prefix 'me:' or 'them:')", maxChars: 300, required: true },
+        { key: "messages", label: "Messages", maxChars: 300, required: true, kind: "list", minRows: 2, maxRows: 6, row: { label: { meaning: "speaker", values: ["me", "them"], maxChars: 4, required: true }, text: { meaning: "one message bubble", maxChars: 90, required: true } } },
         { key: "name", label: "Sender first name", maxChars: 16, required: true },
       ],
       visualRules: ["Generic DM styling, no platform logos", "Timestamps and 'seen' marker for realism", "Last message carries the payoff"],
@@ -48,8 +48,8 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     structure: {
       layout: "Lock screen with large clock, 1–3 stacked notification cards, wallpaper from brand colors.",
       copySlots: [
-        { key: "notifications", label: "Notifications (app · title · preview), one per line", maxChars: 240, required: true },
-        { key: "time", label: "Clock time", maxChars: 5, required: true },
+        { key: "notifications", label: "Notifications", maxChars: 240, required: true, kind: "list", minRows: 1, maxRows: 4, row: { label: { meaning: "generic app name (no real brand)", maxChars: 16, required: true, example: "Reminders" }, text: { meaning: "notification text", maxChars: 80, required: true }, note: { meaning: "time label", maxChars: 8, example: "now" } } },
+        { key: "time", label: "Clock time", maxChars: 5, required: true, example: "7:12" },
       ],
       visualRules: ["Generic OS styling, no real app logos", "Preview text truncated naturally", "Top notification is the payoff"],
     },
@@ -132,8 +132,8 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     structure: {
       layout: "Two columns or stacked blocks: 🚩 red flags and 🟢 green flags, 2–4 items each.",
       copySlots: [
-        { key: "red", label: "Red flags", maxChars: 140, required: true },
-        { key: "green", label: "Green flags", maxChars: 140, required: true },
+        { key: "red", label: "Red flags", maxChars: 140, required: true, kind: "list", minRows: 2, maxRows: 4, row: { text: { meaning: "one red flag (no emoji)", maxChars: 45, required: true } } },
+        { key: "green", label: "Green flags", maxChars: 140, required: true, kind: "list", minRows: 2, maxRows: 4, row: { text: { meaning: "one green flag (no emoji)", maxChars: 45, required: true } } },
       ],
       visualRules: ["Flag emoji or icons", "Short items, parallel structure", "Product sits with the green flags"],
     },
@@ -154,7 +154,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
       layout: "'The ___ starter pack' title over a loose grid of 5–7 labelled items.",
       copySlots: [
         { key: "title", label: "Starter pack title", maxChars: 50, required: true },
-        { key: "items", label: "Item labels", maxChars: 200, required: true },
+        { key: "items", label: "Item labels", maxChars: 200, required: true, kind: "list", minRows: 4, maxRows: 8, row: { text: { meaning: "one item label", maxChars: 32, required: true } } },
       ],
       visualRules: ["Cut-out objects on white or brand background", "Short handwritten-style labels", "Product is one item, not the centre of the ad"],
     },
@@ -175,7 +175,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
       layout: "Checklist title and 4–6 items with checkboxes, some ticked.",
       copySlots: [
         { key: "title", label: "Checklist title", maxChars: 40, required: true },
-        { key: "items", label: "Items", maxChars: 220, required: true },
+        { key: "items", label: "Items", maxChars: 220, required: true, kind: "list", minRows: 3, maxRows: 7, row: { label: { meaning: "state", values: ["done", "todo"], maxChars: 4, required: true }, text: { meaning: "one checklist item", maxChars: 40, required: true } } },
       ],
       visualRules: ["Native checklist styling", "Mix of ticked and unticked boxes", "No infographic icons"],
     },
@@ -238,7 +238,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
       layout: "Word, pronunciation, part of speech, one or two numbered definitions, example sentence.",
       copySlots: [
         { key: "word", label: "Word", maxChars: 24, required: true },
-        { key: "definition", label: "Definition(s)", maxChars: 200, required: true },
+        { key: "definition", label: "Definitions", maxChars: 200, required: true, kind: "list", minRows: 1, maxRows: 2, row: { label: { meaning: "part of speech", maxChars: 12, example: "noun" }, text: { meaning: "one definition", maxChars: 110, required: true } } },
         { key: "example", label: "Example sentence", maxChars: 100, required: false },
       ],
       visualRules: ["Serif dictionary typography", "Minimal layout", "Product small"],
@@ -260,7 +260,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
       layout: "'Choose your fighter' header, 3–4 character cards with short labels.",
       copySlots: [
         { key: "header", label: "Header", maxChars: 30, required: true },
-        { key: "fighters", label: "Fighter labels", maxChars: 160, required: true },
+        { key: "fighters", label: "Fighters", maxChars: 160, required: true, kind: "list", minRows: 2, maxRows: 4, row: { label: { meaning: "fighter name", maxChars: 24, required: true }, text: { meaning: "trait", maxChars: 40, required: true } } },
       ],
       visualRules: ["Game-select styling", "Equal-sized cards", "Product appears as a fighter or an item"],
     },
@@ -281,7 +281,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
       layout: "Title, 3–5 'A + B' pairings, the last one featuring the product.",
       copySlots: [
         { key: "title", label: "Title", maxChars: 40, required: true },
-        { key: "pairings", label: "Pairings", maxChars: 200, required: true },
+        { key: "pairings", label: "Pairings", maxChars: 200, required: true, kind: "list", minRows: 3, maxRows: 5, row: { label: { meaning: "first thing", maxChars: 28, required: true }, text: { meaning: "the thing it goes with", maxChars: 28, required: true } } },
       ],
       visualRules: ["Meme typography", "Consistent pairing format", "Small images per pairing allowed"],
     },
@@ -368,13 +368,13 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     structure: {
       layout: "Week or day view with 3–6 entries; one recurring entry stands out.",
       copySlots: [
-        { key: "entries", label: "Calendar entries (time · title)", maxChars: 220, required: true },
+        { key: "entries", label: "Calendar entries", maxChars: 220, required: true, kind: "list", minRows: 2, maxRows: 5, row: { label: { meaning: "time", maxChars: 5, required: true, example: "7:30" }, text: { meaning: "entry title", maxChars: 36, required: true } } },
         { key: "highlight", label: "Highlighted entry", maxChars: 40, required: true },
       ],
       visualRules: ["Native calendar styling, no app logos", "Highlight colour from brand accent", "Realistic times"],
     },
     formatLayouts: {
-      "1:1": "Week view cropped to 3 days, highlighted entry centred, product small.",
+      "1:1": "Compact day/agenda view showing every entry (same entries as 9:16), highlighted entry emphasised, product small.",
       "9:16": "Day view full height, highlighted entry mid-screen, product below, CTA above safe zone.",
     },
     principles: ["The schedule tells the story", "Mundane entries make the highlight feel earned", "Show a routine, never promise outcomes"],

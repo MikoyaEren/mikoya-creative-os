@@ -49,7 +49,8 @@ export type ConceptDropReason =
   | "fabricated_testimonial"
   | "duplicate_hook"
   | "duplicate_message"
-  | "angle_limit";
+  | "angle_limit"
+  | "invalid_copy_structure";
 
 export interface DroppedConcept {
   slotId: string;

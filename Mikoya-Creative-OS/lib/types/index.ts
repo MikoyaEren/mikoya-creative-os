@@ -190,11 +190,46 @@ export interface MechanismTraits {
   supportsComparison?: boolean;
 }
 
+/** One part of a list row (speaker, quantity, time, state …) as a recipe defines it. */
+export interface RowPartSpec {
+  /** What the part means, shown to the writer ("speaker", "quantity", "time"). */
+  meaning: string;
+  maxChars: number;
+  /** Allowed values (normalised case-insensitively), e.g. ["me", "them"]. */
+  values?: string[];
+  /** Must be non-empty in every row. */
+  required?: boolean;
+  /** A short neutral example shown to the writer. */
+  example?: string;
+}
+
 export interface RecipeCopySlot {
   key: string;
   label: string;
+  /** Text fields: max characters. List fields: max characters across all row parts. */
   maxChars?: number;
   required: boolean;
+  /** "text" (default): one text. "list": rows of up to three parts (label · text · note). */
+  kind?: "text" | "list";
+  row?: { label?: RowPartSpec; text: RowPartSpec; note?: RowPartSpec };
+  /** A short neutral example (text fields), shown to the writer. */
+  example?: string;
+  minRows?: number;
+  maxRows?: number;
+}
+
+/** A structured copy row: parts as the recipe's row spec defines them ("" when unused). */
+export interface CopyRow {
+  label: string;
+  text: string;
+  note: string;
+}
+
+/** One recipe copy field as written by the concept writer. Text fields use `text`, list fields use `rows`. */
+export interface CopyField {
+  key: string;
+  text: string;
+  rows: CopyRow[];
 }
 
 /**
@@ -281,8 +316,16 @@ export interface CreativeConceptDraft {
   hook: string;
   /** Core message (kept as `subheadline` for renderers and previews). */
   subheadline: string;
-  /** All on-canvas copy as "field: text" lines. */
+  /**
+   * All on-canvas copy as readable "field: text" lines. DERIVED from
+   * `copyFields` for display and audit; never parsed back.
+   */
   copy: string;
+  /**
+   * Structured on-canvas copy, one entry per recipe copy field (validated
+   * against the recipe). Absent on legacy concepts, which cannot be rendered.
+   */
+  copyFields?: CopyField[];
   visualDescription: string;
   cta: string;
   supportingProof: ConceptProofRef[];

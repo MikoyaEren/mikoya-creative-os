@@ -17,7 +17,17 @@ const ConceptOut = z.object({
   addresses: z.string().describe("The desire, motivation or objection it targets, in one line."),
   hook: z.string().describe("The first thing people read. Short."),
   coreMessage: z.string().describe("The one message the ad lands."),
-  copy: z.string().describe("All on-canvas copy for the mechanism as 'field: text' lines, using the recipe's copy fields."),
+  copyFields: z
+    .array(
+      z.object({
+        key: z.string().describe("A copy field key from the mechanism's recipe."),
+        text: z.string().describe("Text fields: the text. List fields: empty."),
+        rows: z
+          .array(z.object({ label: z.string(), text: z.string(), note: z.string() }))
+          .describe("List fields: one entry per row, parts as the recipe defines them (unused parts empty). Text fields: empty."),
+      }),
+    )
+    .describe("All on-canvas copy, one entry per recipe copy field. Never put separators, speakers or labels inside text — use rows."),
   cta: z.string(),
   supportingProof: z.array(z.string()).describe("Only [proof:…] or [fact:…] reference ids. Empty if the concept states no proof."),
   visualIdea: z.string().describe("What is shown. Composition-neutral; no new product facts."),

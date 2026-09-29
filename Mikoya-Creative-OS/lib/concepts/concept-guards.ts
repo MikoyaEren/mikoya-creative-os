@@ -1,5 +1,6 @@
 import type {
   BrandStrategyProfile,
+  CopyField,
   ConceptDropReason,
   ConceptProofRef,
   CreativeConceptDraft,
@@ -15,6 +16,7 @@ import { sameClaim, significantTokens } from "@/lib/strategy/claims";
 import { coversTopic, isSensitiveHypothesis, withheldClaimLeak } from "@/lib/strategy/strategy-guards";
 import type { CreativeSafeProductProfile } from "@/lib/types";
 import type { ConceptInputs } from "./concept-inputs";
+import { copyFieldsCanvasText, copyFieldsToText, validateCopyFields } from "./copy-fields";
 import { isComparativeClaim, medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
 
 /**
@@ -25,7 +27,8 @@ import { isComparativeClaim, medicalTreatmentWording, neutralizeNonMedicalTreat,
  *   slot / mechanism validity and caps, basis grounding, withheld or blocked
  *   claims, forbidden topics, unsupported numbers / ratings / percentages,
  *   unsupported sensitive (health, performance, comparative, regulated)
- *   wording, fabricated testimonials, near-duplicate hooks, messages and angles.
+ *   wording, fabricated testimonials, near-duplicate hooks, messages and angles,
+ *   and the structure of the copy fields (recipe keys, row parts, limits).
  * Layout notes that carry copy are replaced (variant drift).
  */
 
@@ -39,7 +42,7 @@ export interface RawConceptDraft {
   addresses: string;
   hook: string;
   coreMessage: string;
-  copy: string;
+  copyFields: CopyField[];
   cta: string;
   supportingProof: string[];
   visualIdea: string;
@@ -131,14 +134,8 @@ export function unsupportedSensitive(text: string, inputs: Pick<ConceptInputs, "
     .filter((s) => s && (isSensitiveHypothesis(s) || isComparativeClaim(s)) && !inputs.approvedClaims.some((c) => sameClaim(s, c.value)));
 }
 
-/** Copy is written as "field: text" lines; checks read the text, never the recipe's field names (e.g. "bio"). */
-export const copyText = (copy: string) =>
-  copy
-    .split("\n")
-    .map((l) => l.replace(/^\s*[a-z][a-z0-9_ ]{0,23}:\s*/i, ""))
-    .join("\n");
-
-const onCanvas = (d: RawConceptDraft) => [d.hook, d.coreMessage, copyText(d.copy), d.cta].join("\n");
+/** Checks read the copy fields' text and row parts, never the recipe's field names (e.g. "bio"). */
+const onCanvas = (d: RawConceptDraft) => [d.hook, d.coreMessage, copyFieldsCanvasText(d.copyFields), d.cta].join("\n");
 const describing = (d: RawConceptDraft) => [d.visualIdea, d.productRole, d.offerRole].join("\n");
 
 /**
@@ -238,6 +235,13 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
     const invalidProof = d.supportingProof.filter((r) => !inputs.proofRefs.has(r.trim()));
     if (invalidProof.length) warnings.push(`${slot.slotId}: ignored proof references that are not approved proof (${invalidProof.join(", ")}).`);
 
+    // The renderer reads these fields as typed data, so their structure must match the recipe.
+    const structure = validateCopyFields(mechanismId, d.copyFields);
+    if (!structure.ok) {
+      drop("invalid_copy_structure", structure.issues.slice(0, 3).join(" "));
+      continue;
+    }
+
     const dupHook = kept.find((k) => nearDuplicate(k.draft.hook, d.hook));
     if (dupHook) {
       drop("duplicate_hook", `Hook too close to "${dupHook.draft.hook}".`);
@@ -278,7 +282,8 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
       addresses: d.addresses.trim(),
       hook: d.hook.trim(),
       subheadline: d.coreMessage.trim(),
-      copy: d.copy.trim(),
+      copy: copyFieldsToText(structure.fields),
+      copyFields: structure.fields,
       visualDescription: d.visualIdea.trim(),
       cta: d.cta.trim(),
       supportingProof: proof,

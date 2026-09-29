@@ -9,6 +9,7 @@ import { buildStrategySnapshot } from "@/lib/strategy";
 import type { AnthropicLike } from "@/lib/server/product-analysis/analyzers";
 import { generateConcepts } from "./generate-concepts";
 import { ConceptOutputSchema, type ConceptOutput } from "./output-schema";
+import { demoCopyFields } from "@/lib/mock/demo-copy-fields";
 
 const request = (over: Partial<GenerationRequest> = {}): GenerationRequest => ({
   projectId: "mikoya",
@@ -36,7 +37,7 @@ const output = (): ConceptOutput => ({
     addresses: s.focus.statement,
     hook: HOOKS[i],
     coreMessage: `Message ${["alpha", "beta", "gamma", "delta", "epsilon"][i]} stands on its own`,
-    copy: `headline: ${HOOKS[i]}`,
+    copyFields: demoCopyFields(s.mechanismId, [HOOKS[i], "a quiet evening", "the good kind of slow"]),
     cta: "Shop now",
     supportingProof: ["proof:0"],
     visualIdea: "Native UI on the brand background.",
@@ -65,7 +66,8 @@ describe("structured output grammar budget", () => {
     const json = JSON.stringify(schema);
     expect(json).not.toContain('"enum"');
     expect(Object.keys(schema.properties)).toEqual(["concepts", "declinedSlots", "warnings"]);
-    expect(Object.keys(schema.$defs ?? {}).length).toBeLessThanOrEqual(4);
+    // 5 object shapes: output, concept, copy field, copy row, declined slot (live-probed with copyFields).
+    expect(Object.keys(schema.$defs ?? {}).length).toBeLessThanOrEqual(5);
     expect(json).not.toMatch(/"variants"/);
   });
 });

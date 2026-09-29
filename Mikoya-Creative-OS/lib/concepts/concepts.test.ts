@@ -16,6 +16,7 @@ import { allocateSlots, mechanismIneligibility } from "./allocation";
 import { buildConceptInputs } from "./concept-inputs";
 import { nearDuplicate, unsupportedNumbers, validateConcepts, type RawConceptDraft } from "./concept-guards";
 import { toConcept } from "./expand-variants";
+import { demoCopyFields } from "@/lib/mock/demo-copy-fields";
 import { medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
 import { classifyRisk, isBlockedStatement } from "@/lib/strategy/claims";
 
@@ -58,7 +59,7 @@ function draft(slot: ConceptSlot, over: Partial<RawConceptDraft> = {}): RawConce
     addresses: slot.focus.statement,
     hook: `Unique hook ${n} ${["morning", "window", "table", "walk", "desk", "sunday", "bottle", "friend", "note", "diary", "train", "garden", "office", "kitchen", "balcony", "street", "playlist", "notebook", "sweater", "lamp"][n % 20]} ${n * 7}th`.replace(/ \d+th$/, ""),
     coreMessage: `Core message variant ${n} ${["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "theta", "kappa"][n % 8]}`,
-    copy: `headline: Unique hook ${n}`,
+    copyFields: demoCopyFields(slot.mechanismId, [`quiet note ${n}`, "a slow start", "the good kind of slow"]),
     cta: "Shop now",
     supportingProof: [],
     visualIdea: "Native UI on the brand background.",
@@ -74,6 +75,16 @@ function draft(slot: ConceptSlot, over: Partial<RawConceptDraft> = {}): RawConce
     layout_9x16: "Stacked, larger type, CTA above the safe zone.",
     ...over,
   };
+}
+
+/** Neutral copy fields for the slot's mechanism, with the given texts as the first written values (text or row text). */
+function withCopy(slot: ConceptSlot, ...texts: string[]): Pick<RawConceptDraft, "copyFields"> {
+  const fields = demoCopyFields(slot.mechanismId, ["a slow start", "the good kind of slow"]);
+  let i = 0;
+  const out = fields.map((f) =>
+    f.rows.length ? { ...f, rows: f.rows.map((r) => (i < texts.length ? { ...r, text: texts[i++] } : r)) } : i < texts.length ? { ...f, text: texts[i++] } : f,
+  );
+  return { copyFields: out };
 }
 
 describe("recipes and mechanism catalogue", () => {
@@ -182,12 +193,12 @@ describe("concept guards", () => {
     const r = validateConcepts(
       [
         draft(slots[0], { hook: "Calm, focused energy in every cup" }),
-        draft(slots[1], { copy: "body: It cures insomnia" }),
+        draft(slots[1], withCopy(slots[1], "It cures insomnia")),
         draft(slots[2], { coreMessage: "Medical or weight-loss claims made simple" }),
         draft(slots[3], { hook: "Rated 4.9/5 by 10,000 customers" }),
         draft(slots[4], { coreMessage: "Boosts your energy and focus all day" }),
-        draft(slots[5], { presentedAsRealCustomer: true, copy: 'quote: "Best thing I ever bought" — Anna' }),
-        draft(imessageSlot === slots[1] ? slots[6] : imessageSlot, { copy: "me: you have to try this\nthem: ok but why" }),
+        draft(slots[5], { presentedAsRealCustomer: true, ...withCopy(slots[5], '"Best thing I ever bought" — Anna') }),
+        draft(imessageSlot === slots[1] ? slots[6] : imessageSlot, withCopy(imessageSlot === slots[1] ? slots[6] : imessageSlot, "you have to try this", "ok but why")),
       ],
       [],
       ctx,
@@ -206,9 +217,9 @@ describe("concept guards", () => {
   it("does not mistake copy field names, camera terms or situational durations for claims (live-run phrases)", () => {
     const r = validateConcepts(
       [
-        draft(slots[0], { copy: "status: Seeing someone new in the mornings\nbio: Bright green, mild, keeps things soft." }),
+        draft(slots[0], withCopy(slots[0], "Seeing someone new in the mornings", "Bright green, mild, keeps things soft.")),
         draft(slots[1], { productRole: "supporting — pouch in soft focus behind the bowl." }),
-        draft(slots[2], { copy: "me: can we do 8:20 instead\nthem: give me 20 minutes" }),
+        draft(slots[2], withCopy(slots[2], "can we do 8:20 instead", "give me 20 minutes")),
       ],
       [],
       ctx,
@@ -219,7 +230,7 @@ describe("concept guards", () => {
     // Live run 2: receipt quantities, a heart icon, a rationale that names a topic to avoid it.
     const more = validateConcepts(
       [
-        draft(slots[5], { copy: "items: 1x morning that's yours\n1x quiet start\ntotal: priceless" }),
+        draft(slots[5], withCopy(slots[5], "1x morning that's yours", "1x quiet start", "priceless")),
         draft(slots[6], { visualIdea: "Generic profile card on cream with heart icon; pouch as the partner photo." }),
         draft(slots[7], { rationale: "Plays on the swap without disparaging coffee drinkers." }),
       ],
@@ -231,13 +242,13 @@ describe("concept guards", () => {
     // Unapproved superlatives about the product stay strict.
     expect(validateConcepts([draft(slots[3], { hook: "the best-looking matcha in my apartment" })], [], ctx).dropped[0].reason).toBe("unsupported_claim");
     // Real claims inside a copy field are still caught.
-    expect(validateConcepts([draft(slots[4], { copy: "bio: It helps you focus all day" })], [], ctx).dropped[0].reason).toBe("unsupported_claim");
+    expect(validateConcepts([draft(slots[4], withCopy(slots[4], "It helps you focus all day"))], [], ctx).dropped[0].reason).toBe("unsupported_claim");
   });
 
   it("reads 'best' and 'treat' in context: the two live-run phrases pass (Full Drop 5)", () => {
     const r = validateConcepts(
       [
-        draft(slots[0], { hook: "The best routines end with four slow steps", copy: "headline: The best routines end with four slow steps that are yours." }),
+        draft(slots[0], { hook: "The best routines end with four slow steps", coreMessage: "The best routines end with four slow steps that are yours." }),
         draft(slots[1], { hook: "A mild, bright green switch", coreMessage: "A mild, bright green switch that feels like a treat." }),
       ],
       [],
@@ -305,7 +316,7 @@ describe("concept guards", () => {
     const r = validateConcepts(
       [
         draft(s0, { mechanismId: foreign }),
-        draft(s0, { mechanismId: s0.alternatives[0] }),
+        draft(s0, { mechanismId: s0.alternatives[0], copyFields: demoCopyFields(s0.alternatives[0], ["a slow start", "the good kind of slow"]) }),
         draft(s0),
         draft({ ...slots[1] }, { basis: ["h_rejected_hypothesis", "general_knowledge"] }),
         draft({ ...slots[2], slotId: "slot_99" }),
