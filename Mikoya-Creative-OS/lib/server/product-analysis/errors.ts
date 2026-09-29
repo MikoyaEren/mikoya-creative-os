@@ -31,7 +31,7 @@ const DEFAULTS: Record<AnalysisErrorCode, { status: number; message: string }> =
   page_too_large: { status: 422, message: "The product page is too large to analyse." },
   too_many_redirects: { status: 502, message: "The product page redirected too many times." },
   image_invalid: { status: 400, message: "One of the product images could not be processed." },
-  missing_api_key: { status: 503, message: "AI analysis is not configured: ANTHROPIC_API_KEY is missing on the server." },
+  missing_api_key: { status: 503, message: "AI analysis is not configured: CREATIVE_OS_ANTHROPIC_API_KEY is missing on the server." },
   auth_failed: { status: 502, message: "The AI provider rejected the configured API key." },
   rate_limited: { status: 429, message: "The AI provider is rate limiting requests. Try again in a minute." },
   ai_unavailable: { status: 503, message: "The AI provider is temporarily unavailable. Try again shortly." },

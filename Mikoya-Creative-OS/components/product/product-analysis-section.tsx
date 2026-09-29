@@ -123,7 +123,7 @@ export function ProductAnalysisSection({ state, stale, blockers, notes, onNotesC
           {state.error.code === "missing_api_key" && (
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-ink-soft">
               <span>
-                Add <code className="rounded bg-paper px-1 font-mono">ANTHROPIC_API_KEY</code> to <code className="rounded bg-paper px-1 font-mono">.env.local</code> and restart the server — or continue with demo data.
+                Add <code className="rounded bg-paper px-1 font-mono">CREATIVE_OS_ANTHROPIC_API_KEY</code> to <code className="rounded bg-paper px-1 font-mono">.env.local</code> and restart the server — or continue with demo data.
               </span>
               <Button size="sm" variant="outline" onClick={() => onAnalyze("mock")}>
                 <FlaskConical /> Use demo data

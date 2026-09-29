@@ -38,12 +38,12 @@ Requires Node 20.9+.
 ```bash
 cp .env.example .env.local
 # then set:
-ANTHROPIC_API_KEY=sk-ant-...
+CREATIVE_OS_ANTHROPIC_API_KEY=sk-ant-...
 ```
 
 | Variable | Required | Purpose |
 | -------- | -------- | ------- |
-| `ANTHROPIC_API_KEY` | For **Analyze Product** | Server-side only. Without it the app still works; analysis shows a clear "not configured" error and offers demo data. |
+| `CREATIVE_OS_ANTHROPIC_API_KEY` | For **Analyze Product** | Server-side only. Without it the app still works; analysis shows a clear "not configured" error and offers demo data. |
 | `ANTHROPIC_ANALYSIS_MODEL` | No | Overrides the analysis model (default `claude-opus-5-5`). |
 | `ANTHROPIC_ANALYSIS_EFFORT` | No | `low` / `medium` (default) / `high` / `xhigh` / `max`. |
 
@@ -262,7 +262,7 @@ Malformed output returns `invalid_ai_output` and nothing is saved.
 
 | Analyzer | When | What it does |
 | -------- | ---- | ------------ |
-| `RealProductAnalyzer` | "Analyze Product", only with `ANTHROPIC_API_KEY` set | Page fetch + 1 Claude call, structured output, validation |
+| `RealProductAnalyzer` | "Analyze Product", only with `CREATIVE_OS_ANTHROPIC_API_KEY` set | Page fetch + 1 Claude call, structured output, validation |
 | `MockProductAnalyzer` | "Use demo data (mock)", tests, demos | No network, no AI. Returns stored project facts for known URLs, otherwise only user input. |
 
 **Cost control.** Analysis runs only on an explicit click, never on

@@ -29,5 +29,5 @@ export const AI_CONFIG = {
 
 /** True when a key is configured. The real analyzer never runs without one. */
 export function hasAnthropicApiKey() {
-  return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  return Boolean(process.env.CREATIVE_OS_ANTHROPIC_API_KEY?.trim());
 }

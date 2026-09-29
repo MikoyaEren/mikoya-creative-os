@@ -13,7 +13,7 @@ import { prepareImages } from "./images";
  * analyzeProduct() — PRODUCT INPUT + PAGE + IMAGES → PRODUCT TRUTH PACK.
  *
  * One Analyze action = one page fetch, one preprocessing pass, and one model
- * call (real analyzer). The real analyzer runs only when ANTHROPIC_API_KEY is
+ * call (real analyzer). The real analyzer runs only when CREATIVE_OS_ANTHROPIC_API_KEY is
  * set and the user explicitly requested it.
  */
 

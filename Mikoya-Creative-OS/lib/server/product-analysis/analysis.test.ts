@@ -1,7 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ProductAnalysisRequest } from "@/lib/types";
 import { POST } from "@/app/api/analyze-product/route";
+import { getAnthropicClient } from "@/lib/server/ai/client";
+import { hasAnthropicApiKey } from "@/lib/server/ai/config";
 import { MIKOYA_PROJECT } from "@/lib/projects/mikoya";
 import { analyzeProduct } from "./analyze-product";
 import { RealProductAnalyzer, mapAnthropicError, type AnthropicLike } from "./analyzers";
@@ -231,5 +233,23 @@ describe("POST /api/analyze-product", () => {
   it("never leaks internals in error bodies", async () => {
     const text = await (await post(request())).text();
     expect(text).not.toMatch(/stack|at \w+ \(|sk-ant/i);
+  });
+});
+
+describe("Anthropic key configuration", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("ignores the reserved ANTHROPIC_API_KEY", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "reserved-placeholder");
+    expect(hasAnthropicApiKey()).toBe(false);
+    expect(() => getAnthropicClient()).toThrow(expect.objectContaining({ code: "missing_api_key" }));
+    await expect(analyzeProduct(request(), { fetchPage: fakePage })).rejects.toMatchObject({ code: "missing_api_key" });
+  });
+
+  it("passes CREATIVE_OS_ANTHROPIC_API_KEY explicitly to the SDK", () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "reserved-placeholder");
+    vi.stubEnv("CREATIVE_OS_ANTHROPIC_API_KEY", "creative-os-placeholder");
+    expect(hasAnthropicApiKey()).toBe(true);
+    expect(getAnthropicClient().apiKey).toBe("creative-os-placeholder");
   });
 });

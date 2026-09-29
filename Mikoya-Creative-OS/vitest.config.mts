@@ -8,7 +8,7 @@ export default defineConfig({
   test: {
     include: ["lib/**/*.test.ts"],
     // Tests must never see a real key.
-    env: { ANTHROPIC_API_KEY: "" },
+    env: { CREATIVE_OS_ANTHROPIC_API_KEY: "", ANTHROPIC_API_KEY: "" },
     environment: "node",
   },
 });
