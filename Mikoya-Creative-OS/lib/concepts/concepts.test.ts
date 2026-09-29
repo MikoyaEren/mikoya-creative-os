@@ -17,7 +17,7 @@ import { buildConceptInputs } from "./concept-inputs";
 import { nearDuplicate, unsupportedNumbers, validateConcepts, type RawConceptDraft } from "./concept-guards";
 import { toConcept } from "./expand-variants";
 import { demoCopyFields } from "@/lib/mock/demo-copy-fields";
-import { medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
+import { medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms, unsupportedOfferWording } from "./claim-context";
 import { classifyRisk, isBlockedStatement } from "@/lib/strategy/claims";
 
 const FULL_DROP: OutputMix = { static: 16, video: 0, ugc: 0, experimental: 4 };
@@ -290,6 +290,36 @@ describe("concept guards", () => {
     // The Phase 2 product-claim classifier is unchanged: "treat" and "best" still classify there.
     expect(isBlockedStatement("feels like a treat")).toBe(true);
     expect(classifyRisk("the best routines")).toBe("comparative");
+  });
+
+  it("blocks invented offer and urgency wording unless an approved input states it", () => {
+    const invented = [
+      "last chance!!",
+      "only 2 hours left",
+      "they're almost sold out",
+      "deal of the year honestly",
+      "please tell me you saw the free set 😭",
+      "the whole set is included",
+      "20% off everything",
+      "reminder: offer expires tonight",
+    ];
+    for (const text of invented) expect(unsupportedOfferWording(text, inputs.groundText), text).not.toBeNull();
+    for (const [i, hook] of invented.slice(0, 5).entries()) {
+      const r = validateConcepts([draft(slots[i], { hook })], [], ctx);
+      expect(r.dropped[0]?.reason, hook).toBe("unsupported_claim");
+      expect(r.dropped[0]?.detail, hook).toMatch(/Offer or urgency wording/);
+    }
+    // Everyday wording is not an offer.
+    for (const text of ["a phone-free morning", "stress-free evenings", "no need to hurry", "ok this is actually tempting", "wait have you seen this??"]) {
+      expect(unsupportedOfferWording(text, inputs.groundText), text).toBeNull();
+    }
+    // Supported when an approved input says the same thing (same kind, key noun and numbers).
+    const ground = "[fact:offers:0] Free starter set with every first order\n[fact:offers:1] 20% off with code HELLO20";
+    expect(unsupportedOfferWording("please tell me you saw the free set 😭", ground)).toBeNull();
+    expect(unsupportedOfferWording("20% off, go", ground)).toBeNull();
+    expect(unsupportedOfferWording("30% off, go", ground)).not.toBeNull();
+    expect(unsupportedOfferWording("free shipping too", ground)).not.toBeNull();
+    expect(unsupportedOfferWording("last chance for the free set", ground)).toMatch(/last chance \(urgency\)/);
   });
 
   it("keeps composition numbers in layout notes but replaces notes that add copy", () => {

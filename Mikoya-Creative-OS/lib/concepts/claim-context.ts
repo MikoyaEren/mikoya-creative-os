@@ -76,3 +76,49 @@ export function medicalTreatmentWording(text: string): string | null {
   }
   return null;
 }
+
+/**
+ * OFFER AND URGENCY WORDING — free items, discounts, deadlines, scarcity,
+ * shipping and availability may only appear when an approved input says so.
+ * Generic (EN/DE). A phrase is supported when some approved input line uses
+ * the same kind of wording, shares its key noun (set, gift, shipping …) and
+ * has the same numbers. Invented urgency ("last chance", "only 2 hours
+ * left", "almost sold out", "deal of the year") is never supported by default.
+ */
+const OFFER_NOUNS = "set|sets|gift|gifts|shipping|delivery|sample|samples|trial|bonus|returns?|bundle|kit|item|items|extra|add-?on|pouch|box|pack";
+const OFFER_KINDS: { kind: string; re: RegExp }[] = [
+  {
+    kind: "free item",
+    re: new RegExp(`\\bfree\\s+(?:[\\p{L}-]+\\s+)?(?:${OFFER_NOUNS})\\b|\\bfor free\\b|\\b(?:comes?|included)\\s+(?:for\\s+)?free\\b|\\bgratis\\b|\\bkostenlos\\w*|\\bversandkostenfrei\\b|\\bgeschenkt\\b`, "iu"),
+  },
+  { kind: "included extra", re: new RegExp(`\\b(?:${OFFER_NOUNS})\\s+(?:is\\s+|are\\s+)?(?:included|thrown in|in there|on us)\\b|\\bincluded at no (?:extra )?cost\\b|\\bgibt'?s dazu\\b`, "iu") },
+  { kind: "discount", re: /\b\d+\s?%\s?(?:off|rabatt)\b|\bdiscount\w*|\bon sale\b|\bsale ends\b|\bcoupon\w*|\bpromo(?:\s?code)?\b|\brabatt\w*|\bgutschein\w*/iu },
+  {
+    kind: "urgency",
+    re: /\blast chance\b|\bfinal (?:hours?|days?|call)\b|\bends (?:today|tonight|soon|tomorrow|at midnight|this week|sunday|monday|friday)\b|\bonly \d+\s*(?:left|hours?|days?|minutes?|pieces?)\b|\b\d+\s*(?:hours?|days?|minutes?)\s+left\b|\b(?:almost|nearly)\s+(?:sold out|gone)\b|\bsell(?:s|ing)\s+(?:out|fast)\b|\bsold out\b|\blimited[- ](?:time|stock|edition|drop|offer)\b|\bwhile (?:stocks?|supplies) last\b|\btoday only\b|\bhurry\s*(?:up|!|,|before)|\bdon'?t miss (?:out|it)\b|\bdeal of the (?:year|day|week)\b|\b(?:offer|deal|code|discount)\s+expires?\b|\bbefore it'?s gone\b|\bletzte chance\b|\bnur noch \d+|\bausverkauft\b|\bsolange der vorrat reicht\b|\bnur heute\b/iu,
+  },
+  { kind: "availability", re: /\bback in stock\b|\bin stock\b|\bships? (?:today|free|fast|tomorrow|within)\b|\b(?:next|same)[- ]day (?:delivery|shipping)\b|\bwieder da\b|\bauf lager\b/iu },
+];
+
+const nounsIn = (s: string) => new Set((s.toLowerCase().match(new RegExp(`\\b(?:${OFFER_NOUNS})\\b`, "giu")) ?? []).map((n) => n.replace(/s$/, "")));
+const digitsIn = (s: string) => (s.match(/\d+/g) ?? []).join(",");
+
+/** The first offer / urgency phrase in `text` that no approved input line supports, or null. */
+export function unsupportedOfferWording(text: string, groundText: string): string | null {
+  const groundLines = groundText.split("\n");
+  for (const { kind, re } of OFFER_KINDS) {
+    const global = new RegExp(re.source, re.flags.includes("g") ? re.flags : `${re.flags}g`);
+    for (const m of text.matchAll(global)) {
+      const phrase = m[0];
+      const nouns = nounsIn(phrase);
+      const supported = groundLines.some((line) => {
+        const g = line.match(re);
+        if (!g) return false;
+        const lineNouns = nounsIn(line);
+        return [...nouns].every((n) => lineNouns.has(n)) && (!/\d/.test(phrase) || digitsIn(phrase) === digitsIn(g[0]));
+      });
+      if (!supported) return `${phrase} (${kind})`;
+    }
+  }
+  return null;
+}

@@ -31,7 +31,8 @@ export async function labCases(mechanism: MechanismId): Promise<LabCase[]> {
 }
 
 export async function renderLabCase(c: LabCase, format: OutputFormat, deps: RenderDeps & { store: RenderStore }): Promise<RenderResult> {
-  const assets = c.withAssets ? await labAssets(c.brand, deps.store) : [];
+  const all = c.withAssets ? await labAssets(c.brand, deps.store) : [];
+  const assets = c.assetRoles ? all.filter((a) => c.assetRoles!.includes(a.role)) : all;
   return renderVariant(
     {
       batchId: "lab",

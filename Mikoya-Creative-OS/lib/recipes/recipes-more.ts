@@ -20,6 +20,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A social-app direct-message exchange where the idea lands in the reply.",
     type: "static",
     renderer: "html",
+    version: 2,
     structure: {
       layout: "Generic DM screen: header with avatar and first name, 3–5 bubbles, optional shared-post card.",
       copySlots: [
@@ -42,22 +43,36 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     id: "lock_screen",
     mechanismId: "lock_screen",
     name: "Lock Screen",
-    description: "Phone lock screen with notifications whose sequence tells a tiny story.",
+    description:
+      "Notification-first phone lock screen: the notifications ARE the ad. The wallpaper carries the product or lifestyle visual; 1–3 notifications carry the selling idea or the curiosity.",
     type: "static",
     renderer: "html",
+    version: 3,
     structure: {
-      layout: "Lock screen with large clock, 1–3 stacked notification cards, wallpaper from brand colors.",
+      layout: "Wallpaper (lifestyle or product image, else brand gradient), large native-style time, 1–3 notification cards whose copy is the main message. No separate advertising headline by default.",
       copySlots: [
-        { key: "notifications", label: "Notifications", maxChars: 240, required: true, kind: "list", minRows: 1, maxRows: 4, row: { label: { meaning: "generic app name (no real brand)", maxChars: 16, required: true, example: "Reminders" }, text: { meaning: "notification text", maxChars: 80, required: true }, note: { meaning: "time label", maxChars: 8, example: "now" } } },
+        { key: "notifications", label: "Notifications (top = the hook)", maxChars: 200, required: true, kind: "list", minRows: 1, maxRows: 3, row: { label: { meaning: "source", values: ["Messages", "Reminders", "Calendar"], maxChars: 9, required: true }, text: { meaning: "notification text", maxChars: 70, required: true }, note: { meaning: "fictional sender first name (Messages only; never a real customer)", maxChars: 16, example: "Lena" } } },
         { key: "time", label: "Clock time", maxChars: 5, required: true, example: "7:12" },
+        { key: "headline", label: "Extra headline (leave empty unless the concept genuinely needs a line beyond the notifications)", maxChars: 48, required: false },
       ],
-      visualRules: ["Generic OS styling, no real app logos", "Preview text truncated naturally", "Top notification is the payoff"],
+      visualRules: [
+        "Looks like a real lock screen: generic native styling, no official platform logos",
+        "The wallpaper carries the product / lifestyle visual; the notification copy carries the selling idea",
+        "No separate large headline unless the concept needs it",
+      ],
     },
     formatLayouts: {
-      "1:1": "Clock in the upper third, 2 notifications centred, product small at the bottom edge.",
-      "9:16": "Full lock screen: clock top, notification stack mid-screen, product and CTA in the lower third above the safe zone.",
+      "1:1": "Wallpaper full-bleed, time in the upper part, the same 1–3 notifications below it at a compact scale.",
+      "9:16": "Wallpaper full-bleed, large time near the top, the same 1–3 notifications stacked in the lower half above the safe zone.",
     },
-    principles: ["A notification people wish they received", "Sequence creates tension, the last card resolves it", "Ultra-short preview text"],
+    principles: [
+      "Notification-first: scroll stop → looks like a real lock screen → the user reads the notification → the offer or curiosity becomes clear",
+      "Prefer social, conversational or offer-oriented notifications when the strategy supports them; avoid productivity notifications (calendar events, routine reminders, focus modes) unless the concept calls for them",
+      "Sub-patterns: FRIEND NOTIFICATION (one or two Messages from a friend reacting to the offer or product), CONVERSATION TEASE (two or three consecutive Messages implying a friend-to-friend discovery), REMINDER (a Reminders note about something the viewer wants)",
+      "Messages are authored friend-to-friend dialogue with a fictional first name — never presented as a real customer or testimonial",
+      "Offers, prices, discounts, free items, shipping, availability, deadlines and scarcity only when an approved offer or fact reference states them; never invent urgency such as 'last chance', 'only 2 hours left', 'almost sold out' or 'deal of the year'",
+      "Ultra-short, native-sounding notification text; the top notification is the hook",
+    ],
   }),
   r({
     id: "pov",
@@ -129,6 +144,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "Two short lists of signals the audience recognises, green flags winning.",
     type: "static",
     renderer: "html",
+    version: 2,
     structure: {
       layout: "Two columns or stacked blocks: 🚩 red flags and 🟢 green flags, 2–4 items each.",
       copySlots: [
@@ -150,6 +166,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A meme-style grid of objects and traits that defines an identity.",
     type: "static",
     renderer: "image",
+    version: 2,
     structure: {
       layout: "'The ___ starter pack' title over a loose grid of 5–7 labelled items.",
       copySlots: [
@@ -171,6 +188,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A to-do or checklist where ticked boxes build to the product.",
     type: "static",
     renderer: "html",
+    version: 2,
     structure: {
       layout: "Checklist title and 4–6 items with checkboxes, some ticked.",
       copySlots: [
@@ -234,6 +252,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A dictionary entry for a new or reframed word.",
     type: "experimental",
     renderer: "html",
+    version: 2,
     structure: {
       layout: "Word, pronunciation, part of speech, one or two numbered definitions, example sentence.",
       copySlots: [
@@ -256,6 +275,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A character-select screen of personas or options.",
     type: "experimental",
     renderer: "image",
+    version: 2,
     structure: {
       layout: "'Choose your fighter' header, 3–4 character cards with short labels.",
       copySlots: [
@@ -277,6 +297,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A meme list of pairings that feel obviously right.",
     type: "static",
     renderer: "html",
+    version: 2,
     structure: {
       layout: "Title, 3–5 'A + B' pairings, the last one featuring the product.",
       copySlots: [
@@ -365,6 +386,7 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A calendar or schedule view where a routine becomes visible.",
     type: "static",
     renderer: "html",
+    version: 2,
     structure: {
       layout: "Week or day view with 3–6 entries; one recurring entry stands out.",
       copySlots: [

@@ -1,4 +1,4 @@
-import type { CopyField, MechanismId } from "@/lib/types";
+import type { AssetRole, CopyField, MechanismId } from "@/lib/types";
 import type { RenderConceptInput } from "../render-variant";
 
 /**
@@ -13,6 +13,8 @@ export interface LabCase {
   label: string;
   brand: LabBrand;
   withAssets: boolean;
+  /** Restrict the brand's assets to these roles (e.g. product shot only, no lifestyle photo). */
+  assetRoles?: AssetRole[];
   cta: boolean;
   concept: Omit<RenderConceptInput, "renderer">;
   /** Expected outcome when the case exists to prove a failure path. */
@@ -143,59 +145,64 @@ const RECEIPT: LabCase[] = [
 
 const LOCK_SCREEN: LabCase[] = [
   {
-    id: "short",
-    label: "Short copy · Brand A · lifestyle wallpaper",
+    id: "friend",
+    label: "Friend notification · Brand A · lifestyle wallpaper",
     brand: "A",
     withAssets: true,
     cta: false,
     concept: {
       mechanism: "lock_screen",
-      hook: "Slow start. Phone stays face down.",
+      hook: "ok you need to see this",
       cta: "",
-      copyFields: [rows("notifications", [["Reminders", "Slow start. Phone stays face down.", "now"], ["Calendar", "Nothing until 10:00", "7:00"]]), t("time", "7:12")],
+      copyFields: [rows("notifications", [["Messages", "ok you need to see this", "Lena"], ["Messages", "i think i found my new morning thing", "Lena"]]), t("time", "7:12")],
     },
   },
   {
-    id: "headline",
-    label: "Distinct hook → headline · Brand B · synthetic scene wallpaper",
-    brand: "B",
+    id: "tease",
+    label: "Conversation tease (3) · Brand A · lifestyle wallpaper",
+    brand: "A",
     withAssets: true,
     cta: false,
     concept: {
       mechanism: "lock_screen",
-      hook: "Your phone already knows the plan",
-      cta: "",
-      copyFields: [rows("notifications", [["Reminders", "Lamp on. Screens off.", "now"], ["Focus", "Evening wind-down is on", "21:30"]]), t("time", "21:42")],
-    },
-  },
-  {
-    id: "max_rows",
-    label: "Maximum rows (4), long but valid · Brand A · no asset",
-    brand: "A",
-    withAssets: false,
-    cta: false,
-    concept: {
-      mechanism: "lock_screen",
-      hook: "four notifications you'd actually want",
+      hook: "wait did you see what they added?",
       cta: "",
       copyFields: [
         rows("notifications", [
-          ["Reminders", "Ten quiet minutes before anything else", "now"],
-          ["Calendar", "Nothing scheduled until ten. Take it slow", "7:00"],
-          ["Weather", "Clear and bright all morning", "6:45"],
-          ["Notes", "The first hour is not for email", "6:30"],
+          ["Messages", "wait did you see what they added?", "Mia"],
+          ["Messages", "the whole set is in there", "Mia"],
+          ["Messages", "ok i'm ordering", "Mia"],
         ]),
-        t("time", "7:12"),
+        t("time", "9:41"),
       ],
     },
   },
   {
-    id: "min_rows",
-    label: "Minimum rows (1) · Brand B · lifestyle wallpaper",
+    id: "reminder",
+    label: "Reminder · Brand B · product on brand gradient (no lifestyle photo)",
     brand: "B",
     withAssets: true,
+    assetRoles: ["main", "packaging", "bundle"],
     cta: false,
-    concept: { mechanism: "lock_screen", hook: "one reminder", cta: "", copyFields: [rows("notifications", [["Reminders", "Lights low. You earned an early night.", "now"]]), t("time", "22:10")] },
+    concept: {
+      mechanism: "lock_screen",
+      hook: "Reminder: your starter kit is still in the cart",
+      cta: "",
+      copyFields: [rows("notifications", [["Reminders", "Your starter kit is still in the cart", ""]]), t("time", "21:42")],
+    },
+  },
+  {
+    id: "headline",
+    label: "Tease + concept headline field · Brand B · no asset",
+    brand: "B",
+    withAssets: false,
+    cta: false,
+    concept: {
+      mechanism: "lock_screen",
+      hook: "did you try it yet",
+      cta: "",
+      copyFields: [rows("notifications", [["Messages", "did you try it yet", "Sam"], ["Messages", "i'm not saying i told you so. but", "Sam"]]), t("time", "22:10"), t("headline", "The text you'll want to get")],
+    },
   },
 ];
 

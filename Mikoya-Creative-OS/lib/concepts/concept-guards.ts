@@ -17,7 +17,7 @@ import { coversTopic, isSensitiveHypothesis, withheldClaimLeak } from "@/lib/str
 import type { CreativeSafeProductProfile } from "@/lib/types";
 import type { ConceptInputs } from "./concept-inputs";
 import { copyFieldsCanvasText, copyFieldsToText, validateCopyFields } from "./copy-fields";
-import { isComparativeClaim, medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
+import { isComparativeClaim, unsupportedOfferWording, medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
 
 /**
  * CONCEPT GUARDS — deterministic checks on the concept writer's output.
@@ -27,7 +27,7 @@ import { isComparativeClaim, medicalTreatmentWording, neutralizeNonMedicalTreat,
  *   slot / mechanism validity and caps, basis grounding, withheld or blocked
  *   claims, forbidden topics, unsupported numbers / ratings / percentages,
  *   unsupported sensitive (health, performance, comparative, regulated)
- *   wording, fabricated testimonials, near-duplicate hooks, messages and angles,
+ *   wording, invented offer / urgency wording, fabricated testimonials, near-duplicate hooks, messages and angles,
  *   and the structure of the copy fields (recipe keys, row parts, limits).
  * Layout notes that carry copy are replaced (variant drift).
  */
@@ -221,6 +221,12 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
     const numbers = unsupportedNumbers(all, inputs.groundText);
     if (numbers.length) {
       drop("unsupported_claim", `Numbers not in approved inputs: ${numbers.join(", ")}.`);
+      continue;
+    }
+    // Offers, free items, discounts, deadlines, scarcity, shipping, availability: only as approved inputs state them.
+    const offer = unsupportedOfferWording(all, inputs.groundText);
+    if (offer) {
+      drop("unsupported_claim", `Offer or urgency wording not in the approved inputs: "${offer}".`);
       continue;
     }
     const sensitive = unsupportedSensitive(all, inputs, terms);

@@ -20,13 +20,13 @@
     "receipt_brand_b_9x16",
     "receipt_min_rows_1x1",
     "receipt_min_rows_9x16",
-    "lock_screen_short_1x1",
-    "lock_screen_short_9x16",
+    "lock_screen_friend_1x1",
+    "lock_screen_friend_9x16",
+    "lock_screen_tease_1x1",
+    "lock_screen_tease_9x16",
+    "lock_screen_reminder_1x1",
+    "lock_screen_reminder_9x16",
     "lock_screen_headline_1x1",
-    "lock_screen_headline_9x16",
-    "lock_screen_max_rows_1x1",
-    "lock_screen_max_rows_9x16",
-    "lock_screen_min_rows_1x1",
-    "lock_screen_min_rows_9x16"
+    "lock_screen_headline_9x16"
   ]
 }

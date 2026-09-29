@@ -105,7 +105,12 @@ describe("template registry and contracts", () => {
     expect(templateFor("imessage")!.payload(THREAD)).toEqual({ contact: "Jules", messages: [{ from: "them", text: "you look rested" }, { from: "me", text: "new morning thing" }] });
     expect(() => templateFor("imessage")!.payload([t("contact", "Jules")])).toThrow(/two messages/);
     expect(templateFor("receipt")!.payload([rows("items", [["1x", "slow start", "free"]]), t("total", "one morning")])).toEqual({ items: [{ qty: "1x", item: "slow start", amount: "free" }], total: "one morning" });
-    expect(templateFor("lock_screen")!.payload([rows("notifications", [["Notes", "hello", "now"]]), t("time", "7:12")])).toEqual({ time: "7:12", notifications: [{ app: "Notes", text: "hello", when: "now" }] });
+    expect(templateFor("lock_screen")!.payload([rows("notifications", [["Messages", "did you see this", "Lena"], ["Reminders", "check the set", ""]]), t("time", "7:12")])).toEqual({
+      time: "7:12",
+      notifications: [{ source: "Messages", text: "did you see this", sender: "Lena" }, { source: "Reminders", text: "check the set", sender: "" }],
+      headline: "",
+    });
+    expect(() => templateFor("lock_screen")!.payload([rows("notifications", [["Notes", "hello", ""]]), t("time", "7:12")])).toThrow(/Messages, Reminders or Calendar/);
   });
 
   it("never sets a fit unit below its type-role floor, in either format", () => {
