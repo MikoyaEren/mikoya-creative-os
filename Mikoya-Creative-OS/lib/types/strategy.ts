@@ -18,6 +18,7 @@
  */
 
 import type { AssetRole } from "./index";
+import type { CreativeSafeProductProfile, ProductReviewBundle, UserDecisions } from "./review";
 
 // ---------------------------------------------------------------------------
 // Provenance
@@ -43,17 +44,26 @@ export interface SourcedStatement {
   rationale?: string;
   /** Where it was found: URL, asset id, field name, hypothesis id… */
   sourceRef?: string;
+  /** Short verbatim snippet supporting the statement (facts only). */
+  evidence?: string;
   /** User review. Only meaningful for ai_inference; defaults to "unreviewed". */
   reviewStatus?: ReviewStatus;
   /** True when the user explicitly approved this item (accepted). */
   approvedByUser?: boolean;
 }
 
-/** A verified product fact. Can only come from the user or a source. */
+/**
+ * A verified product fact. Can only come from the user or a source.
+ * `sourceRef` names the evidence: "product_page", "main_image",
+ * "additional_image_2", "user_input"… `evidence` is a short supporting snippet.
+ * Facts extracted by AI from provided page/image evidence are still
+ * source_fact — the AI is the extractor, not the source.
+ */
 export interface Fact<T = string> {
   value: T;
   source: FactSource;
   sourceRef?: string;
+  evidence?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,6 +103,7 @@ export interface ProductReview {
   rating: number;
   source: FactSource;
   sourceRef?: string;
+  evidence?: string;
 }
 
 export interface AvailableAsset {
@@ -113,11 +124,23 @@ export interface ProductTruthPack {
   description: Fact | null;
   price: Fact<number> | null;
   currency: string | null;
+  /** Net size / weight / volume, e.g. "30 g". */
+  productSize: Fact | null;
+  /** Where the product comes from, as stated. */
+  origin: Fact | null;
+  /** Stock status as visibly stated (conflicts with structured data are flagged, not resolved). */
+  availability: Fact | null;
+  /** Shipping / delivery statements. */
+  shipping: Fact[];
   variants: Fact[];
   features: Fact[];
   benefits: Fact[];
   ingredientsOrSpecifications: Fact[];
-  verifiedClaims: Fact[];
+  /**
+   * Claims the source makes (grades, tests, certifications). Stated ≠ verified:
+   * the claim taxonomy in ProductReviewBundle decides what may be used.
+   */
+  sourceClaims: Fact[];
   offers: Fact[];
   guarantees: Fact[];
   socialProof: Fact[];
@@ -228,7 +251,14 @@ export interface DynamicCreativeStrategy {
 
 /** Everything the concept writer needs, frozen per batch. */
 export interface StrategySnapshot {
+  /** Raw facts, kept for audit. Creatives must use `safeProfile`. */
   truthPack: ProductTruthPack;
+  /** Claims, conflicts and excluded reviews for the raw truth pack. */
+  review: ProductReviewBundle;
+  /** User decisions applied on top of `review`. */
+  decisions: UserDecisions;
+  /** The only product information creative generation may use. */
+  safeProfile: CreativeSafeProductProfile;
   brandStrategy: BrandStrategyProfile;
   hypotheses: StrategyHypothesis[];
   dynamicStrategy: DynamicCreativeStrategy;

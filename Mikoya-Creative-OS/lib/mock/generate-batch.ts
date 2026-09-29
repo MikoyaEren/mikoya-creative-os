@@ -86,11 +86,15 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
     brand: request.brand,
     direction: request.direction,
     reviews: request.hypothesisReviews,
+    truthPack: request.truthPack,
+    productReview: request.productReview,
+    factDecisions: request.factDecisions,
   });
-  const { truthPack, dynamicStrategy } = snapshot;
-  const productName = truthPack.productName.value;
+  // The concept writer only sees reviewed, creative-safe product information.
+  const { safeProfile, dynamicStrategy } = snapshot;
+  const productName = safeProfile.productName;
   const angles = [...dynamicStrategy.primaryAngles, ...dynamicStrategy.primaryAngles, ...dynamicStrategy.secondaryAngles].map((a) => a.statement);
-  const ctas = [...truthPack.offers.map((o) => `Get ${o.value}`), ...(project.mockCtas ?? GENERIC_CTAS)];
+  const ctas = [...safeProfile.offers.map((o) => `Get ${o.value}`), ...(project.mockCtas ?? GENERIC_CTAS)];
   const usage = new Map<MechanismId, number>();
 
   const concepts: CreativeConcept[] = planSlots(request).map((slot, i) => {
@@ -101,7 +105,7 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
 
     // 3. Concept draft (mock concept writer). Later: LLM with buildConceptPrompt().
     const template = project.mockCopy?.[slot.mechanism] ?? GENERIC_TEMPLATES[slot.mechanism];
-    const lines = template(copyContextFrom(truthPack, dynamicStrategy, request.brand.brandName, i + used));
+    const lines = template(copyContextFrom(safeProfile, dynamicStrategy, request.brand.brandName, i + used));
     const copy = lines[used % lines.length];
 
     const draft: CreativeConceptDraft = {
@@ -135,8 +139,8 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
           rendererInstructions: RENDERERS[recipe.renderer],
           visualContext: {
             brandColors: request.brand.colors,
-            packagingDescription: truthPack.packagingDescription?.value,
-            referenceAssetIds: truthPack.availableAssets.map((a) => a.assetId),
+            packagingDescription: safeProfile.packagingDescription ?? undefined,
+            referenceAssetIds: safeProfile.availableAssets.map((a) => a.assetId),
           },
         }),
         // No renderer connected yet — previews are drawn client-side.

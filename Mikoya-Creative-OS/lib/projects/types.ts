@@ -2,6 +2,7 @@ import type {
   BrandContext,
   BrandStrategyProfile,
   CreativeDirectionInput,
+  ProductAnalysisContext,
   ProductInput,
   ProductTruthPack,
   StrategyHypothesis,
@@ -26,6 +27,8 @@ export interface CreativeProject {
   hypotheses: StrategyHypothesis[];
   /** Saved batch direction set by the brand team (user input). */
   defaultDirection: CreativeDirectionInput;
+  /** Default target market for product analysis (flags e.g. prices in an unexpected currency). */
+  analysisContext?: ProductAnalysisContext;
   exampleProduct: ProductInput;
   /** Mock product analysis results, matched by product URL (later: analyzeProduct()). */
   truthPacks: ProductTruthPack[];

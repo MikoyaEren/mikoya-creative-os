@@ -94,7 +94,7 @@ export function CreativeDetailSheet({
     () =>
       concept
         ? buildConceptPrompt({
-            productTruthPack: strategy.truthPack,
+            creativeSafeProfile: strategy.safeProfile,
             brandStrategyProfile: strategy.brandStrategy,
             strategyHypotheses: strategy.hypotheses,
             dynamicCreativeStrategy: strategy.dynamicStrategy,

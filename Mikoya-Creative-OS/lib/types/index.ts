@@ -9,9 +9,12 @@
  * An LLM returns `CreativeConceptDraft` JSON (see lib/pipeline/concept-schema.ts).
  */
 
-import type { CreativeDirectionInput, ReviewStatus, StrategySnapshot } from "./strategy";
+import type { CreativeDirectionInput, ProductTruthPack, ReviewStatus, StrategySnapshot } from "./strategy";
+import type { ProductReviewBundle, UserDecisions } from "./review";
 
 export * from "./strategy";
+export * from "./analysis";
+export * from "./review";
 
 // ---------------------------------------------------------------------------
 // Primitive unions
@@ -135,6 +138,11 @@ export interface GenerationRequest {
   projectId: string;
   /** Explicit batch direction from the user (highest priority). */
   direction?: CreativeDirectionInput;
+  /** Truth pack from product analysis; when absent the pipeline falls back to stored/mock facts. */
+  truthPack?: ProductTruthPack;
+  /** Claims/conflicts for `truthPack` plus the user's fact decisions → CreativeSafeProductProfile. */
+  productReview?: ProductReviewBundle;
+  factDecisions?: UserDecisions;
   /** User reviews of AI hypotheses (accepted → high priority, origin kept; rejected → dropped). */
   hypothesisReviews?: Record<string, ReviewStatus>;
   product: ProductInput;

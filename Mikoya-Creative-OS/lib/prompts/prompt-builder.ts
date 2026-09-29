@@ -3,15 +3,15 @@ import type {
   BrandStrategyProfile,
   CreativeConceptDraft,
   CreativeRecipe,
+  CreativeSafeProductProfile,
   DynamicCreativeStrategy,
   GlobalCreativeConstitution,
   OutputFormat,
-  ProductTruthPack,
   SourcedStatement,
   StrategyHypothesis,
 } from "@/lib/types";
 import { FORMAT_SPECS } from "@/lib/pipeline/formats";
-import { formatPrice } from "@/lib/strategy/product-truth-pack";
+import { safeClaimValues } from "@/lib/strategy/safe-profile";
 import { SOURCE_LABELS, isApprovedInference } from "@/lib/strategy/provenance";
 import { HYPOTHESIS_CATEGORY_LABELS, isUsable } from "@/lib/strategy/strategy-hypotheses";
 import type { RendererSpec } from "./renderer-instructions";
@@ -23,7 +23,7 @@ import type { RendererSpec } from "./renderer-instructions";
  *
  * 1. buildConceptPrompt  → the concept writer (LLM, returns JSON concepts)
  *      GLOBAL CREATIVE CONSTITUTION   what makes strong advertising
- *    + PRODUCT TRUTH PACK             what is factually true
+ *    + CREATIVE-SAFE PRODUCT PROFILE  reviewed facts & claims (never the raw truth pack)
  *    + BRAND STRATEGY PROFILE         what the brand wants to represent
  *    + STRATEGY HYPOTHESES            what AI thinks may matter (lowest priority)
  *    + DYNAMIC CREATIVE STRATEGY      what this batch should communicate
@@ -65,26 +65,35 @@ export function constitutionLayer(c: GlobalCreativeConstitution): PromptSection 
   };
 }
 
-export function truthPackLayer(p: ProductTruthPack): PromptSection {
-  const price = formatPrice(p);
+/**
+ * Product layer. Built from the CreativeSafeProductProfile only: rejected,
+ * blocked, conflicting and unapproved high-risk items never reach the prompt.
+ */
+export function safeProfileLayer(p: CreativeSafeProductProfile): PromptSection {
+  const one = (label: string, f: { value: string } | null) => (f ? `${label}: ${f.value}` : null);
   return {
     key: "truth",
-    title: "PRODUCT TRUTH PACK (facts only — the only claims you may make)",
+    title: "CREATIVE-SAFE PRODUCT PROFILE (reviewed facts — the only claims you may make)",
     body: [
-      `Product: ${p.productName.value}`,
-      p.category && `Category: ${p.category.value}`,
-      p.description && `Description: ${p.description.value}`,
-      price && `Price: ${price}`,
-      `Features: ${factList(p.features)}`,
-      `Benefits: ${factList(p.benefits)}`,
-      `Specifications: ${factList(p.ingredientsOrSpecifications)}`,
-      `Verified claims: ${factList(p.verifiedClaims)}`,
+      `Product: ${p.productName}`,
+      one("Category", p.category),
+      one("Description", p.description),
+      one("Price", p.price),
+      one("Size", p.productSize),
+      one("Origin", p.origin),
+      one("Availability", p.availability),
+      `Shipping: ${factList(p.shipping)}`,
       `Offers: ${factList(p.offers)}`,
-      `Guarantees: ${factList(p.guarantees)}`,
-      `Social proof: ${factList(p.socialProof)}`,
+      `Features: ${factList(safeClaimValues(p, "features").map((value) => ({ value })))}`,
+      `Specifications: ${factList(safeClaimValues(p, "ingredientsOrSpecifications").map((value) => ({ value })))}`,
+      `Benefits: ${factList(safeClaimValues(p, "benefits").map((value) => ({ value })))}`,
+      `Claims: ${factList(safeClaimValues(p, "sourceClaims").map((value) => ({ value })))}`,
+      `Guarantees: ${factList(safeClaimValues(p, "guarantees").map((value) => ({ value })))}`,
+      `Social proof: ${factList(safeClaimValues(p, "socialProof").map((value) => ({ value })))}`,
       p.reviews.length ? `Reviews: ${p.reviews.map((r) => `"${r.quote}" — ${r.author}`).join(" | ")}` : null,
-      p.packagingDescription && `Packaging: ${p.packagingDescription.value}`,
-      p.missing.length ? `Unknown (do not invent): ${p.missing.join(", ")}` : null,
+      p.packagingDescription && `Packaging: ${p.packagingDescription}`,
+      p.unknown.length ? `Unknown (do not invent): ${p.unknown.join(", ")}` : null,
+      p.excluded.length ? `Withheld after review (never state or imply): ${p.excluded.length} item(s) — rejected, blocked, conflicting or unapproved high-risk.` : null,
     ]
       .filter(Boolean)
       .join("\n"),
@@ -183,13 +192,14 @@ export function outputContractLayer(recipe: CreativeRecipe, conceptCount: number
       `Return ${conceptCount} concept(s) for mechanism "${recipe.mechanismId}" as JSON matching CREATIVE_CONCEPT_JSON_SCHEMA.`,
       "Each concept = one idea: angle, hook, subheadline, visual idea and CTA/offer.",
       "Every concept is produced in both mandatory formats, 1:1 and 9:16. Keep the idea and copy identical across formats; use layoutNotes only for composition differences.",
-      "Do not use any claim, number or offer that is not in the Product Truth Pack.",
+      "Do not use any claim, number or offer that is not in the Creative-Safe Product Profile.",
     ].join("\n"),
   };
 }
 
 export interface ConceptPromptInput {
-  productTruthPack: ProductTruthPack;
+  /** Reviewed product information. The raw truth pack is never passed to the concept writer. */
+  creativeSafeProfile: CreativeSafeProductProfile;
   brandStrategyProfile: BrandStrategyProfile;
   strategyHypotheses: StrategyHypothesis[];
   dynamicCreativeStrategy: DynamicCreativeStrategy;
@@ -201,7 +211,7 @@ export interface ConceptPromptInput {
 export function buildConceptSections(input: ConceptPromptInput): PromptSection[] {
   return [
     constitutionLayer(input.globalCreativeConstitution),
-    truthPackLayer(input.productTruthPack),
+    safeProfileLayer(input.creativeSafeProfile),
     brandStrategyLayer(input.brandStrategyProfile),
     hypothesesLayer(input.strategyHypotheses),
     dynamicStrategyLayer(input.dynamicCreativeStrategy),

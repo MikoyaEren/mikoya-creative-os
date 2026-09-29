@@ -1,4 +1,5 @@
-import type { DynamicCreativeStrategy, MechanismId, ProductTruthPack } from "@/lib/types";
+import type { CreativeSafeProductProfile, DynamicCreativeStrategy, MechanismId } from "@/lib/types";
+import { safeClaimValues } from "@/lib/strategy/safe-profile";
 
 /**
  * Product-agnostic mock concept writer.
@@ -146,23 +147,23 @@ const lower = (s: string | undefined, fallback: string) => (s ? s.charAt(0).toLo
 
 /** Build the slot values for one concept from the strategy layers. */
 export function copyContextFrom(
-  truthPack: ProductTruthPack,
+  profile: CreativeSafeProductProfile,
   strategy: DynamicCreativeStrategy,
   brandName: string,
   variant: number,
 ): CopyContext {
   const rot = <T,>(list: T[]) => (list.length ? list[variant % list.length] : undefined);
-  const benefits = truthPack.benefits.map((f) => f.value);
+  const benefits = safeClaimValues(profile, "benefits");
   return {
-    product: truthPack.productName.value,
+    product: profile.productName,
     brand: brandName || "the brand",
     benefit: lower(rot(benefits) ?? rot(strategy.leadWith)?.statement, "real results"),
     desire: lower(rot(strategy.primaryCustomerDesires)?.statement, "feeling good"),
     lead: lower(rot(strategy.leadWith)?.statement, "quality"),
     objection: lower(rot(strategy.objectionsToAddress)?.statement, "is it worth it"),
     proof: lower(rot(strategy.supportingProof)?.statement, "people keep coming back"),
-    offer: lower(truthPack.offers[0]?.value, "your first order"),
-    category: lower(truthPack.category?.value, "product"),
+    offer: lower(profile.offers[0]?.value, "your first order"),
+    category: lower(profile.category?.value, "product"),
     variant,
   };
 }

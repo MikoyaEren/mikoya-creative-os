@@ -1,12 +1,24 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Sparkles } from "lucide-react";
-import type { BrandContext, CreativeType, GenerationRequest, ReviewStatus, MechanismId, OutputMix, OutputPresetId, ProductInput } from "@/lib/types";
+import type {
+  BrandContext,
+  CreativeType,
+  GenerationRequest,
+  ReviewStatus,
+  MechanismId,
+  OutputMix,
+  OutputPresetId,
+  ProductAnalysisContext,
+  ProductInput,
+  UserDecisions,
+} from "@/lib/types";
 import { CREATIVE_TYPE_ORDER, DEFAULT_PRESET, outputsFor, plural } from "@/lib/constants";
 import { DEFAULT_PROJECT_ID, PROJECTS, getProject } from "@/lib/projects";
 import { buildStrategySnapshot } from "@/lib/strategy";
+import { analysisInputKey, requestProductAnalysis } from "@/lib/analysis-client";
 import { ALL_MECHANISM_IDS, getMechanism } from "@/lib/recipes";
 import { planSlots } from "@/lib/mock/generate-batch";
 import { generationProvider } from "@/lib/pipeline/provider";
@@ -20,6 +32,7 @@ import { CreativeStrategyPanel } from "@/components/strategy/creative-strategy-p
 import { CollapsibleSection } from "@/components/strategy/creative-strategy-section";
 import { BrandContextSection } from "@/components/product/brand-context-section";
 import { ProductSection, type ProductErrors } from "@/components/product/product-section";
+import { ProductAnalysisSection, type AnalysisState } from "@/components/product/product-analysis-section";
 import { FormatSelectorSection } from "./format-selector-section";
 import { GeneratingOverlay } from "./generating-overlay";
 import { OutputMixSection } from "./output-mix-section";
@@ -47,6 +60,43 @@ export function NewGenerationForm() {
   const [mechanismIds, setMechanismIds] = useState<MechanismId[]>(ALL_MECHANISM_IDS);
   const [submitted, setSubmitted] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [analysis, setAnalysis] = useState<AnalysisState>({ status: "idle" });
+  const [analysisNotes, setAnalysisNotes] = useState("");
+  const [analysisContext, setAnalysisContext] = useState<ProductAnalysisContext>(project.analysisContext ?? {});
+  // Review-gate decisions for the current analysis. Kept apart from the raw result for audit.
+  const [factDecisions, setFactDecisions] = useState<UserDecisions>({});
+  const analysisAbort = useRef<AbortController | null>(null);
+
+  const currentInputKey = analysisInputKey(product, analysisContext);
+  const analysisStale = analysis.status === "success" && analysis.inputKey !== currentInputKey;
+  // Only a fresh, successful analysis replaces stored/mock facts.
+  const analyzedTruthPack = analysis.status === "success" && !analysisStale ? analysis.result.truthPack : null;
+  const analyzedReview = analysis.status === "success" && !analysisStale ? analysis.result.review : null;
+  const analysisBlockers = [
+    !product.name.trim() && "product name",
+    !product.url.trim() ? "product URL" : !isValidUrl(product.url.trim()) && "a valid URL",
+  ].filter((b): b is string => Boolean(b));
+
+  async function runAnalysis(analyzer: "real" | "mock") {
+    analysisAbort.current?.abort();
+    const controller = new AbortController();
+    analysisAbort.current = controller;
+    const inputKey = analysisInputKey(product, analysisContext);
+    setAnalysis({ status: "analyzing", analyzer });
+    try {
+      const response = await requestProductAnalysis({ projectId: project.id, analyzer, product, notes: analysisNotes, context: analysisContext, signal: controller.signal });
+      if (controller.signal.aborted) return;
+      setFactDecisions({});
+      setAnalysis(response.ok ? { status: "success", result: response, inputKey } : { status: "error", error: response.error, analyzer });
+    } catch {
+      // Aborted by the user or superseded by a newer request.
+    }
+  }
+
+  function cancelAnalysis() {
+    analysisAbort.current?.abort();
+    setAnalysis({ status: "idle" });
+  }
 
   const errors = submitted ? validate(product) : {};
   const plannedCount = useMemo(() => planSlots({ outputMix: mix, mechanismIds }).length, [mix, mechanismIds]);
@@ -56,9 +106,20 @@ export function NewGenerationForm() {
   );
   // Same resolution the pipeline uses — what you see is what the concept writer gets.
   const snapshot = useMemo(
-    () => buildStrategySnapshot({ project, product, brand, direction: project.defaultDirection, reviews }),
-    [project, product, brand, reviews],
+    () =>
+      buildStrategySnapshot({
+        project,
+        product,
+        brand,
+        direction: project.defaultDirection,
+        reviews,
+        truthPack: analyzedTruthPack,
+        productReview: analyzedReview,
+        factDecisions,
+      }),
+    [project, product, brand, reviews, analyzedTruthPack, analyzedReview, factDecisions],
   );
+  const safeProfile = snapshot.safeProfile;
   const inferredInUse = snapshot.hypotheses.filter((h) => h.reviewStatus !== "rejected").length;
 
   function switchProject(id: string) {
@@ -68,6 +129,11 @@ export function NewGenerationForm() {
     setProduct(EMPTY_PRODUCT);
     setReviews({});
     setSubmitted(false);
+    analysisAbort.current?.abort();
+    setAnalysis({ status: "idle" });
+    setAnalysisNotes("");
+    setAnalysisContext(next.analysisContext ?? {});
+    setFactDecisions({});
   }
 
   const formatError = submitted && mechanismIds.length === 0 ? "Select at least one creative mechanism." : undefined;
@@ -88,6 +154,9 @@ export function NewGenerationForm() {
       projectId: project.id,
       direction: project.defaultDirection,
       hypothesisReviews: reviews,
+      truthPack: analyzedTruthPack ?? undefined,
+      productReview: analyzedReview ?? undefined,
+      factDecisions,
       product: { ...product, name: product.name.trim(), url: product.url.trim() },
       brand,
       outputMix: mix,
@@ -130,10 +199,31 @@ export function NewGenerationForm() {
         exampleLabel={`Load ${project.name} example`}
         placeholders={{ name: project.exampleProduct.name, url: project.exampleProduct.url }}
       />
+      <ProductAnalysisSection
+        state={analysis}
+        stale={analysisStale}
+        blockers={analysisBlockers}
+        notes={analysisNotes}
+        onNotesChange={setAnalysisNotes}
+        context={analysisContext}
+        onContextChange={setAnalysisContext}
+        decisions={factDecisions}
+        onDecide={(id, decision) =>
+          setFactDecisions((d) => {
+            const next = { ...d };
+            if (decision) next[id] = decision;
+            else delete next[id];
+            return next;
+          })
+        }
+        profile={analyzedTruthPack ? safeProfile : null}
+        onAnalyze={runAnalysis}
+        onCancel={cancelAnalysis}
+      />
       <BrandContextSection value={brand} onChange={setBrand} toneOptions={project.toneOptions} desireOptions={project.desireOptions} />
       <CollapsibleSection
         id="section-strategy"
-        step="C"
+        step="D"
         title="Creative strategy"
         summary={`${snapshot.dynamicStrategy.leadWith.length ? `Leads with ${snapshot.dynamicStrategy.leadWith.map((s) => s.statement.toLowerCase()).join(", ")}. ` : ""}Review facts, brand strategy, AI inferences and direction.`}
         openDescription="What this batch should communicate — resolved from facts, brand strategy and AI inferences."
@@ -169,10 +259,23 @@ export function NewGenerationForm() {
           <p className="mt-1 text-[13px] text-cream/70">
             {plural(mechanismIds.length, "mechanism")} · every concept in 1:1 and 9:16
           </p>
+          <p className="mt-1 text-[13px] text-cream/70">
+            Product facts:{" "}
+            {analyzedTruthPack
+              ? `${analysis.status === "success" && analysis.result.metadata.analyzer === "real" ? "AI-analysed" : "demo data (mock analysis)"} · ${plural(
+                  safeProfile.claims.length,
+                  "claim",
+                )} approved for creatives${safeProfile.needsReview ? ` · ${safeProfile.needsReview} need review` : ""}${
+                  safeProfile.unresolvedConflicts ? ` · ${plural(safeProfile.unresolvedConflicts, "unresolved conflict")}` : ""
+                }`
+              : analysisStale
+                ? "analysis out of date — not used"
+                : "not analysed yet — using entered or stored data"}
+          </p>
           <p className="mt-1.5 text-[13px] text-cream/60">
             {missing.length
               ? `Missing: ${missing.map((m) => m.replace(/^(Add|Upload) (a |the )?/, "").replace(/\.$/, "")).join(", ")}`
-              : "Generation is simulated in this version — no external APIs are called."}
+              : "Concept generation is still simulated — only product analysis uses AI."}
           </p>
         </div>
         <Button
