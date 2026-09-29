@@ -53,7 +53,14 @@ export function coversTopic(text: string, topic: string) {
 /** Why a hypothesis must never be used because it restates product claims that did not pass review. */
 export function withheldClaimLeak(statement: string, profile: Pick<CreativeSafeProductProfile, "excluded">): string | null {
   if (isBlockedStatement(statement)) return "Medical or disease claim.";
-  const hit = profile.excluded.find((e) => e.field !== "reviews" && sameClaim(statement, e.value));
+  const norm = (x: string) => ` ${x.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim()} `;
+  const hit = profile.excluded.find((e) => {
+    if (e.field === "reviews") return false;
+    // A withheld value with < 2 significant words (e.g. "30 g") must appear as that exact phrase —
+    // otherwise any text sharing its one number would match.
+    if (significantTokens(e.value).size < 2) return norm(statement).includes(norm(e.value)) || norm(statement).includes(norm(e.value.replace(/\s+/g, "")));
+    return sameClaim(statement, e.value);
+  });
   return hit ? `Restates a withheld product claim ("${hit.value}").` : null;
 }
 

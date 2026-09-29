@@ -195,7 +195,16 @@ const SafeProfileS = z.object({
   packagingDescription: S().nullable(),
   availableAssets: list(z.object({ assetId: S(200), role: z.enum(["main", "lifestyle", "bundle", "closeup", "packaging", "other"]), description: S() }), 20),
   unknown: list(S(100), 40),
-  excluded: list(z.object({ id: S(300), field: z.enum(REVIEW_FIELDS), value: S(), reason: z.enum(["rejected", "blocked", "unapproved_high_risk", "unresolved_conflict", "unrelated_review"]) }), 200),
+  excluded: list(
+    z.object({
+      id: S(300),
+      field: z.enum(REVIEW_FIELDS),
+      value: S(),
+      reason: z.enum(["rejected", "blocked", "unapproved_high_risk", "unresolved_conflict", "contains_unresolved_conflict", "unrelated_review"]),
+      conflictFields: list(z.enum(REVIEW_FIELDS), 16).optional(),
+    }),
+    200,
+  ),
   needsReview: z.number(),
   unresolvedConflicts: z.number(),
 });

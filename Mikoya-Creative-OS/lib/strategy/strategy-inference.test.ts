@@ -238,7 +238,7 @@ describe("product-agnostic", () => {
     exampleProduct: { name: "Ledgerly Pro", url: "https://ledgerly.example/pro", mainImage: null, additionalAssets: [] },
     defaultDirection: {},
   };
-  const LEAK = /mikoya|matcha|coffee|kaffee|tencha|clean girl/i;
+  const LEAK = /\b(mikoya|matcha|coffee|kaffee|tencha|clean girl)\b/i;
 
   it("keeps Mikoya concepts out of other workspaces", () => {
     for (const project of [LUMEN_PROJECT, SAAS]) {

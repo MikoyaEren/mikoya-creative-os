@@ -86,9 +86,23 @@ describe("generateConcepts (service)", () => {
     expect(batch.conceptRun).toMatchObject({ origin: "ai", model: "test-model", modelCalls: 1, strategySnapshotId: batch.strategy.audit.snapshotId, usage: { inputTokens: 100, outputTokens: 50 } });
     expect(batch.conceptRun.plan.slots).toHaveLength(5);
     expect(batch.concepts[0].supportingProof[0]).toMatchObject({ ref: "proof:0" });
+    // Invariant: every basis / focus / proof reference resolves to an input the writer was actually given.
+    const given = new Set(batch.conceptRun.inputRefs);
+    for (const c of batch.concepts) {
+      for (const ref of [...c.basis, c.focus.ref, ...c.supportingProof.map((p) => p.ref)].filter(Boolean)) expect(given.has(ref), ref).toBe(true);
+    }
     // The writer never saw withheld claims or unapproved social proof.
     expect(sent).not.toContain("calm, focused energy");
     expect(sent).not.toContain("4.8/5");
+  });
+
+  it("drops references to inputs the writer never received (e.g. a held-back hypothesis id)", async () => {
+    const out = output();
+    out.concepts[0].basis = ["strategy:purchaseMotivations:9", "hyp_held_back", "brand:forbidden:0x"];
+    out.concepts[1].basis = ["fact:name", "hyp_held_back"];
+    const batch = await generateConcepts(request(), { batchId: BATCH_ID, createClient: fake(ok(out)) });
+    expect(batch.conceptRun.dropped[0]).toMatchObject({ slotId: plan.slots[0].slotId, reason: "ungrounded" });
+    expect(batch.concepts.find((c) => c.slotId === plan.slots[1].slotId)?.basis).toEqual(["fact:name"]);
   });
 
   it("delivers fewer concepts with reasons instead of forcing weak ones", async () => {

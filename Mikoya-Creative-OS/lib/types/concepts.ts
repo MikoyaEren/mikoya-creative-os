@@ -82,6 +82,8 @@ export interface ConceptGenerationRun {
   /** The frozen strategy the concepts were written from. */
   strategySnapshotId: string;
   strategyInputKey: string;
+  /** Every reference id the writer was given. Each kept concept's basis and focus resolve to these. */
+  inputRefs: string[];
   plan: SlotPlan;
   dropped: DroppedConcept[];
   unfilled: UnfilledSlot[];

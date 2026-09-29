@@ -159,6 +159,15 @@ describe("POST /api/infer-strategy", () => {
     expect(await res.json()).toMatchObject({ error: { code: "invalid_request" } });
   });
 
+  it("accepts a safe profile that withholds a composite item for an embedded conflict", async () => {
+    const safeProfile = {
+      ...snapshot.safeProfile,
+      excluded: [...snapshot.safeProfile.excluded, { id: "fact_offers_0", field: "offers" as const, value: "Bundle for $89", reason: "contains_unresolved_conflict" as const, conflictFields: ["price" as const] }],
+    };
+    const res = await post(request({ analyzer: "mock", safeProfile }));
+    expect(res.status).toBe(200);
+  });
+
   it("serves a mock run without leaking internals", async () => {
     const res = await post(request({ analyzer: "mock" }));
     expect(res.status).toBe(200);

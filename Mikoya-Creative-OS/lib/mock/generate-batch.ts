@@ -12,6 +12,7 @@ import { getProject } from "@/lib/projects";
 import { getMechanism, getRecipeForMechanism } from "@/lib/recipes";
 import { buildStrategySnapshot } from "@/lib/strategy";
 import { allocateSlots } from "@/lib/concepts/allocation";
+import { buildConceptInputs } from "@/lib/concepts/concept-inputs";
 import { rendererFor } from "@/lib/concepts/concept-guards";
 import { toConcept } from "@/lib/concepts/expand-variants";
 import { createId, createRandom } from "@/lib/utils";
@@ -163,6 +164,7 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
     createdAt,
     strategySnapshotId: snapshot.audit.snapshotId,
     strategyInputKey: snapshot.audit.inputKey,
+    inputRefs: buildConceptInputs(snapshot).refs.map((r) => r.ref),
     plan,
     dropped: [],
     unfilled: [],

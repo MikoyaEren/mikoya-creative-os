@@ -200,7 +200,7 @@ export function SafeProfileView({ profile: p }: { profile: CreativeSafeProductPr
               <li key={e.id} className="text-xs leading-snug text-muted [overflow-wrap:anywhere]">
                 <span className="font-mono text-[10.5px]">{REVIEW_FIELD_LABELS[e.field]}</span> · {e.value} ·{" "}
                 <span className="text-ink-soft">
-                  {{ rejected: "rejected", blocked: "blocked", unapproved_high_risk: "needs approval", unresolved_conflict: "unresolved conflict", unrelated_review: "other product" }[e.reason]}
+                  {{ rejected: "rejected", blocked: "blocked", unapproved_high_risk: "needs approval", unresolved_conflict: "unresolved conflict", contains_unresolved_conflict: `quotes conflicted ${(e.conflictFields ?? []).join(" + ")}`, unrelated_review: "other product" }[e.reason]}
                 </span>
               </li>
             ))}

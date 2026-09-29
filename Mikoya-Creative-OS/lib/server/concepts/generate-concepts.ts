@@ -138,6 +138,7 @@ export async function generateConcepts(request: GenerationRequest, deps: Generat
     createdAt,
     strategySnapshotId: snapshot.audit.snapshotId,
     strategyInputKey: snapshot.audit.inputKey,
+    inputRefs: inputs.refs.map((r) => r.ref),
     plan,
     dropped: guarded.dropped,
     unfilled: guarded.unfilled,
