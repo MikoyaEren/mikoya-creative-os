@@ -36,7 +36,7 @@ function Statements({ items }: { items: SourcedStatement[] }) {
     <ul className="flex flex-col gap-2">
       {items.map((s) => (
         <li key={s.statement + s.source} className="flex items-start justify-between gap-3">
-          <span className="text-[13.5px] leading-snug text-ink">{s.statement}</span>
+          <span className="min-w-0 text-[13.5px] leading-snug text-ink [overflow-wrap:anywhere]">{s.statement}</span>
           <SourceBadge source={s.source} confidence={s.confidence} reviewStatus={s.reviewStatus} />
         </li>
       ))}
@@ -46,31 +46,75 @@ function Statements({ items }: { items: SourcedStatement[] }) {
 
 function Facts({ items }: { items: (Fact<string> | null | undefined)[] }) {
   const present = items.filter((f): f is Fact<string> => Boolean(f));
-  if (!present.length) return <Empty>Pending product analysis</Empty>;
+  if (!present.length) return <Empty>Unknown</Empty>;
   return (
-    <Statements items={present.map((f) => ({ statement: f.value, source: f.source, sourceRef: f.sourceRef }))} />
+    <ul className="flex flex-col gap-2.5">
+      {present.map((f) => (
+        <li key={f.value + (f.sourceRef ?? "")}>
+          <div className="flex items-start justify-between gap-3">
+            <span className="min-w-0 text-[13.5px] leading-snug text-ink [overflow-wrap:anywhere]">{f.value}</span>
+            <SourceBadge source={f.source} />
+          </div>
+          {(f.sourceRef || f.evidence) && (
+            <p className="mt-0.5 text-[11px] leading-snug text-muted [overflow-wrap:anywhere]">
+              {f.sourceRef && <span className="font-mono">{f.sourceRef}</span>}
+              {f.evidence && <span className="italic"> · “{f.evidence}”</span>}
+            </p>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 
-function FactsTab({ snapshot }: { snapshot: StrategySnapshot }) {
-  const p = snapshot.truthPack;
+/** Product Truth Pack view with provenance, source refs, evidence and missing fields. */
+export function ProductFactsView({ truthPack: p }: { truthPack: StrategySnapshot["truthPack"] }) {
   const price = formatPrice(p);
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <Block label="Product"><Facts items={[p.productName, p.productUrl]} /></Block>
       <Block label="Category & price">
-        <Facts items={[p.category, price && p.price ? { value: price, source: p.price.source, sourceRef: p.price.sourceRef } : null]} />
+        <Facts items={[p.category, price && p.price ? { value: price, source: p.price.source, sourceRef: p.price.sourceRef, evidence: p.price.evidence } : null]} />
       </Block>
+      <Block label="Description" className="md:col-span-2"><Facts items={[p.description]} /></Block>
       <Block label="Offer"><Facts items={p.offers} /></Block>
       <Block label="Guarantees"><Facts items={p.guarantees} /></Block>
-      <Block label="Benefits"><Facts items={p.benefits} /></Block>
+      <Block label="Benefits (as stated by the source)"><Facts items={p.benefits} /></Block>
       <Block label="Features & specifications"><Facts items={[...p.features, ...p.ingredientsOrSpecifications]} /></Block>
+      <Block label="Variants"><Facts items={p.variants} /></Block>
       <Block label="Verified claims & social proof"><Facts items={[...p.verifiedClaims, ...p.socialProof]} /></Block>
+      <Block label="Physical appearance"><Facts items={[p.physicalAppearance]} /></Block>
       <Block label="Packaging"><Facts items={[p.packagingDescription]} /></Block>
+      {p.reviews.length > 0 && (
+        <Block label="Reviews" className="md:col-span-2">
+          <ul className="flex flex-col gap-2">
+            {p.reviews.map((r) => (
+              <li key={r.quote} className="flex items-start justify-between gap-3">
+                <span className="text-[13px] leading-snug text-ink">
+                  “{r.quote}” <span className="text-muted">— {r.author}, {r.rating}/5</span>
+                </span>
+                <SourceBadge source={r.source} />
+              </li>
+            ))}
+          </ul>
+        </Block>
+      )}
+      {p.availableAssets.length > 0 && (
+        <Block label="Assets" className="md:col-span-2">
+          <ul className="flex flex-col gap-1.5">
+            {p.availableAssets.map((a) => (
+              <li key={a.assetId} className="text-[13px] leading-snug text-ink">
+                <span className="mr-2 rounded bg-sand px-1.5 py-0.5 font-mono text-[10.5px] text-ink-soft">{a.role}</span>
+                {a.description}
+              </li>
+            ))}
+          </ul>
+        </Block>
+      )}
       {p.missing.length > 0 && (
         <div className="rounded-xl border border-dashed border-line-strong p-4 md:col-span-2">
-          <p className="text-[13px] font-medium text-ink">Unknown until product analysis runs</p>
-          <p className="mt-1 text-xs text-muted">The concept writer is told not to invent these. AI never fills facts.</p>
+          <p className="text-[13px] font-medium text-ink">Unknown — not supported by any source</p>
+          <p className="mt-1 text-xs text-muted">These stay unknown. The concept writer is told not to invent them, and AI never fills facts.</p>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {p.missing.map((m) => (
               <span key={m} className="rounded-md bg-sand px-2 py-0.5 font-mono text-[11px] text-ink-soft">{m}</span>
@@ -225,7 +269,7 @@ export function CreativeStrategyPanel({ snapshot, onReview }: CreativeStrategyPa
         <SourceLegend />
       </div>
       <div className="mt-5" role="tabpanel">
-        {tab === "facts" && <FactsTab snapshot={snapshot} />}
+        {tab === "facts" && <ProductFactsView truthPack={snapshot.truthPack} />}
         {tab === "brand" && <BrandTab snapshot={snapshot} />}
         {tab === "inferences" && <InferencesTab snapshot={snapshot} onReview={onReview} />}
         {tab === "direction" && <DirectionTab snapshot={snapshot} />}

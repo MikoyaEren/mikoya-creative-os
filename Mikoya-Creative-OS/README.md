@@ -9,9 +9,10 @@ The engine is **product- and brand-agnostic**. Mikoya is the first brand
 workspace; a second demo brand (Lumen Skin, a premium face serum) runs through
 exactly the same pipeline to prove it.
 
-> **Milestone 1 (this version):** architecture, polished frontend, input
-> workflow, asset handling, output gallery and the TypeScript data model.
-> **No AI APIs are called.** Generation is simulated with realistic mock data.
+> **Status:** Foundation V1 (architecture, UI, strategy layers, 1:1 + 9:16
+> variants) plus **Phase 2: real AI product analysis**. The **Analyze
+> Product** step calls Claude server-side and produces a validated Product
+> Truth Pack. Concept and asset generation are still simulated with mock data.
 
 ## Run it
 
@@ -28,23 +29,40 @@ Other scripts:
 | `npm run start`     | Serve the production build           |
 | `npm run lint`      | ESLint (Next.js config)              |
 | `npm run typecheck` | Generate route types + `tsc`         |
-| `npm test`          | Unit tests (Vitest) for the strategy/provenance rules |
+| `npm test`          | Unit tests (Vitest): strategy, provenance, URL safety, page extraction, analysis, API route |
 
-Requires Node 20.9+. No environment variables are needed yet. `.env.example`
-lists the keys future integrations will use.
+Requires Node 20.9+.
+
+### Environment
+
+```bash
+cp .env.example .env.local
+# then set:
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+| Variable | Required | Purpose |
+| -------- | -------- | ------- |
+| `ANTHROPIC_API_KEY` | For **Analyze Product** | Server-side only. Without it the app still works; analysis shows a clear "not configured" error and offers demo data. |
+| `ANTHROPIC_ANALYSIS_MODEL` | No | Overrides the analysis model (default `claude-opus-5-5`). |
+| `ANTHROPIC_ANALYSIS_EFFORT` | No | `low` / `medium` (default) / `high` / `xhigh` / `max`. |
+
+The model is configured in exactly one place: `lib/server/ai/config.ts`.
 
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 · Lucide.
 UI primitives are small, shadcn-style components in `components/ui` (no
 component library dependency). Runtime dependencies beyond Next/React:
-`lucide-react`, `clsx` and `tailwind-merge`.
+`@anthropic-ai/sdk` (server-only), `zod` (validation), `lucide-react`, `clsx`
+and `tailwind-merge`.
 
 ## Pages
 
 | Route                | Status      | Purpose                                              |
 | -------------------- | ----------- | ---------------------------------------------------- |
-| `/new`               | Full UI     | Create Ads: brand workspace, product, brand context, creative strategy, output mix, mechanisms |
+| `/new`               | Full UI     | Create Ads: brand workspace, product, **Analyze Product + fact review**, brand context, creative strategy, output mix, mechanisms |
+| `POST /api/analyze-product` | Internal API | Product input + page + images → validated `ProductTruthPack` |
 | `/generations`       | Full UI     | History of batches                                   |
 | `/generations/[id]`  | Full UI     | Concept gallery (1:1 + 9:16 per card), filters, sort, detail drawer with format switcher |
 | `/recipes`           | Read-only   | Recipe cards + the creative architecture             |
@@ -197,6 +215,93 @@ The UI only talks to the `GenerationProvider` interface
 (`lib/pipeline/provider.ts`). Today it is `mockProvider`, which runs the mock
 pipeline in `lib/mock/generate-batch.ts`.
 
+### Product analysis (Phase 2)
+
+```
+PRODUCT INPUT (name, URL, images, notes)
+   ↓  POST /api/analyze-product            app/api/analyze-product/route.ts
+VALIDATE request + URL (no network yet)   analyze-product.ts, url-safety.ts
+   ↓  missing key? → 503 before any cost
+FETCH the page once (SSRF-safe)           lib/server/fetch/fetch-page.ts
+   ↓
+CLEAN + EXTRACT page content              lib/server/fetch/extract-page.ts
+   (title, meta, JSON-LD product/offer/rating/FAQ, headings, price text, visible text; capped)
+   ↓
+ONE Claude call: page block + images      lib/server/product-analysis/analyzers.ts
+   (structured output, zod schema)        schema.ts, prompt.ts
+   ↓
+VALIDATE + MAP to ProductTruthPack        schema.ts → parseAnalysisOutput(), toTruthPack()
+   ↓
+UI: Review Product Facts → Creative Strategy → Generate
+```
+
+The Product Truth Pack is created in **`toTruthPack()`**
+(`lib/server/product-analysis/schema.ts`). The model's output is validated
+twice: by the SDK's structured-output parser and again by our own zod schema.
+Malformed output returns `invalid_ai_output` and nothing is saved.
+
+**Strict factuality and provenance.**
+- The model never chooses `source`. It only cites a `sourceRef`:
+  `product_page`, `main_image`, `additional_image_<n>` or `user_input`.
+- `toTruthPack()` derives provenance from that: `user_input` stays
+  `user_input`, and page/image evidence becomes `source_fact`. The AI is the
+  extractor, not the source.
+- Facts that cite a source that wasn't provided are **dropped**. So are page
+  facts without an evidence quote. Quotes that can't be matched in the page
+  text produce a review warning.
+- The entered product name and URL always win (`user_input`). If the page
+  names the product differently, you get a warning.
+- Prices need a valid amount and an ISO currency code. Conflicting prices
+  stay unknown.
+- Anything unsupported stays in `missing` and is shown in the UI. Customer
+  psychology never enters the Truth Pack; that belongs to Strategy
+  Hypotheses.
+- Each fact can carry a short `evidence` snippet (≤160 chars) for auditing.
+
+**Mock vs real analyzer.** Both implement `ProductAnalyzer`:
+
+| Analyzer | When | What it does |
+| -------- | ---- | ------------ |
+| `RealProductAnalyzer` | "Analyze Product", only with `ANTHROPIC_API_KEY` set | Page fetch + 1 Claude call, structured output, validation |
+| `MockProductAnalyzer` | "Use demo data (mock)", tests, demos | No network, no AI. Returns stored project facts for known URLs, otherwise only user input. |
+
+**Cost control.** Analysis runs only on an explicit click, never on
+keystrokes. One click means one page fetch, one preprocessing pass and one
+model call. The result is marked **out of date** when the product name, URL
+or images change, and stale facts aren't used until you re-analyze. The SDK
+retries 429/5xx up to 2 times. Refusals use the server-side fallback
+(`fallbacks: "default"`).
+
+**Errors.** Every failure maps to a user-safe code and message (no stack
+traces or secrets): `invalid_url`, `blocked_url`, `fetch_failed`,
+`fetch_timeout`, `not_html`, `page_too_large`, `too_many_redirects`,
+`image_invalid`, `missing_api_key`, `auth_failed`, `rate_limited`,
+`ai_unavailable`, `ai_refused`, `invalid_ai_output`.
+
+### URL fetching security (SSRF)
+
+`lib/server/fetch/url-safety.ts` and `fetch-page.ts`:
+
+- **Protocols:** only `http:` / `https:`. `file:`, `ftp:`, `data:` and
+  `javascript:` are rejected, and so are URLs with embedded credentials.
+- **Ports:** standard ports only (80/443).
+- **Hostnames:** `localhost`, `*.localhost`, `.local` / `.internal` /
+  `.lan` etc. and single-label hostnames are rejected.
+- **Blocked IP ranges:** loopback, private (10/8, 172.16/12, 192.168/16),
+  link-local incl. cloud metadata (169.254.169.254), CGNAT, multicast and
+  reserved ranges; IPv6 `::1`, `fc00::/7`, `fe80::/10` and IPv4-mapped/NAT64
+  forms.
+- **DNS pinning:** DNS is resolved **inside the socket connect** via a custom
+  `lookup`, for every connection and every redirect hop. A hostname can't pass
+  validation and then rebind to an internal IP.
+- **Redirects:** at most 3, each target re-validated.
+- **Timeout:** 10 s overall.
+- **Size limit:** 3 MB decompressed; gzip, deflate and brotli are supported.
+- **Content type:** HTML only.
+- **Images:** accepted as uploaded data URLs or bundled `/references/*`
+  files (path-traversal-safe). The server never fetches remote image URLs.
+  Limits: 6 images, 5 MB each.
+
 ### Folder structure
 
 ```
@@ -211,7 +316,11 @@ components/
   generations/           Generations list
   recipes/               Recipe card
 lib/
-  types/                 Domain model (index.ts) + strategy & provenance types (strategy.ts)
+  types/                 Domain model (index.ts), strategy & provenance (strategy.ts), analysis API (analysis.ts)
+  server/                SERVER-ONLY code
+    ai/                  Anthropic client + the single model config
+    fetch/               URL safety (SSRF), page fetch, page extraction
+    product-analysis/    analyzeProduct(), analyzers (real/mock), schema, prompt, images, errors
   prompts/               Global creative constitution, prompt builder, renderer instructions
   strategy/              Truth pack, brand strategy, hypotheses, dynamic strategy, provenance
   projects/              Brand workspaces (ALL brand-specific data lives here)
@@ -220,6 +329,7 @@ lib/
   mock/                  Generic concept templates, mock pipeline, seed batches
   store/                 Client stores (batches in localStorage, toasts)
   assets.ts              File → ProductAsset (validation + downscaled preview)
+  analysis-client.ts     Browser helper for POST /api/analyze-product
 ```
 
 ### Data and storage
@@ -241,11 +351,12 @@ lib/
 
 ## Where AI will plug in
 
-All of these are mocked today. Each has a single, typed seam:
+Step 1 is **live** (Phase 2). The others are still mocked, each behind a
+single, typed seam:
 
 | Step | Future AI call | Replaces | Output |
 | ---- | -------------- | -------- | ------ |
-| 1 | `analyzeProduct()`: scrape the URL, then a vision pass over the assets | `project.truthPacks` / `buildTruthPackFromInput()` | `ProductTruthPack` (facts only) |
+| 1 ✅ | `analyzeProduct()` (`lib/server/product-analysis/`): SSRF-safe page fetch + one Claude call over page and images | `project.truthPacks` / `buildTruthPackFromInput()` (still used by the mock analyzer and when no analysis ran) | `ProductTruthPack` (facts only) |
 | 2 | `inferStrategy()`: fills gaps in brand and product knowledge | `project.hypotheses` | `StrategyHypothesis[]` (`ai_inference` + confidence, `reviewStatus: "unreviewed"`) |
 | 3 | `writeConcepts()`: LLM with `buildConceptPrompt()` + `CREATIVE_CONCEPT_JSON_SCHEMA` | `lib/mock/concept-templates.ts` / project mock copy | `CreativeConceptDraft[]`, validated with `parseConceptDraft()` |
 | 4 | `renderVariant()`: HTML / image / video / UGC renderer with `buildVariantPrompt()` | client-side `CreativePreview` | `variant.previewUrl`, `variant.outputUrl` |
@@ -256,8 +367,8 @@ so user input always wins.
 
 ## Recommended next step
 
-1. Add a server route (`app/api/generations/route.ts`) that implements
-   `analyzeProduct()` for the truth pack.
+1. Manual correction of analysed facts (edit / remove / add a fact as
+   `user_input`).
 2. Implement `writeConcepts()`: one LLM call per recipe using
    `buildConceptPrompt()`. The model writes each idea once, then the system
    expands it into the 1:1 and 9:16 variants.

@@ -43,17 +43,26 @@ export interface SourcedStatement {
   rationale?: string;
   /** Where it was found: URL, asset id, field name, hypothesis id… */
   sourceRef?: string;
+  /** Short verbatim snippet supporting the statement (facts only). */
+  evidence?: string;
   /** User review. Only meaningful for ai_inference; defaults to "unreviewed". */
   reviewStatus?: ReviewStatus;
   /** True when the user explicitly approved this item (accepted). */
   approvedByUser?: boolean;
 }
 
-/** A verified product fact. Can only come from the user or a source. */
+/**
+ * A verified product fact. Can only come from the user or a source.
+ * `sourceRef` names the evidence: "product_page", "main_image",
+ * "additional_image_2", "user_input"… `evidence` is a short supporting snippet.
+ * Facts extracted by AI from provided page/image evidence are still
+ * source_fact — the AI is the extractor, not the source.
+ */
 export interface Fact<T = string> {
   value: T;
   source: FactSource;
   sourceRef?: string;
+  evidence?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,6 +102,7 @@ export interface ProductReview {
   rating: number;
   source: FactSource;
   sourceRef?: string;
+  evidence?: string;
 }
 
 export interface AvailableAsset {

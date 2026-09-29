@@ -32,7 +32,7 @@ export function BrandContextSection({ value, onChange, toneOptions, desireOption
         className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left sm:px-8"
       >
         <div className="flex items-start gap-4">
-          <span className="mt-0.5 font-mono text-[11px] tracking-wider text-faint">B</span>
+          <span className="mt-0.5 font-mono text-[11px] tracking-wider text-faint">C</span>
           <div>
             <h2 className="text-[15px] font-semibold tracking-tight">Brand context</h2>
             <p className="mt-1 text-[13px] text-muted">

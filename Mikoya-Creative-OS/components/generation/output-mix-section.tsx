@@ -33,7 +33,7 @@ export function OutputMixSection({ mix, presetId, onChange, uncoveredTypes }: Ou
 
   return (
     <SectionCard
-      step="D"
+      step="E"
       title="Output mix"
       description="How many creative concepts of each kind? Every concept is delivered in 1:1 and 9:16."
       actions={

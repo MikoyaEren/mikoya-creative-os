@@ -81,7 +81,7 @@ export function fact<T = string>(value: T, source: FactSource = "source_fact", s
 }
 
 export function factToStatement(f: Fact<string>): SourcedStatement {
-  return { statement: f.value, source: f.source, sourceRef: f.sourceRef };
+  return { statement: f.value, source: f.source, sourceRef: f.sourceRef, evidence: f.evidence };
 }
 
 const normalise = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");

@@ -86,6 +86,7 @@ export function createMockBatch(request: GenerationRequest, options: MockOptions
     brand: request.brand,
     direction: request.direction,
     reviews: request.hypothesisReviews,
+    truthPack: request.truthPack,
   });
   const { truthPack, dynamicStrategy } = snapshot;
   const productName = truthPack.productName.value;

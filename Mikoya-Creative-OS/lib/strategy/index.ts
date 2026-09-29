@@ -1,4 +1,4 @@
-import type { BrandContext, CreativeDirectionInput, ReviewStatus, ProductInput, StrategySnapshot } from "@/lib/types";
+import type { BrandContext, CreativeDirectionInput, ProductInput, ProductTruthPack, ReviewStatus, StrategySnapshot } from "@/lib/types";
 import type { CreativeProject } from "@/lib/projects/types";
 import { GLOBAL_CREATIVE_CONSTITUTION } from "@/lib/prompts/global-creative-constitution";
 import { applyBrandContext } from "./brand-strategy";
@@ -18,6 +18,8 @@ export interface SnapshotInputs {
   brand: BrandContext;
   direction?: CreativeDirectionInput;
   reviews?: Record<string, ReviewStatus>;
+  /** A truth pack produced by product analysis. Takes precedence over stored/mock data. */
+  truthPack?: ProductTruthPack | null;
 }
 
 /**
@@ -25,11 +27,12 @@ export interface SnapshotInputs {
  * Generation preview and by the generation pipeline, so what the user sees
  * is exactly what the concept writer receives.
  *
- * Future: truth pack ← analyzeProduct(), hypotheses ← inferStrategy().
+ * Truth pack priority: analysed (POST /api/analyze-product) > stored project
+ * mock data > user input only. Future: hypotheses ← inferStrategy().
  */
-export function buildStrategySnapshot({ project, product, brand, direction, reviews }: SnapshotInputs): StrategySnapshot {
+export function buildStrategySnapshot({ project, product, brand, direction, reviews, truthPack: analyzed }: SnapshotInputs): StrategySnapshot {
   const stored = project.truthPacks.find((p) => p.productUrl?.value && p.productUrl.value === product.url.trim());
-  const truthPack = stored ? withUserInput(stored, product) : buildTruthPackFromInput(product);
+  const truthPack = analyzed ?? (stored ? withUserInput(stored, product) : buildTruthPackFromInput(product));
   const brandStrategy = applyBrandContext(project.brandStrategy, brand);
   const hypotheses = applyReviews(project.hypotheses, reviews);
   const dynamicStrategy = deriveDynamicCreativeStrategy({
