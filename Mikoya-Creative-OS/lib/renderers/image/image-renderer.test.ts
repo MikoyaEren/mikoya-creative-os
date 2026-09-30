@@ -1148,6 +1148,20 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
     expect(box.height).toBe(Math.round(2048 * placement.height));
   });
 
+  it("restates whitespace as breathing room formed by the real set, keeping the continuous-scene, no-band and text-free rules", () => {
+    expect(hero.visualDescription).toContain("generous whitespace");
+    for (const f of ["1:1", "9:16"] as const) {
+      const { prompt } = plate(f);
+      const scene = prompt.split("\n").find((l) => l.startsWith("Scene:"))!;
+      expect(scene).not.toMatch(/whitespace/i);
+      expect(scene).toContain("Calm uncluttered breathing room formed naturally by the real set, surface, light and depth, soft natural shadow.");
+      expect(prompt).toContain("The real scene must continue across the entire frame");
+      expect(prompt).toContain("Do not create blank, flat, solid-colour, artificial or graphic bands for text");
+      expect(prompt).toContain("no blank, flat, solid-colour, artificial or graphic bands, panels or empty areas");
+      expect(prompt).toContain("The image carries no advertising copy");
+    }
+  });
+
   it("leaves reference_conditioned Lifestyle and POV prompts unchanged", () => {
     const expected = JSON.parse(readFileSync(path.join(process.cwd(), "test", "fixtures", "reference-conditioned-prompts.json"), "utf8")) as Record<string, string>;
     for (const c of [lifestyle, pov])

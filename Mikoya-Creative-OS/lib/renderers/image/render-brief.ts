@@ -188,6 +188,10 @@ const sharesCopy = (clause: string, grams: Set<string>) => {
 const isCopyClause = (c: string, grams: Set<string>) => TEXT_ELEMENT.test(c) || COPY_LAYOUT.test(c) || sharesCopy(c, grams);
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+/** Whitespace / negative-space wording ("generous whitespace") invites flat empty areas; in a scene plate it is restated as part of the set. */
+const WHITESPACE = /\b(white ?space|negative space|empty (?:space|area)s?)\b/i;
+const SET_BREATHING_ROOM = "calm uncluttered breathing room formed naturally by the real set, surface, light and depth";
+
 /**
  * A locked scene plate describes only the set: product noun phrases become the placement spot,
  * clauses asking to reproduce the product or its branding are dropped, and so is every typography /
@@ -203,7 +207,7 @@ export function scenePlateText(text: string, copy: string[] = []): string {
         .split(/;|,(?![^(]*\))/)
         .map((c) => c.trim())
         .filter((c) => c && !isCopyClause(c, grams) && !RECREATE.test(c))
-        .map((c) => (PRODUCT_NOUN.test(c) ? c.replace(PRODUCT_PHRASE, "the clear product placement spot") : SPACE_WORDS.test(c) ? `${c} within the real set` : c));
+        .map((c) => (PRODUCT_NOUN.test(c) ? c.replace(PRODUCT_PHRASE, "the clear product placement spot") : WHITESPACE.test(c) ? SET_BREATHING_ROOM : SPACE_WORDS.test(c) ? `${c} within the real set` : c));
       return kept.length ? `${capitalize(kept.join(", "))}.` : "";
     })
     .filter(Boolean)
