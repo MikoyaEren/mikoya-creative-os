@@ -105,22 +105,110 @@ export function productFidelityModeFor(mechanism: ImageMechanismId, concept: { p
 /** Product roles that can serve as a locked master (a product shot, never a scene or set photo). */
 export const LOCKED_MASTER_ROLES: AssetRole[] = PRODUCT_ROLES;
 
-/** Where the locked product stands in each format (fractions of the frame). */
+/** Where the locked product stands in each format (fractions of the frame), before the concept's horizontal intent. */
 export const LOCKED_PLACEMENT: Record<"product_hero" | "choose_your_fighter", Record<OutputFormat, ProductPlacement>> = {
   product_hero: { "1:1": { centerX: 0.5, bottom: 0.86, height: 0.56 }, "9:16": { centerX: 0.5, bottom: 0.78, height: 0.42 } },
   // The product takes the last slot of the line-up; the model draws the other options.
   choose_your_fighter: { "1:1": { centerX: 0.75, bottom: 0.84, height: 0.46 }, "9:16": { centerX: 0.5, bottom: 0.9, height: 0.3 } },
 };
 
+export type HorizontalIntent = "left" | "centre" | "right";
+const HORIZONTAL_X: Record<HorizontalIntent, number> = { left: 0.36, centre: 0.5, right: 0.64 };
+
+/** Nouns that name a product or its package (product-agnostic). */
+const PRODUCT_NOUN = /\b(products?|packages?|packaging|pouch(?:es)?|bottles?|box(?:es)?|jars?|tubes?|tins?|sachets?|packs?|packshots?|cartons?|containers?)\b/i;
+/** A package noun phrase ("the matte black pouch"): named in an objective it becomes "the product". */
+const PACKAGE_PHRASE = /\b(?:(?:the|a|an|its|our|their|your)\s+)?(?:[\w-]+\s+){0,3}?(?:packages?|packaging|pouch(?:es)?|bottles?|box(?:es)?|jars?|tubes?|tins?|sachets?|packs?|packshots?|cartons?|containers?)\b/gi;
+const PRODUCT_PHRASE = /\b(?:(?:the|a|an|its|our|their|your)\s+)?(?:[\w-]+\s+){0,3}?(?:products?|packages?|packaging|pouch(?:es)?|bottles?|box(?:es)?|jars?|tubes?|tins?|sachets?|packs?|packshots?|cartons?|containers?)\b/i;
+
+/**
+ * The product's horizontal place in one format: the concept's structured placement when it has one,
+ * otherwise a closed vocabulary (left / right / centre) read only from the layout-note clause that
+ * names the product. Anything else is centre.
+ */
+export function productHorizontalIntent(concept: { productPlacement?: Partial<Record<OutputFormat, HorizontalIntent>>; layoutNotes?: Partial<Record<OutputFormat, string>> }, format: OutputFormat): HorizontalIntent {
+  const structured = concept.productPlacement?.[format];
+  if (structured) return structured;
+  const clause = clean(concept.layoutNotes?.[format]).split(/[;.]|,(?![^(]*\))/).find((c) => PRODUCT_NOUN.test(c));
+  const word = clause?.match(/\b(left|right|cent(?:re|er)(?:ed|d)?|middle)\b/i)?.[1].toLowerCase();
+  return word === "left" ? "left" : word === "right" ? "right" : "centre";
+}
+
+/** The one placement a locked render uses: the scene-plate prompt and the compositor both read it from the brief. */
+export function resolveLockedPlacement(mechanism: ImageMechanismId, concept: Parameters<typeof productHorizontalIntent>[0], format: OutputFormat): ProductPlacement {
+  const base = LOCKED_PLACEMENT[mechanism as keyof typeof LOCKED_PLACEMENT][format];
+  return mechanism === "product_hero" ? { ...base, centerX: HORIZONTAL_X[productHorizontalIntent(concept, format)] } : base;
+}
+
+const horizontalWords = (x: number) => (x < 0.3 ? "on the left" : x < 0.45 ? "left of centre" : x > 0.7 ? "on the right" : x > 0.55 ? "right of centre" : "centred");
 const placementWords = (p: ProductPlacement) =>
-  `${p.centerX < 0.4 ? "left" : p.centerX > 0.6 ? "right" : "centre"} of the frame, standing on the surface about ${Math.round((1 - p.bottom) * 100)}% above the bottom edge, about ${Math.round(p.height * 100)}% of the frame height tall`;
+  `${horizontalWords(p.centerX)} in the frame, standing on the surface about ${Math.round((1 - p.bottom) * 100)}% above the bottom edge, about ${Math.round(p.height * 100)}% of the frame height tall`;
 
 /** Scene-plate instructions: the model builds the set; the real product is composited afterwards. */
 const LOCKED = (p: ProductPlacement) => [
-  "Do not draw the product or any package, bottle, box, pouch, jar or label: a photo of the real product is composited onto this scene afterwards",
-  `Wherever the scene mentions the product, keep its place clear and unobstructed: ${placementWords(p)}`,
-  "Light that spot and its surface so an object standing there sits naturally, with a level surface seen straight-on at product height",
+  `Leave a clean, naturally lit product placement area ${placementWords(p)}`,
+  "Reserve visual focus for the real product that will be composited there later",
+  "Do not draw any product, package, bottle, box, pouch, jar or label: the real product photo is added afterwards",
+  "Light that spot and its level surface straight-on at product height so an object standing there sits naturally",
 ];
+
+// ---------------------------------------------------------------------------
+// Text-free sanitising (deterministic)
+// ---------------------------------------------------------------------------
+
+/** Asks to recreate a product from its reference or to render its branding. */
+const RECREATE = /\b(references?|reproduc\w*|recreat\w*|replicat\w*|exactly as|identical|as shown|branding|wordmarks?|labels?|logos?)\b/i;
+/** Layout words that only place copy. */
+const COPY_LAYOUT = /\b(chips?|padding|margins?|ui)\b/i;
+
+/** Quoted copy and parentheses that contain quotes ("('Your ritual.' / 'Your shade…')") are removed before splitting. */
+function stripQuotedCopy(text: string | undefined): string {
+  return clean(text)
+    .replace(/\([^()]*['"‘’“”][^()]*\)/g, " ")
+    .replace(/(^|[\s(/])(['"‘“])[^'"’”]{1,160}?(['"’”])(?=[\s).,;:/!?]|$)/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const words = (s: string) => s.toLowerCase().match(/[a-z0-9%]+/g) ?? [];
+/** Three-word sequences of the concept's own copy: a clause sharing one is copy, not scene. */
+function copyGrams(copy: string[]): Set<string> {
+  const out = new Set<string>();
+  for (const t of copy) {
+    const w = words(t);
+    for (let i = 0; i + 3 <= w.length; i++) out.add(w.slice(i, i + 3).join(" "));
+  }
+  return out;
+}
+const sharesCopy = (clause: string, grams: Set<string>) => {
+  const w = words(clause);
+  for (let i = 0; i + 3 <= w.length; i++) if (grams.has(w.slice(i, i + 3).join(" "))) return true;
+  return false;
+};
+const isCopyClause = (c: string, grams: Set<string>) => TEXT_ELEMENT.test(c) || COPY_LAYOUT.test(c) || sharesCopy(c, grams);
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * A locked scene plate describes only the set: product noun phrases become the placement spot,
+ * clauses asking to reproduce the product or its branding are dropped, and so is every typography /
+ * copy clause. Space words stay tied to the real set.
+ */
+export function scenePlateText(text: string, copy: string[] = []): string {
+  const grams = copyGrams(copy);
+  return stripQuotedCopy(text)
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => {
+      const kept = sentence
+        .replace(/[.!?]+$/, "")
+        .split(/;|,(?![^(]*\))/)
+        .map((c) => c.trim())
+        .filter((c) => c && !isCopyClause(c, grams) && !RECREATE.test(c))
+        .map((c) => (PRODUCT_NOUN.test(c) ? c.replace(PRODUCT_PHRASE, "the clear product placement spot") : SPACE_WORDS.test(c) ? `${c} within the real set` : c));
+      return kept.length ? `${capitalize(kept.join(", "))}.` : "";
+    })
+    .filter(Boolean)
+    .join(" ");
+}
 
 // ---------------------------------------------------------------------------
 // Mechanism visual grammar (product-agnostic)
@@ -133,6 +221,8 @@ interface MechanismGrammar {
   lighting: string;
   style: string;
   negative: string[];
+  /** product_locked scene plate: subject / camera / negatives that never ask for the product itself. */
+  locked?: { subject: string; camera: Record<OutputFormat, string>; negative: string[] };
 }
 
 const GRAMMAR: Record<ImageMechanismId, MechanismGrammar> = {
@@ -190,6 +280,14 @@ const GRAMMAR: Record<ImageMechanismId, MechanismGrammar> = {
     lighting: "directional studio light with sculpted highlights and soft, realistic shadows",
     style: "premium editorial campaign photography with deliberate set design — not plain e-commerce on white",
     negative: ["no plain white e-commerce background unless the scene asks for it", "no floating product without a surface or shadow"],
+    locked: {
+      subject: "a premium editorial set, surface and light built around a clear product placement spot; the set supports the product that will be composited there later",
+      camera: {
+        "1:1": "camera level with the product placement spot, straight-on, 85–100 mm look",
+        "9:16": "camera level with the product placement spot, straight-on, 85 mm look",
+      },
+      negative: ["no plain white e-commerce background unless the scene asks for it", "no floating objects without a surface or shadow"],
+    },
   },
   choose_your_fighter: {
     subject: "a playful visual-selection line-up: each option from the concept shown as its own distinct, equally weighted choice",
@@ -217,8 +315,9 @@ const FIDELITY = [
 
 const NO_PRODUCT = ["Do not show a branded product or package (the concept keeps the product out of the image)"];
 
+const NO_ADDED_TEXT = "no added text anywhere in the image: no words, letters, numbers, captions, headlines, prices, badges or UI";
 const NEGATIVE_COMMON = [
-  "no added text anywhere in the image: no words, letters, numbers, captions, headlines, prices, badges or UI (the product's own packaging keeps only the branding shown in the reference)",
+  `${NO_ADDED_TEXT} (the product's own packaging keeps only the branding shown in the reference)`,
   "no blank, flat, solid-colour, artificial or graphic bands, panels or empty areas: the photographed scene fills the whole frame edge to edge",
   "no added logos or watermarks",
   "no distorted or melted objects",
@@ -247,6 +346,8 @@ const asScene = (d: string) => (SPACE_WORDS.test(d) ? `${d} (through the real sc
 export interface BriefConcept {
   id: string;
   mechanism: ImageMechanismId;
+  /** Structured product placement per format, when the concept provides it (takes precedence over layout notes). */
+  productPlacement?: Partial<Record<OutputFormat, HorizontalIntent>>;
   objective: string;
   angle: string;
   visualDescription: string;
@@ -261,11 +362,12 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /** Composition notes may mention where copy goes later ("caption bar top", "CTA low"): those clauses are dropped, never drawn. */
 const TEXT_ELEMENT = /\b(caption|overlay|cta|headline|header|text|copy|title|label|logo|button|safe zone|typography|typeface|font|serif|sans[- ]serif|lettering|wordmark)s?\b/i;
-export function visualCompositionNote(note: string | undefined): string {
-  return clean(note)
+export function visualCompositionNote(note: string | undefined, copy: string[] = [], opts: { dropProduct?: boolean } = {}): string {
+  const grams = copyGrams(copy);
+  return stripQuotedCopy(note)
     .split(/[;.]|,(?![^(]*\))/)
     .map((c) => c.trim())
-    .filter((c) => c && !TEXT_ELEMENT.test(c))
+    .filter((c) => c && !isCopyClause(c, grams) && !(opts.dropProduct && PRODUCT_NOUN.test(c)))
     .join("; ");
 }
 
@@ -324,7 +426,7 @@ export function compileImageRenderBrief(args: {
   const locked = productFidelityMode === "product_locked";
   // A locked product is never sent as a reference: the model must not redraw it.
   const references = locked ? [] : args.references;
-  const placement = locked ? LOCKED_PLACEMENT[concept.mechanism as keyof typeof LOCKED_PLACEMENT][variant.aspectRatio] : null;
+  const placement = locked ? resolveLockedPlacement(concept.mechanism, concept, variant.aspectRatio) : null;
   const lockedProduct: ImageLockedProduct | null = locked && args.lockedMaster ? { ...args.lockedMaster, placement: placement! } : null;
   const g = GRAMMAR[concept.mechanism];
   const format = variant.aspectRatio;
@@ -333,28 +435,40 @@ export function compileImageRenderBrief(args: {
   const mood = [...new Map([...clean(concept.tone).split(/[,;]/), ...context.desiredEmotions].map((m) => m.trim()).filter(Boolean).map((m) => [m.toLowerCase(), m])).values()];
   // Visual direction about typography or copy is for the overlay, not the photograph.
   const direction = context.visualDirection.filter((d) => !TEXT_ELEMENT.test(d));
-  const layoutNote = visualCompositionNote(concept.layoutNotes?.[format]);
+  const copy = (concept.copyFields ?? []).map((f) => f.text);
+  // Locked plates: the resolved placement says where the product goes, so layout clauses about it are dropped.
+  const layoutNote = visualCompositionNote(concept.layoutNotes?.[format], copy, { dropProduct: locked });
   const names = [context.brandName, context.productName];
+  const lockedGrammar = locked ? g.locked : undefined;
+  const frame = format === "1:1" ? "square frame" : "vertical frame";
   const brief: Omit<ImageRenderBrief, "briefHash"> = {
     conceptId: concept.id,
     variantId: variant.id,
     mechanism: concept.mechanism,
     aspectRatio: format,
-    objective: clean([concept.objective, concept.angle && `Angle: ${concept.angle}`].filter(Boolean).join(". ")),
-    scene: neutralizeNames(concept.visualDescription, names),
-    subject: g.subject,
+    objective: clean([concept.objective, concept.angle && `Angle: ${concept.angle}`].filter(Boolean).join(". ")).replace(locked ? PACKAGE_PHRASE : /$^/, "the product"),
+    scene: locked ? scenePlateText(neutralizeNames(concept.visualDescription, names), copy) : neutralizeNames(concept.visualDescription, names),
+    subject: lockedGrammar?.subject ?? g.subject,
     environment: `as described in the scene; believable and lived-in, consistent with ${productWord}`,
-    composition: [g.composition[format], layoutNote && `Concept note: ${layoutNote}`].filter(Boolean).join(". "),
-    camera: g.camera[format],
+    composition: [
+      lockedGrammar ? `${frame}; a clear product placement spot ${horizontalWords(placement!.centerX)} on an editorial set with interesting surfaces; the rest of the set calm and uncluttered` : g.composition[format],
+      layoutNote && `Concept note: ${layoutNote}`,
+    ]
+      .filter(Boolean)
+      .join(". "),
+    camera: lockedGrammar?.camera[format] ?? g.camera[format],
     lighting: g.lighting,
     mood: mood.join("; "),
     visualStyle: [g.style, ...direction.map(asScene), `palette hints: ${context.brandColors.dark} and ${context.brandColors.accent}`].join("; "),
-    productRole: [neutralizeNames(concept.productRole, names), references.length && looks ? `Product appearance: ${neutralizeNames(looks, names)}` : ""].filter(Boolean).join(". "),
+    // A locked plate never describes the product: its role is the placement spot, set by the fidelity rules.
+    productRole: locked ? "" : [neutralizeNames(concept.productRole, names), references.length && looks ? `Product appearance: ${neutralizeNames(looks, names)}` : ""].filter(Boolean).join(". "),
     referenceAssets: references,
     productFidelityMode,
     lockedProduct,
     productFidelityInstructions: locked ? LOCKED(placement!) : references.length ? FIDELITY : NO_PRODUCT,
-    negativeInstructions: [...NEGATIVE_COMMON, ...(locked ? ["no product, package, bottle, box, pouch, jar or label anywhere in the image"] : []), ...g.negative],
+    negativeInstructions: locked
+      ? [NO_ADDED_TEXT, ...NEGATIVE_COMMON.slice(1), "no product, package, bottle, box, pouch, jar or label anywhere in the image", ...(lockedGrammar?.negative ?? g.negative)]
+      : [...NEGATIVE_COMMON, ...g.negative],
     textPolicy: "text_free",
     textFreeInstructions: TEXT_FREE,
     choices: choicesOf(concept).map((c) => neutralizeNames(c, names)),

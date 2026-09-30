@@ -78,5 +78,45 @@
         }
       ]
     }
+  },
+  {
+    "source": "Real AI Product Hero concept batch_ac340d04 (2026-09-30T09:36:18.608Z), normal concept pipeline, strategy snapshot snap_97e97369; unedited",
+    "concept": {
+      "id": "batch_ac340d04_c01",
+      "mechanism": "product_hero",
+      "renderer": "image",
+      "objective": "Stop the scroll with a calm, premium product moment and make the ritual feel like self-expression.",
+      "angle": "The pouch as a quiet identity object: matcha as a personal ritual that reflects who you are.",
+      "visualDescription": "The matte black Mikoya pouch, reproduced exactly from the reference, standing on a seamless cream backdrop under soft natural light. Beside it, a small, clean mound of vivid green fine powder, the only colour accent in the frame. Deep green editorial serif headline, generous whitespace, soft natural shadow.",
+      "productRole": "hero: pouch centred, with a small mound of vivid green powder as the colour accent",
+      "tone": "Premium, calm, friend-to-friend, quietly confident",
+      "layoutNotes": {
+        "1:1": "Pouch left of centre at about 55% of frame height, powder mound low at its right base. Headline set right in two lines ('Your ritual.' / 'Your shade of green.') in a deep green serif. Small deep green CTA chip directly under the headline. Wide cream margins.",
+        "9:16": "Headline at the top in two stacked lines, large serif, with plenty of top padding. Pouch centred and filling about 50% of the height, powder mound at its base. CTA chip in the lower third, clear of the UI safe zones."
+      },
+      "copyFields": [
+        {
+          "key": "headline",
+          "text": "Your ritual. Your shade of green.",
+          "rows": []
+        },
+        {
+          "key": "cta",
+          "text": "Start your ritual",
+          "rows": []
+        }
+      ],
+      "hook": "Your ritual. Your shade of green.",
+      "variants": [
+        {
+          "id": "batch_ac340d04_c01_1x1",
+          "aspectRatio": "1:1"
+        },
+        {
+          "id": "batch_ac340d04_c01_9x16",
+          "aspectRatio": "9:16"
+        }
+      ]
+    }
   }
 ]

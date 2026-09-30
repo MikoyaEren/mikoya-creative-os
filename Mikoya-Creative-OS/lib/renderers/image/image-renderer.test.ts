@@ -20,7 +20,7 @@ import { FsRenderStore } from "../store/fs-store";
 import { REFERENCE_ASSETS } from "@/lib/projects/mikoya/assets";
 import { imageConceptControls, imageVariantAction, isUnresolvedImageJob, NEW_PAID_GENERATION, replacementNeedsConfirmation, unresolvedReplacement } from "./lifecycle";
 import { normalizeToFormat } from "./normalize";
-import { productFidelityModeFor } from "./render-brief";
+import { productFidelityModeFor, productHorizontalIntent, resolveLockedPlacement, scenePlateText } from "./render-brief";
 import { renderSummary, renderSummaryText } from "@/lib/constants";
 import { knightVisionPrompt } from "../knightvision/prompt";
 import type { RenderRecord } from "@/lib/types";
@@ -949,7 +949,7 @@ describe("product fidelity modes", () => {
     expect(rec.image!.brief).toMatchObject({ productFidelityMode: "product_locked", referenceAssets: [], lockedProduct: { assetId: MASTER, role: "packaging" } });
     const body = kv.calls.find((x) => x.url.endsWith("/generate-image"))!.body as { ref_images?: unknown[]; prompt: string };
     expect(body.ref_images).toBeUndefined();
-    expect(body.prompt).toContain("Do not draw the product or any package");
+    expect(body.prompt).toContain("Do not draw any product, package, bottle, box, pouch, jar or label");
     expect(body.prompt).toContain("no product, package, bottle, box, pouch, jar or label anywhere in the image");
     expect(body.prompt).not.toContain("Use the supplied reference image(s) as the real product");
     expect(rec.warnings.join(" ")).toMatch(/product_composited/);
@@ -1053,5 +1053,111 @@ describe("the real product cut-out master in the repo", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// product_locked scene plates: the real Product Hero concept (batch_ac340d04_c01)
+// ---------------------------------------------------------------------------
+
+describe("product_locked scene plate (real Product Hero concept)", () => {
+  const hero = FIXTURES.find((f) => f.concept.id === "batch_ac340d04_c01")!.concept;
+  const heroCopy = (hero.copyFields ?? []).map((f) => f.text);
+  const master = { assetId: MASTER, role: "packaging" as const };
+  const plate = (format: "1:1" | "9:16", lockedMaster: typeof master | null = master) => {
+    const brief = compileImageRenderBrief({ concept: hero, variant: hero.variants.find((v) => v.aspectRatio === format)!, context, references: selectReferences(hero.mechanism, hero, AVAILABLE), lockedMaster });
+    return { brief, prompt: new KnightVisionImageRenderer({ apiKey: null }).prompt(brief) };
+  };
+
+  it("contains no instruction to draw, recreate or reproduce the product", () => {
+    expect(hero.visualDescription).toMatch(/pouch, reproduced exactly from the reference/); // the concept itself asks for it
+    for (const f of ["1:1", "9:16"] as const) {
+      const { prompt, brief } = plate(f);
+      expect(brief.productFidelityMode).toBe("product_locked");
+      expect(prompt).not.toMatch(/\bpouch\b(?!, jar)/i); // only inside the prohibition list
+      expect(prompt).not.toMatch(/reproduc|recreat|exactly from|from the reference|clear visual focus/i);
+      expect(prompt).toContain("Leave a clean, naturally lit product placement area");
+      expect(prompt).toContain("Reserve visual focus for the real product that will be composited there later");
+      expect(brief.productRole).toBe("");
+      expect(prompt).not.toMatch(/^Product role:/m);
+    }
+  });
+
+  it("contains no package appearance or branding instruction", () => {
+    for (const f of ["1:1", "9:16"] as const) {
+      const { prompt } = plate(f);
+      expect(prompt).not.toMatch(/Product appearance|matte black|stand-up|leaf line icon|branding|wordmark|shown in the reference|Reference image/i);
+      expect(prompt).toContain("no added text anywhere in the image: no words, letters, numbers, captions, headlines, prices, badges or UI;");
+    }
+  });
+
+  it("carries no headline, CTA or copy fragment (text_free)", () => {
+    for (const f of ["1:1", "9:16"] as const) {
+      const { prompt, brief } = plate(f);
+      expect(brief.textPolicy).toBe("text_free");
+      for (const t of [...heroCopy, hero.hook, "Your shade of green", "Your ritual", "Start your ritual"]) expect(prompt.toLowerCase()).not.toContain(t.toLowerCase());
+      expect(prompt).not.toMatch(/serif headline|CTA chip|chip|padding|two stacked lines|' \/ '/i);
+      // Visual (non-typographic) style cues stay.
+      expect(prompt).toMatch(/Cream backgrounds, deep green/);
+      expect(prompt).toContain("vivid green fine powder");
+    }
+  });
+
+  it("strips quoted copy and copy-placement clauses from layout notes deterministically", () => {
+    const note = hero.layoutNotes!["1:1"]!;
+    expect(note).toContain("('Your ritual.' / 'Your shade of green.')");
+    const out = visualCompositionNote(note, heroCopy);
+    expect(out).not.toMatch(/Your shade of green|Your ritual|headline|chip|margins|'/i);
+    const scene = scenePlateText("A 'Start your ritual' sticker, a linen cloth, your ritual your shade of green written in chalk, soft light.", heroCopy);
+    expect(scene).not.toMatch(/start your ritual|shade of green|written|chalk/i); // quoted copy and an unquoted copy fragment both removed
+    expect(scene).toContain("a linen cloth, soft light");
+  });
+
+  it("resolves 1:1 to left of centre and 9:16 to centre for this concept", () => {
+    expect(productHorizontalIntent(hero, "1:1")).toBe("left");
+    expect(productHorizontalIntent(hero, "9:16")).toBe("centre");
+    expect(plate("1:1").prompt).toMatch(/product placement area left of centre in the frame/);
+    expect(plate("1:1").prompt).toMatch(/Composition: square frame; a clear product placement spot left of centre/);
+    expect(plate("9:16").prompt).toMatch(/product placement area centred in the frame/);
+    // Structured placement wins over prose; no placement information falls back to centre.
+    expect(productHorizontalIntent({ ...hero, productPlacement: { "1:1": "right" } }, "1:1")).toBe("right");
+    expect(productHorizontalIntent({ layoutNotes: {} }, "1:1")).toBe("centre");
+    expect(productHorizontalIntent({ layoutNotes: { "1:1": "Warm window light from the left" } }, "1:1")).toBe("centre");
+  });
+
+  it("uses the same resolved placement for the scene-plate prompt and the compositor", async () => {
+    for (const f of ["1:1", "9:16"] as const) {
+      const { brief, prompt } = plate(f);
+      const p = brief.lockedProduct!.placement;
+      expect(p).toEqual(resolveLockedPlacement("product_hero", hero, f));
+      expect(prompt).toContain(`${Math.round((1 - p.bottom) * 100)}% above the bottom edge, about ${Math.round(p.height * 100)}% of the frame height tall`);
+    }
+    // End to end: the compositor stands the real product where the prompt reserved the spot.
+    const scene = await sharp({ create: { width: 2048, height: 2048, channels: 3, background: "#b8ab98" } }).png().toBuffer();
+    const kv = fakeKnightVision({ download: () => new Response(new Uint8Array(scene), { status: 200, headers: { "content-type": "image/png" } }) });
+    let t = 0;
+    const deps = { renderer: renderer(kv.fetchImpl), store: await productStore(true), jobs: new MemoryImageJobStore(), now: () => t };
+    const { jobId, record } = (await startImageRender({ ...request(hero as Fixture["concept"], ["1:1"]), assets: [{ hash: MASTER, role: "packaging" }] }, deps))["1:1"]!;
+    const placement = record.image!.brief.lockedProduct!.placement;
+    t += 4000;
+    const done = (await pollImageJobs([jobId], deps))[jobId];
+    const box = done.image!.productComposite!.box;
+    expect(placement.centerX).toBe(0.36);
+    expect(Math.abs(box.left + box.width / 2 - 2048 * placement.centerX)).toBeLessThanOrEqual(1);
+    expect(box.top + box.height).toBe(Math.round(2048 * placement.bottom));
+    expect(box.height).toBe(Math.round(2048 * placement.height));
+  });
+
+  it("leaves reference_conditioned Lifestyle and POV prompts unchanged", () => {
+    const expected = JSON.parse(readFileSync(path.join(process.cwd(), "test", "fixtures", "reference-conditioned-prompts.json"), "utf8")) as Record<string, string>;
+    for (const c of [lifestyle, pov])
+      for (const v of c.variants) expect(new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: c, variant: v, context, references: selectReferences(c.mechanism, c, AVAILABLE) }))).toBe(expected[`${c.id}:${v.aspectRatio}`]);
+  });
+
+  it("still fails before any provider submission when no cut-out exists", async () => {
+    const kv = fakeKnightVision();
+    const out = await startImageRender({ ...request(hero as Fixture["concept"]), assets: [{ hash: PACKSHOT, role: "main" }] }, { renderer: renderer(kv.fetchImpl), store: await productStore(false), jobs: new MemoryImageJobStore() });
+    for (const f of ["1:1", "9:16"] as const) expect(out[f]!.record).toMatchObject({ status: "failed", error: { code: "missing_locked_product_asset" } });
+    expect(kv.calls).toEqual([]);
   });
 });
