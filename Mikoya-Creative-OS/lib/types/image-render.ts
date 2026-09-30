@@ -135,8 +135,18 @@ export interface ImageRenderMeta {
   /** How the stored output was fitted to the exact format (the provider's own file is kept alongside). */
   normalization?: ImageNormalization;
   productFidelityMode: ProductFidelityMode;
-  /** product_locked: the deterministic composite of the real product asset onto the generated scene. */
-  productComposite?: { masterAssetId: string; box: { left: number; top: number; width: number; height: number }; contactShadow: boolean };
+  /**
+   * product_locked: the deterministic composite of the real product asset onto the generated scene.
+   * "Locked" = the real source pixels, alpha, geometry, artwork and text, placed only by deterministic,
+   * recorded transforms (uniform scale, position, bounded photometric harmonisation, light gradient,
+   * shadows). RGB values may be harmonised to the scene; alpha / shape / printed content never change.
+   */
+  productComposite?: {
+    masterAssetId: string;
+    box: { left: number; top: number; width: number; height: number };
+    contactShadow: boolean;
+    transforms?: ProductCompositeTransforms;
+  };
   submittedAt: string;
   completedAt?: string;
 }
@@ -162,3 +172,23 @@ export interface ImageNormalization {
   pad?: { top: number; right: number; bottom: number; left: number; color: string };
 }
 
+
+/** Every transform applied to a locked product (audit). */
+export interface ProductCompositeTransforms {
+  scale: { productHeight: number; factor: number };
+  position: { left: number; top: number; anchorX: number; anchorBottom: number };
+  harmonisation: {
+    gains: [number, number, number];
+    exposure: number;
+    blackLift: [number, number, number];
+    contrast: number;
+    sample: { sceneMean: [number, number, number]; sceneP05: number; sceneP50: number; sceneP95: number };
+  } | null;
+  light: { direction: "left" | "right" | "none"; strength: number; measured: number; confidence: "high" | "low" };
+  shadow: {
+    contact: { opacity: number; decay: number; endFade: number; gapScale: number };
+    ambient: { opacity: number; radiusX: number; radiusY: number };
+    cast: { opacity: number; offsetX: number; radiusX: number; radiusY: number } | null;
+    color: [number, number, number];
+  };
+}

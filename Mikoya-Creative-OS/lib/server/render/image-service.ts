@@ -4,7 +4,7 @@ import type { ImageMechanismId, ImageRenderMeta, OutputFormat, RenderErrorCode, 
 import { OUTPUT_FORMATS } from "@/lib/pipeline/formats";
 import { fingerprint } from "@/lib/strategy/strategy-inputs";
 import { LOCKED_MASTER_ROLES, compileImageRenderBrief, productFidelityModeFor, selectReferences, type BriefConcept } from "@/lib/renderers/image/render-brief";
-import { compositeProduct } from "@/lib/renderers/image/composite";
+import { compositeProduct, resolveProductHeight } from "@/lib/renderers/image/composite";
 import { routeFor } from "@/lib/renderers/image/router";
 import { IMAGE_LOCAL_WAIT_MS, PROVIDER_PENDING_RECHECK_MS, RATE_LIMIT_WAIT_MS, asProviderError, pollOnce, providerPendingNote } from "@/lib/renderers/image/image-renderer";
 import { isUnresolvedImageJob, replacementNeedsConfirmation } from "@/lib/renderers/image/lifecycle";
@@ -85,7 +85,7 @@ export interface ImageServiceDeps {
 const FIDELITY_WARNING =
   "product_fidelity_unverified: the product reference is followed by reference conditioning, which does not guarantee exact packaging, colours or branding — review before use (Creative QA).";
 const COMPOSITE_WARNING =
-  "product_composited: the real product asset is composited deterministically (package pixels unchanged); how well scene light, perspective and shadow match it is not verified — review before use (Creative QA).";
+  "product_composited: the real product asset is composited deterministically (geometry, artwork and text unchanged; colour and exposure harmonised to the scene, all transforms recorded); how well perspective, light and depth match is not verified — review before use (Creative QA).";
 const NO_LOCKED_MASTER =
   "Product-locked rendering needs a transparent cut-out of the real product (PNG or WebP with alpha; role main, packaging or close-up). None was uploaded, so nothing was submitted: the package is never redrawn by the image model instead.";
 
@@ -311,9 +311,9 @@ async function advance(job: ImageJob, deps: ImageServiceDeps, now: () => number,
       if (!locked || !master) {
         return finish({ ...job.record, image: { ...done, normalization: { ...normalization, providerOriginalUrl } }, status: "failed", warnings, error: { code: "missing_locked_product_asset", message: "The product cut-out is no longer available; the generated scene was kept as the provider original but not shipped without the real product." } });
       }
-      const c = await compositeProduct(body, master.body, locked.placement);
+      const c = await compositeProduct(body, master.body, locked.placement, { productHeight: resolveProductHeight(done.brief.mechanism, job.record.format, null).height });
       body = c.body;
-      productComposite = { masterAssetId: locked.assetId, box: c.box, contactShadow: c.contactShadow };
+      productComposite = { masterAssetId: locked.assetId, box: c.box, contactShadow: c.contactShadow, transforms: c.transforms };
     }
     await deps.store.putRender(`${stem}.png`, body);
     return finish({

@@ -20,6 +20,8 @@ import { FsRenderStore } from "../store/fs-store";
 import { REFERENCE_ASSETS } from "@/lib/projects/mikoya/assets";
 import { imageConceptControls, imageVariantAction, isUnresolvedImageJob, NEW_PAID_GENERATION, replacementNeedsConfirmation, unresolvedReplacement } from "./lifecycle";
 import { normalizeToFormat } from "./normalize";
+import { buildShadowAlpha, bottomContour, compositeProduct, defaultShadowParams, deriveHarmonisation, detectLightDirection, LOCKED_SCALE, resolveProductHeight } from "./composite";
+import { createHash } from "node:crypto";
 import { productFidelityModeFor, productHorizontalIntent, resolveLockedPlacement, scenePlateText } from "./render-brief";
 import { renderSummary, renderSummaryText } from "@/lib/constants";
 import { knightVisionPrompt } from "../knightvision/prompt";
@@ -970,11 +972,14 @@ describe("product fidelity modes", () => {
     const r = (await pollImageJobs([jobId], deps))[jobId];
     expect(r).toMatchObject({ status: "complete", width: 1530, height: 2720, image: { productFidelityMode: "product_locked", productComposite: { masterAssetId: MASTER, contactShadow: true } } });
     const box = r.image!.productComposite!.box;
-    expect(box.height).toBe(Math.round(2720 * 0.42));
+    expect(box.height).toBe(Math.round(2720 * resolveProductHeight("product_hero", "9:16", null).height));
     expect(box.width / box.height).toBeCloseTo(80 / 180, 2); // the trimmed master's aspect, not stretched
     const final = store.files.get(r.outputUrl!.replace("/api/renders/", ""))!;
     const px = await sharp(final).extract({ left: box.left + Math.round(box.width / 2), top: box.top + Math.round(box.height / 2), width: 1, height: 1 }).removeAlpha().raw().toBuffer();
-    expect([...px]).toEqual([220, 30, 30]); // the master's own colour
+    // The master's own colour, harmonised within bounds (a neutral scene barely changes it).
+    // Bounds: gains ±8 %, exposure 0.85–1.05, contrast ≥ 0.95, black lift ≤ 14 → at most ~25 % of a channel plus the lift.
+    [220, 30, 30].forEach((c, i) => expect(Math.abs(px[i] - c)).toBeLessThanOrEqual(Math.ceil(c * 0.25) + 14));
+    expect(r.image!.productComposite!.transforms).toMatchObject({ scale: { productHeight: 0.34 }, light: { direction: "none" } });
     // The provider original is the untouched scene (no product).
     expect(store.files.get(r.image!.normalization!.providerOriginalUrl.replace("/api/renders/", ""))!.equals(scene)).toBe(true);
   });
@@ -1148,7 +1153,9 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
     expect(placement.centerX).toBe(0.36);
     expect(Math.abs(box.left + box.width / 2 - 2048 * placement.centerX)).toBeLessThanOrEqual(1);
     expect(box.top + box.height).toBe(Math.round(2048 * placement.bottom));
-    expect(box.height).toBe(Math.round(2048 * placement.height));
+    // Height comes from the scale resolver (the reserved placement area may be larger than the product).
+    expect(box.height).toBe(Math.round(2048 * resolveProductHeight("product_hero", "1:1", null).height));
+    expect(box.height).toBeLessThan(Math.round(2048 * placement.height));
   });
 
   it("restates whitespace as breathing room formed by the real set, keeping the continuous-scene, no-band and text-free rules", () => {
@@ -1188,5 +1195,119 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
     const out = await startImageRender({ ...request(hero as Fixture["concept"]), assets: [{ hash: PACKSHOT, role: "main" }] }, { renderer: renderer(kv.fetchImpl), store: await productStore(false), jobs: new MemoryImageJobStore() });
     for (const f of ["1:1", "9:16"] as const) expect(out[f]!.record).toMatchObject({ status: "failed", error: { code: "missing_locked_product_asset" } });
     expect(kv.calls).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Locked compositor v2: shadows, scale, harmonisation, light (offline)
+// ---------------------------------------------------------------------------
+
+describe("locked compositor", () => {
+  /** A product silhouette with a flat bottom — the worst case for a slab-like shadow. */
+  const rectAlpha = (w: number, h: number) => {
+    const a = Buffer.alloc(w * h);
+    for (let y = Math.round(h * 0.05); y < h; y++) for (let x = Math.round(w * 0.1); x < Math.round(w * 0.9); x++) a[y * w + x] = 255;
+    return a;
+  };
+  // The production parameters, with the cast shadow on (worst case for spread).
+  const shadowParams = (w: number, h: number) => defaultShadowParams(w, h, { direction: "left" }, [30, 28, 24]);
+
+  it("never renders a rectangular shadow slab below a locked product", async () => {
+    const w = 300, h = 500;
+    const sh = await buildShadowAlpha(rectAlpha(w, h), w, h, shadowParams(w, h));
+    const at = (x: number, y: number) => sh.alpha[y * sh.width + x];
+    // Smooth everywhere: no hard horizontal or vertical steps (a clipped slab has a full-strength edge).
+    // Smooth everywhere: no hard edges. A clipped slab has full-strength vertical side edges and a flat top/bottom edge.
+    let maxH = 0, maxV = 0;
+    for (let y = sh.baseY + 1; y < sh.height - 1; y++)
+      for (let x = 1; x < sh.width - 1; x++) {
+        maxH = Math.max(maxH, Math.abs(at(x, y) - at(x - 1, y)));
+        if (y > sh.baseY + 1) maxV = Math.max(maxV, Math.abs(at(x, y) - at(x, y - 1)));
+      }
+    expect(maxH).toBeLessThanOrEqual(24);
+    expect(maxV).toBeLessThanOrEqual(40); // the contact decay is steep right under the base, never a step
+    // Darkest right under the base, decaying quickly downward (no plateau).
+    const cx = sh.pad + Math.round(w / 2);
+    const col = Array.from({ length: sh.height - sh.baseY - 1 }, (_, i) => at(cx, sh.baseY + 1 + i));
+    expect(col[0]).toBe(Math.max(...col));
+    expect(col[Math.round(h * 0.05)]).toBeLessThan(col[0] * 0.35);
+    for (let i = 1; i < col.length; i++) expect(col[i]).toBeLessThanOrEqual(col[i - 1] + 1);
+    // No full-width constant rows: a slab row would hold the same strong alpha across the product width.
+    for (let y = sh.baseY + 2; y < sh.baseY + Math.round(h * 0.06); y++) {
+      const row = Array.from({ length: Math.round(w * 0.8) }, (_, i) => at(sh.pad + Math.round(w * 0.1) + i, y));
+      const strongAndFlat = Math.max(...row) > 60 && Math.max(...row) - Math.min(...row) < 3 && at(sh.pad + Math.round(w * 0.1) - 12, y) < Math.max(...row) - 40;
+      expect(strongAndFlat).toBe(false);
+    }
+    // Everything fades out inside the padded canvas (never clipped at its border).
+    for (let y = 0; y < sh.height; y++) expect(Math.max(at(0, y), at(sh.width - 1, y))).toBeLessThanOrEqual(8);
+    for (let x = 0; x < sh.width; x++) expect(at(x, sh.height - 1)).toBeLessThanOrEqual(8);
+  });
+
+  it("starts the contact shadow directly under the product's own bottom contour (no gap)", async () => {
+    const w = 200, h = 300;
+    const a = Buffer.alloc(w * h);
+    // A curved bottom: lower in the middle, like a pouch.
+    for (let x = 20; x < 180; x++) {
+      const bottom = Math.round(270 + 20 * Math.sin(((x - 20) / 160) * Math.PI));
+      for (let y = 10; y <= bottom; y++) a[y * w + x] = 255;
+    }
+    const contour = bottomContour(a, w, h);
+    const sh = await buildShadowAlpha(a, w, h, shadowParams(w, h));
+    for (const x of [30, 100, 170]) expect(sh.alpha[(contour[x] + 1) * sh.width + sh.pad + x]).toBeGreaterThan(40);
+  });
+
+  it("keeps the product's alpha, shape and printed geometry exactly; only RGB is harmonised, within bounds", async () => {
+    const master = readFileSync(path.join(process.cwd(), "public", REFERENCE_ASSETS.pouchCutout.previewUrl));
+    const warm = await sharp({ create: { width: 1200, height: 1200, channels: 3, background: "#d8c0a0" } }).png().toBuffer();
+    const placement = { centerX: 0.5, bottom: 0.86, height: 0.56 };
+    const plain = await compositeProduct(warm, master, placement, { productHeight: 0.4, harmonise: false });
+    const tuned = await compositeProduct(warm, master, placement, { productHeight: 0.4 });
+    const a1 = await sharp(plain.product!).extractChannel("alpha").raw().toBuffer();
+    const a2 = await sharp(tuned.product!).extractChannel("alpha").raw().toBuffer();
+    expect(a2.equals(a1)).toBe(true); // identical alpha = identical shape, logo and text geometry
+    const h = tuned.transforms!.harmonisation!;
+    for (const g of h.gains) {
+      expect(g).toBeGreaterThanOrEqual(0.92);
+      expect(g).toBeLessThanOrEqual(1.08);
+    }
+    expect(h.exposure).toBeGreaterThanOrEqual(0.85);
+    expect(h.exposure).toBeLessThanOrEqual(1.05);
+    expect(h.contrast).toBeGreaterThanOrEqual(0.95);
+    for (const l of h.blackLift) expect(l).toBeLessThanOrEqual(14);
+    expect(h.gains[0]).toBeGreaterThan(h.gains[2]); // a warm scene warms the product
+  });
+
+  it("detects a clearly one-sided light and ignores ambiguous light", async () => {
+    const W = 800, H = 800;
+    const grad = Buffer.alloc(W * H * 3);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) grad.fill(Math.round(230 - (x / W) * 90), (y * W + x) * 3, (y * W + x) * 3 + 3);
+    const box = { left: 300, top: 300, width: 200, height: 300 };
+    expect(detectLightDirection({ data: grad, w: W, h: H, ch: 3 }, box)).toMatchObject({ direction: "left", confidence: "high" });
+    const flat = Buffer.alloc(W * H * 3, 200);
+    expect(detectLightDirection({ data: flat, w: W, h: H, ch: 3 }, box)).toMatchObject({ direction: "none", strength: 0, confidence: "low" });
+    const h = deriveHarmonisation({ data: flat, w: W, h: H, ch: 3 }, box);
+    expect(h.gains).toEqual([1, 1, 1]);
+  });
+
+  it("resolves a smaller hero scale than before, clamped to mechanism bounds", () => {
+    expect(resolveProductHeight("product_hero", "1:1", null).height).toBeLessThan(0.56);
+    expect(resolveProductHeight("product_hero", "9:16", null).height).toBeLessThan(0.42);
+    expect(resolveProductHeight("product_hero", "1:1", 0.55).height).toBe(LOCKED_SCALE.product_hero["1:1"].max);
+    expect(resolveProductHeight("product_hero", "9:16", 0.1).height).toBe(LOCKED_SCALE.product_hero["9:16"].min);
+  });
+
+  it("records every transform and never modifies the cut-out on disk", async () => {
+    const file = path.join(process.cwd(), "public", REFERENCE_ASSETS.pouchCutout.previewUrl);
+    const before = createHash("sha256").update(readFileSync(file)).digest("hex");
+    const scene = await sharp({ create: { width: 1024, height: 1024, channels: 3, background: "#cdbba3" } }).png().toBuffer();
+    const r = await compositeProduct(scene, readFileSync(file), { centerX: 0.36, bottom: 0.86, height: 0.56 }, { productHeight: 0.4 });
+    expect(r.transforms).toMatchObject({
+      scale: { productHeight: 0.4, factor: expect.any(Number) },
+      position: { left: r.box.left, top: r.box.top, anchorX: 0.36, anchorBottom: 0.86 },
+      harmonisation: { gains: expect.any(Array), exposure: expect.any(Number), blackLift: expect.any(Array), contrast: expect.any(Number) },
+      light: { direction: expect.stringMatching(/left|right|none/) },
+      shadow: { contact: { opacity: expect.any(Number) }, ambient: { opacity: expect.any(Number) } },
+    });
+    expect(createHash("sha256").update(readFileSync(file)).digest("hex")).toBe(before);
   });
 });
