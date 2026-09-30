@@ -1032,8 +1032,8 @@ describe("the real product cut-out master in the repo", () => {
     expect(transparent / (W * H)).toBeGreaterThan(0.4); // the background is really gone
     expect(lightEdge).toBeLessThan(200); // no halo of the old studio background
     expect(green).toBeLessThan(10_000); // only the printed leaf icon, no powder pile (~160k px in the packshot)
-    // Hero placement needs the product ≈ 56% of 2048 (1:1) / 42% of 2720 (9:16): the master must not be upscaled.
-    expect(maxY - minY + 1).toBeGreaterThanOrEqual(Math.round(Math.max(2048 * 0.56, 2720 * 0.42)));
+    // Even the largest allowed hero height (46 % of 2048 / 40 % of 2720) must not upscale the master.
+    expect(maxY - minY + 1).toBeGreaterThanOrEqual(Math.round(Math.max(2048 * LOCKED_SCALE.product_hero["1:1"].max, 2720 * LOCKED_SCALE.product_hero["9:16"].max)));
     // No baked shadow: after the last fully opaque row only an edge-smoothing fade of a few rows follows.
     let lastOpaque = 0, lastAny = 0;
     for (let y = 0; y < H; y++)
@@ -1153,9 +1153,9 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
     expect(placement.centerX).toBe(0.36);
     expect(Math.abs(box.left + box.width / 2 - 2048 * placement.centerX)).toBeLessThanOrEqual(1);
     expect(box.top + box.height).toBe(Math.round(2048 * placement.bottom));
-    // Height comes from the scale resolver (the reserved placement area may be larger than the product).
+    // The reserved area is exactly the composited product height.
     expect(box.height).toBe(Math.round(2048 * resolveProductHeight("product_hero", "1:1", null).height));
-    expect(box.height).toBeLessThan(Math.round(2048 * placement.height));
+    expect(box.height).toBe(Math.round(2048 * placement.height));
   });
 
   it("restates whitespace as breathing room formed by the real set, keeping the continuous-scene, no-band and text-free rules", () => {
@@ -1182,6 +1182,41 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
       expect(prompt).toContain("The real scene must continue across the entire frame");
       expect(prompt).toContain("no blank, flat, solid-colour, artificial or graphic bands, panels or empty areas");
     }
+  });
+
+  it("asks for an eye-level, straight-on set that matches a frontal packshot (never a top-down tabletop view)", () => {
+    for (const f of ["1:1", "9:16"] as const) {
+      const { prompt } = plate(f);
+      const camera = prompt.split("\n").find((l) => l.startsWith("Camera:"))!;
+      expect(camera).toContain("eye-level product photography: camera at the product's mid-height, straight-on to the placement spot, at most a very slight downward tilt");
+      expect(camera).toContain("the standing surface is seen nearly edge-on, not from above");
+      expect(camera).not.toMatch(/looking down|overhead|top-down(?! )|high angle|elevated/i);
+      expect(prompt).toContain("the real standing surface at the spot is clearly visible, shallow and nearly frontal");
+      expect(prompt).toContain("supporting props sit further back and recede naturally into the background");
+      expect(prompt).toContain("no top-down, high-angle or overhead tabletop view");
+      expect(prompt).toContain("no large visible top surfaces of bowls, tables or platforms near the product placement spot");
+      // The editorial, natural-light, premium direction stays.
+      expect(prompt).toContain("premium editorial campaign photography");
+      expect(prompt).toContain("soft natural light");
+    }
+  });
+
+  it("reserves exactly the composited height (36 % / 34 %) and lights the plate consistently with the scene", () => {
+    const heights = { "1:1": 36, "9:16": 34 } as const;
+    for (const f of ["1:1", "9:16"] as const) {
+      const { prompt, brief } = plate(f);
+      expect(brief.lockedProduct!.placement.height).toBe(resolveProductHeight("product_hero", f, null).height);
+      expect(prompt).toContain(`about ${heights[f]}% of the frame height tall`);
+      const lighting = prompt.split("\n").find((l) => l.startsWith("Lighting:"))!;
+      expect(lighting).toBe("Lighting: soft natural directional light, gentle realistic shadows, subtle dimensional highlights, no dramatic studio spotlighting or hard specular treatment.");
+      expect(prompt).not.toMatch(/studio light with sculpted highlights/);
+      expect(prompt).toMatch(/Scene: .*soft natural light/);
+    }
+    // Other mechanisms keep their own lighting (reference-conditioned POV / Lifestyle; a supporting-product fighter line-up).
+    const at = (c: BriefConcept) => new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: c, variant: { id: "v", aspectRatio: "1:1" }, context, references: selectReferences(c.mechanism, c, AVAILABLE) }));
+    expect(at(pov)).toContain("Lighting: natural available light of the scene.");
+    expect(at(lifestyle)).toContain("Lighting: soft natural light, gentle shadows.");
+    expect(at(conceptOf("choose_your_fighter", { productRole: "supporting: pouch in the background" }))).toContain("Lighting: even, clean light so every option reads equally.");
   });
 
   it("leaves reference_conditioned Lifestyle and POV prompts unchanged", () => {

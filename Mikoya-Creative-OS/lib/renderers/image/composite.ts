@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import type { ImageMechanismId, OutputFormat, ProductPlacement } from "@/lib/types";
+import { LOCKED_SCALE } from "./render-brief";
 
 /**
  * PRODUCT-LOCKED COMPOSITING — deterministic, no model involved.
@@ -23,11 +24,8 @@ export class ProductMasterUnusable extends Error {}
 // Scale
 // ---------------------------------------------------------------------------
 
-/** Product height as a share of the frame height: bounds and default per mechanism and format. */
-export const LOCKED_SCALE: Record<"product_hero" | "choose_your_fighter", Record<OutputFormat, { min: number; max: number; default: number }>> = {
-  product_hero: { "1:1": { min: 0.3, max: 0.46, default: 0.36 }, "9:16": { min: 0.26, max: 0.4, default: 0.34 } },
-  choose_your_fighter: { "1:1": { min: 0.28, max: 0.46, default: 0.4 }, "9:16": { min: 0.2, max: 0.32, default: 0.28 } },
-};
+// The scale table lives with the brief (client-safe) so the scene plate reserves exactly what is composited.
+export { LOCKED_SCALE } from "./render-brief";
 
 /**
  * The product height actually composited. The concept's intent (when it states one) is the starting

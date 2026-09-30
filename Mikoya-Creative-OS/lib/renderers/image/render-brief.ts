@@ -105,9 +105,22 @@ export function productFidelityModeFor(mechanism: ImageMechanismId, concept: { p
 /** Product roles that can serve as a locked master (a product shot, never a scene or set photo). */
 export const LOCKED_MASTER_ROLES: AssetRole[] = PRODUCT_ROLES;
 
-/** Where the locked product stands in each format (fractions of the frame), before the concept's horizontal intent. */
+/** Composited product height as a share of the frame height: bounds and default per mechanism and format. */
+export const LOCKED_SCALE: Record<"product_hero" | "choose_your_fighter", Record<OutputFormat, { min: number; max: number; default: number }>> = {
+  product_hero: { "1:1": { min: 0.3, max: 0.46, default: 0.36 }, "9:16": { min: 0.26, max: 0.4, default: 0.34 } },
+  choose_your_fighter: { "1:1": { min: 0.28, max: 0.46, default: 0.4 }, "9:16": { min: 0.2, max: 0.32, default: 0.28 } },
+};
+
+/**
+ * Where the locked product stands in each format (fractions of the frame), before the concept's horizontal
+ * intent. A product hero's reserved height IS the composited height, so the scene plate leaves exactly the
+ * room the real product will fill.
+ */
 export const LOCKED_PLACEMENT: Record<"product_hero" | "choose_your_fighter", Record<OutputFormat, ProductPlacement>> = {
-  product_hero: { "1:1": { centerX: 0.5, bottom: 0.86, height: 0.56 }, "9:16": { centerX: 0.5, bottom: 0.78, height: 0.42 } },
+  product_hero: {
+    "1:1": { centerX: 0.5, bottom: 0.86, height: LOCKED_SCALE.product_hero["1:1"].default },
+    "9:16": { centerX: 0.5, bottom: 0.78, height: LOCKED_SCALE.product_hero["9:16"].default },
+  },
   // The product takes the last slot of the line-up; the model draws the other options.
   choose_your_fighter: { "1:1": { centerX: 0.75, bottom: 0.84, height: 0.46 }, "9:16": { centerX: 0.5, bottom: 0.9, height: 0.3 } },
 };
@@ -234,7 +247,7 @@ interface MechanismGrammar {
   style: string;
   negative: string[];
   /** product_locked scene plate: subject / camera / negatives that never ask for the product itself. */
-  locked?: { subject: string; camera: Record<OutputFormat, string>; negative: string[] };
+  locked?: { subject: string; camera: Record<OutputFormat, string>; lighting: string; composition: string; negative: string[] };
 }
 
 const GRAMMAR: Record<ImageMechanismId, MechanismGrammar> = {
@@ -294,11 +307,23 @@ const GRAMMAR: Record<ImageMechanismId, MechanismGrammar> = {
     negative: ["no plain white e-commerce background unless the scene asks for it", "no floating product without a surface or shadow"],
     locked: {
       subject: "a premium editorial set, surface and light built around a clear product placement spot; the set supports the product that will be composited there later",
+      // The composited product is a straight-on packshot: the set must be photographed the same way (eye level,
+      // product mid-height, surface seen nearly edge-on) or the product reads as pasted in from another camera.
       camera: {
-        "1:1": "camera level with the product placement spot, straight-on, 85–100 mm look",
-        "9:16": "camera level with the product placement spot, straight-on, 85 mm look",
+        "1:1": "eye-level product photography: camera at the product's mid-height, straight-on to the placement spot, at most a very slight downward tilt, 85–100 mm look; the standing surface is seen nearly edge-on, not from above",
+        "9:16": "eye-level product photography: camera at the product's mid-height, straight-on to the placement spot, at most a very slight downward tilt, 85 mm look; the standing surface is seen nearly edge-on, not from above",
       },
-      negative: ["no plain white e-commerce background unless the scene asks for it", "no floating objects without a surface or shadow"],
+      // Consistent with the scenes these plates describe (soft natural light), and with a real product that is
+      // composited afterwards: no studio spotlighting the packshot could never match.
+      lighting: "soft natural directional light, gentle realistic shadows, subtle dimensional highlights, no dramatic studio spotlighting or hard specular treatment",
+      composition:
+        "the real standing surface at the spot is clearly visible, shallow and nearly frontal; supporting props sit further back and recede naturally into the background; no large visible tops of bowls, tables or platforms close to the product",
+      negative: [
+        "no plain white e-commerce background unless the scene asks for it",
+        "no floating objects without a surface or shadow",
+        "no top-down, high-angle or overhead tabletop view",
+        "no large visible top surfaces of bowls, tables or platforms near the product placement spot",
+      ],
     },
   },
   choose_your_fighter: {
@@ -463,13 +488,15 @@ export function compileImageRenderBrief(args: {
     subject: lockedGrammar?.subject ?? g.subject,
     environment: `as described in the scene; believable and lived-in, consistent with ${productWord}`,
     composition: [
-      lockedGrammar ? `${frame}; a clear product placement spot ${horizontalWords(placement!.centerX)} on an editorial set with interesting surfaces; the rest of the set calm and uncluttered` : g.composition[format],
+      lockedGrammar
+        ? `${frame}; a clear product placement spot ${horizontalWords(placement!.centerX)} on an editorial set with interesting surfaces; the rest of the set calm and uncluttered; ${lockedGrammar.composition}`
+        : g.composition[format],
       layoutNote && `Concept note: ${layoutNote}`,
     ]
       .filter(Boolean)
       .join(". "),
     camera: lockedGrammar?.camera[format] ?? g.camera[format],
-    lighting: g.lighting,
+    lighting: lockedGrammar?.lighting ?? g.lighting,
     mood: mood.join("; "),
     visualStyle: [g.style, ...direction.map((d) => asScene(locked ? lockedStyleDirection(d) : d)), `palette hints: ${context.brandColors.dark} and ${context.brandColors.accent}`].join("; "),
     // A locked plate never describes the product: its role is the placement spot, set by the fidelity rules.
