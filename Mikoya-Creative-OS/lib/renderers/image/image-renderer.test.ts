@@ -22,7 +22,7 @@ import { imageConceptControls, imageVariantAction, isUnresolvedImageJob, NEW_PAI
 import { normalizeToFormat } from "./normalize";
 import { buildShadowAlpha, bottomContour, compositeProduct, defaultShadowParams, deriveHarmonisation, detectLightDirection, LOCKED_SCALE, neutralShadowTone, resolveProductHeight, SHADOW_MAX_CHROMA } from "./composite";
 import { createHash } from "node:crypto";
-import { lockedFootprint, productFidelityModeFor, productHorizontalIntent, resolveLockedPlacement, scenePlateText } from "./render-brief";
+import { footprintAccent, lockedFootprint, productFidelityModeFor, productHorizontalIntent, resolveLockedPlacement, scenePlateText } from "./render-brief";
 import { renderSummary, renderSummaryText } from "@/lib/constants";
 import { knightVisionPrompt } from "../knightvision/prompt";
 import type { RenderRecord } from "@/lib/types";
@@ -1171,7 +1171,35 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
     expect(hero.layoutNotes!["1:1"]).toContain("powder mound low at its right base");
     expect(hero.layoutNotes!["9:16"]).toContain("powder mound at its base");
     expect(plate("1:1").prompt).toContain("Concept note: powder mound low clearly beside it to its right.");
-    expect(plate("9:16").prompt).toContain("Concept note: powder mound clearly beside its base.");
+    expect(plate("9:16").prompt).toContain("Concept note: powder mound fully to the right of the reserved product footprint, never inside or behind it.");
+  });
+
+  it("9:16 places the supporting accent explicitly outside and to the right of the centred footprint", () => {
+    const { prompt, brief } = plate("9:16");
+    expect(brief.lockedProduct!.placement.centerX).toBe(0.5);
+    const fidelity = prompt.split("\n").find((l) => l.startsWith("Product fidelity:"))!;
+    for (const line of [
+      "Keep the entire centred product footprint completely clear.",
+      "Place the complete powder mound to the right of that footprint, fully outside its boundary, with a visible horizontal gap between them.",
+      "No part of the powder mound, its loose scatter, props or decoration may sit behind, underneath or inside the reserved area.",
+      "The powder mound stands on the same standing surface as the footprint, at about the same depth, not further back.",
+      "The powder mound must remain fully visible after the real product is inserted.",
+    ])
+      expect(fidelity).toContain(line);
+    // The accent is placed relative to the footprint, after the standing line and before the unmarked-footprint rule.
+    expect(fidelity.indexOf("The real product will stand")).toBeLessThan(fidelity.indexOf("Place the complete powder mound"));
+    expect(fidelity.indexOf("Place the complete powder mound")).toBeLessThan(fidelity.indexOf("Do not mark the footprint"));
+    expect(prompt).not.toMatch(/at its base|clearly beside its base/);
+    // 1:1 is unchanged: no explicit accent geometry.
+    expect(plate("1:1").prompt).not.toMatch(/Place the complete|fully outside its boundary|centred product footprint/);
+  });
+
+  it("derives the accent from the concept's own notes, product-agnostic", () => {
+    const at = (notes: Partial<Record<"1:1" | "9:16", string>>, f: "1:1" | "9:16") => footprintAccent({ layoutNotes: notes }, f, visualCompositionNote(notes[f], [], { dropProduct: true }));
+    expect(at({ "9:16": "Bottle centred, a lemon slice at its base." }, "9:16")).toEqual({ noun: "lemon slice", side: "right" });
+    expect(at({ "1:1": "Jar right of centre, spoon at its left base.", "9:16": "Jar centred, a wooden spoon at its base." }, "9:16")).toEqual({ noun: "wooden spoon", side: "left" });
+    expect(at({ "1:1": "Tin centred, crumbs at its base." }, "1:1")).toBeNull(); // 1:1 plates are not affected
+    expect(at({ "9:16": "Tin centred on a linen cloth." }, "9:16")).toBeNull(); // no accent at the base → nothing added
   });
 
   it("states the standing position from the same footprint the compositor uses (no separate vertical source)", async () => {
