@@ -20,9 +20,9 @@ import { FsRenderStore } from "../store/fs-store";
 import { REFERENCE_ASSETS } from "@/lib/projects/mikoya/assets";
 import { imageConceptControls, imageVariantAction, isUnresolvedImageJob, NEW_PAID_GENERATION, replacementNeedsConfirmation, unresolvedReplacement } from "./lifecycle";
 import { normalizeToFormat } from "./normalize";
-import { buildShadowAlpha, bottomContour, compositeProduct, defaultShadowParams, deriveHarmonisation, detectLightDirection, LOCKED_SCALE, resolveProductHeight } from "./composite";
+import { buildShadowAlpha, bottomContour, compositeProduct, defaultShadowParams, deriveHarmonisation, detectLightDirection, LOCKED_SCALE, neutralShadowTone, resolveProductHeight, SHADOW_MAX_CHROMA } from "./composite";
 import { createHash } from "node:crypto";
-import { productFidelityModeFor, productHorizontalIntent, resolveLockedPlacement, scenePlateText } from "./render-brief";
+import { lockedFootprint, productFidelityModeFor, productHorizontalIntent, resolveLockedPlacement, scenePlateText } from "./render-brief";
 import { renderSummary, renderSummaryText } from "@/lib/constants";
 import { knightVisionPrompt } from "../knightvision/prompt";
 import type { RenderRecord } from "@/lib/types";
@@ -1158,6 +1158,44 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
     expect(box.height).toBe(Math.round(2048 * placement.height));
   });
 
+  it("keeps the whole reserved footprint clear, puts accents clearly beside it on one continuous surface, unmarked", () => {
+    for (const f of ["1:1", "9:16"] as const) {
+      const { prompt } = plate(f);
+      expect(prompt).toContain("Keep the entire reserved product footprint clear: no powder, props, bowls, utensils or decorative objects may overlap or occupy it");
+      expect(prompt).toContain("Any supporting accent such as powder sits clearly beside the reserved footprint, not behind it and not underneath it, with roughly one product-width of separation where practical");
+      expect(prompt).toContain("The reserved footprint sits on one continuous, physically believable horizontal standing surface");
+      expect(prompt).toContain("Do not mark the footprint: no outlines, boxes, guides or markers");
+      // The concept's "powder at its (right) base" would put the accent inside the footprint.
+      expect(prompt).not.toMatch(/at its (right |left )?base/i);
+    }
+    expect(hero.layoutNotes!["1:1"]).toContain("powder mound low at its right base");
+    expect(hero.layoutNotes!["9:16"]).toContain("powder mound at its base");
+    expect(plate("1:1").prompt).toContain("Concept note: powder mound low clearly beside it to its right.");
+    expect(plate("9:16").prompt).toContain("Concept note: powder mound clearly beside its base.");
+  });
+
+  it("states the standing position from the same footprint the compositor uses (no separate vertical source)", async () => {
+    const standing = { "1:1": [86, 14, 50], "9:16": [78, 22, 44] } as const;
+    for (const f of ["1:1", "9:16"] as const) {
+      const { brief, prompt } = plate(f);
+      const fp = lockedFootprint(brief.lockedProduct!.placement);
+      const [base, above, top] = standing[f];
+      expect([Math.round(fp.baseline * 100), Math.round((1 - fp.baseline) * 100), Math.round(fp.top * 100)]).toEqual([base, above, top]);
+      expect(prompt).toContain(`The real product will stand with its base on the surface at about ${base}% of the frame height from the top (${above}% above the bottom edge) and reach up to about ${top}% from the top: build the visible standing surface at exactly that height and depth in the frame`);
+      // The compositor stands the product on exactly that line and centre.
+      const W = f === "1:1" ? 2048 : 1530, H = f === "1:1" ? 2048 : 2720;
+      const scene = await sharp({ create: { width: W, height: H, channels: 3, background: "#cdbba3" } }).png().toBuffer();
+      const master = readFileSync(path.join(process.cwd(), "public", REFERENCE_ASSETS.pouchCutout.previewUrl));
+      const { box } = await compositeProduct(scene, master, brief.lockedProduct!.placement, { productHeight: resolveProductHeight("product_hero", f, null).height });
+      expect(box.top + box.height).toBe(Math.round(H * fp.baseline));
+      expect(Math.abs(box.left + box.width / 2 - W * fp.centerX)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.top - H * fp.top)).toBeLessThanOrEqual(1);
+    }
+    // Horizontal anchors unchanged.
+    expect(plate("1:1").brief.lockedProduct!.placement.centerX).toBe(0.36);
+    expect(plate("9:16").brief.lockedProduct!.placement.centerX).toBe(0.5);
+  });
+
   it("restates whitespace as breathing room formed by the real set, keeping the continuous-scene, no-band and text-free rules", () => {
     expect(hero.visualDescription).toContain("generous whitespace");
     for (const f of ["1:1", "9:16"] as const) {
@@ -1334,6 +1372,81 @@ describe("locked compositor", () => {
     expect(resolveProductHeight("product_hero", "9:16", null).height).toBeLessThan(0.42);
     expect(resolveProductHeight("product_hero", "1:1", 0.55).height).toBe(LOCKED_SCALE.product_hero["1:1"].max);
     expect(resolveProductHeight("product_hero", "9:16", 0.1).height).toBe(LOCKED_SCALE.product_hero["9:16"].min);
+  });
+
+  /** A cream set with a vivid green powder mound right next to the product base (the olive-shadow case). */
+  const powderScene = (W: number, H: number, box: { left: number; top: number; width: number; height: number }, withDarkNeutral = true) => {
+    const data = Buffer.alloc(W * H * 3);
+    for (let i = 0; i < W * H; i++) data.set([214, 200, 178], i * 3);
+    const baseY = box.top + box.height;
+    const px = (x: number, y: number, c: number[]) => x >= 0 && y >= 0 && x < W && y < H && data.set(c, (y * W + x) * 3);
+    // Green powder: a mound beside and slightly in front of the base.
+    const cx = box.left + box.width * 1.05, cy = baseY - box.height * 0.02, rx = box.width * 0.45, ry = box.height * 0.12;
+    for (let y = Math.round(cy - ry); y < cy + ry; y++) for (let x = Math.round(cx - rx); x < cx + rx; x++) if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 <= 1) px(x, y, [70, 128, 24]);
+    // Dark green powder shade and a few neutral darker surface tones.
+    for (let y = baseY; y < baseY + box.height * 0.08; y++) for (let x = Math.round(cx - rx); x < cx + rx; x++) px(x, y, [30, 52, 14]);
+    if (withDarkNeutral) for (let y = baseY + 4; y < baseY + box.height * 0.08; y++) for (let x = box.left - Math.round(box.width * 0.25); x < box.left + box.width * 0.4; x++) px(x, y, [120, 112, 100]);
+    return { data, w: W, h: H, ch: 3 };
+  };
+  const neutral = (c: readonly number[]) => c[0] >= c[1] && c[1] >= c[2] && c[0] - c[2] <= SHADOW_MAX_CHROMA;
+
+  it("samples only neutral tones for the shadow colour: green powder next to the base never tints it", () => {
+    const W = 1024, H = 1024, box = { left: 250, top: 400, width: 260, height: 360 };
+    const scene = powderScene(W, H, box);
+    const region = { left: box.left - box.width * 0.3, top: box.top + box.height * 0.8, right: box.left + box.width * 1.3, bottom: box.top + box.height * 1.1 };
+    const tone = neutralShadowTone(scene, region);
+    expect(neutral(tone)).toBe(true);
+    expect(tone[1]).toBeLessThanOrEqual(90);
+    // The same region, averaged naively, is clearly green — what the old sampler picked up.
+    let r = 0, g = 0, n = 0;
+    for (let y = Math.round(region.top); y < region.bottom; y++) for (let x = Math.round(region.left); x < region.right; x++) { const i = (y * W + x) * 3; if (0.2126 * scene.data[i] + 0.7152 * scene.data[i + 1] + 0.0722 * scene.data[i + 2] < 90) { r += scene.data[i]; g += scene.data[i + 1]; n++; } }
+    expect(g / n).toBeGreaterThan(r / n + 20);
+  });
+
+  it("falls back to a warm neutral grey from the local luminance when too few neutral samples exist", () => {
+    const W = 400, H = 400;
+    const green = { data: Buffer.alloc(W * H * 3), w: W, h: H, ch: 3 };
+    for (let i = 0; i < W * H; i++) green.data.set([60, 140, 30], i * 3);
+    const all = { left: 0, top: 0, right: W, bottom: H };
+    const tone = neutralShadowTone(green, all);
+    expect(neutral(tone)).toBe(true);
+    expect(tone[0]).toBeGreaterThan(tone[2]); // warm, not cold
+    // Brighter surroundings give a lighter (still neutral) shadow; black never wraps around.
+    const light = { data: Buffer.alloc(W * H * 3, 235), w: W, h: H, ch: 3 };
+    const black = { data: Buffer.alloc(W * H * 3, 0), w: W, h: H, ch: 3 };
+    expect(neutralShadowTone(light, all)[1]).toBeGreaterThan(tone[1]);
+    for (const c of neutralShadowTone(black, all)) expect(c).toBeGreaterThanOrEqual(0);
+    expect(neutral(neutralShadowTone(black, all))).toBe(true);
+    // A strongly tinted "neutral-ish" surface is still forced into the warm-grey range.
+    const olive = { data: Buffer.alloc(W * H * 3), w: W, h: H, ch: 3 };
+    for (let i = 0; i < W * H; i++) olive.data.set([100, 104, 88], i * 3);
+    expect(neutral(neutralShadowTone(olive, all))).toBe(true);
+  });
+
+  it("composites a neutral (never chromatic) shadow over a scene with green powder near the placement", async () => {
+    const W = 1024, H = 1024;
+    const master = readFileSync(path.join(process.cwd(), "public", REFERENCE_ASSETS.pouchCutout.previewUrl));
+    const placement = { centerX: 0.36, bottom: 0.86, height: 0.36 };
+    const probe = await compositeProduct(await sharp({ create: { width: W, height: H, channels: 3, background: "#d6c8b2" } }).png().toBuffer(), master, placement, { productHeight: 0.36 });
+    for (const dark of [true, false]) {
+      const raw = powderScene(W, H, probe.box, dark);
+      const scene = await sharp(raw.data, { raw: { width: W, height: H, channels: 3 } }).png().toBuffer();
+      const r = await compositeProduct(scene, master, placement, { productHeight: 0.36 });
+      expect(r.box).toEqual(probe.box);
+      expect(neutral(r.transforms!.shadow.color)).toBe(true);
+      // A neutral shadow (R ≥ G) can never make a pixel greener: G − R never rises above the scene's own.
+      const out = await sharp(r.body).removeAlpha().raw().toBuffer();
+      const { left, top, width } = r.box;
+      let darkened = 0;
+      for (let y = top + r.box.height + 1; y < Math.min(H, top + r.box.height + 40); y++)
+        for (let x = left - 40; x < left + width + 40; x++) {
+          const i = (y * W + x) * 3;
+          if (raw.data[i] - out[i] <= 2 && raw.data[i + 1] - out[i + 1] <= 2) continue;
+          darkened++;
+          expect(out[i + 1] - out[i]).toBeLessThanOrEqual(Math.max(0, raw.data[i + 1] - raw.data[i]) + 1);
+        }
+      expect(darkened).toBeGreaterThan(500);
+    }
   });
 
   it("records every transform and never modifies the cut-out on disk", async () => {

@@ -153,13 +153,34 @@ export function resolveLockedPlacement(mechanism: ImageMechanismId, concept: Par
   return mechanism === "product_hero" ? { ...base, centerX: HORIZONTAL_X[productHorizontalIntent(concept, format)] } : base;
 }
 
+/**
+ * The locked product's footprint in the frame — the ONE vertical/horizontal definition both the scene-plate
+ * prompt and the compositor read: base line (where the product stands), top line, centre and height, all as
+ * fractions of the frame.
+ */
+export function lockedFootprint(p: ProductPlacement) {
+  return { centerX: p.centerX, baseline: p.bottom, top: p.bottom - p.height, height: p.height };
+}
+
 const horizontalWords = (x: number) => (x < 0.3 ? "on the left" : x < 0.45 ? "left of centre" : x > 0.7 ? "on the right" : x > 0.55 ? "right of centre" : "centred");
 const placementWords = (p: ProductPlacement) =>
   `${horizontalWords(p.centerX)} in the frame, standing on the surface about ${Math.round((1 - p.bottom) * 100)}% above the bottom edge, about ${Math.round(p.height * 100)}% of the frame height tall`;
 
+const pct = (v: number) => Math.round(v * 100);
+/** Where the real product will stand, stated from the shared footprint so the set is built at that height and depth. */
+const standingWords = (p: ProductPlacement) => {
+  const f = lockedFootprint(p);
+  return `The real product will stand with its base on the surface at about ${pct(f.baseline)}% of the frame height from the top (${pct(1 - f.baseline)}% above the bottom edge) and reach up to about ${pct(f.top)}% from the top: build the visible standing surface at exactly that height and depth in the frame`;
+};
+
 /** Scene-plate instructions: the model builds the set; the real product is composited afterwards. */
 const LOCKED = (p: ProductPlacement) => [
   `Leave a clean, naturally lit product placement area ${placementWords(p)}`,
+  standingWords(p),
+  "Keep the entire reserved product footprint clear: no powder, props, bowls, utensils or decorative objects may overlap or occupy it",
+  "Any supporting accent such as powder sits clearly beside the reserved footprint, not behind it and not underneath it, with roughly one product-width of separation where practical",
+  "The reserved footprint sits on one continuous, physically believable horizontal standing surface",
+  "Do not mark the footprint: no outlines, boxes, guides or markers",
   "Reserve visual focus for the real product that will be composited there later",
   "Do not draw any product, package, bottle, box, pouch, jar or label: the real product photo is added afterwards",
   "Light that spot and its level surface straight-on at product height so an object standing there sits naturally",
@@ -474,7 +495,10 @@ export function compileImageRenderBrief(args: {
   const direction = context.visualDirection.filter((d) => !TEXT_ELEMENT.test(d));
   const copy = (concept.copyFields ?? []).map((f) => f.text);
   // Locked plates: the resolved placement says where the product goes, so layout clauses about it are dropped.
-  const layoutNote = visualCompositionNote(concept.layoutNotes?.[format], copy, { dropProduct: locked });
+  // Locked: an accent placed "at its base" would sit in the reserved footprint; it goes beside it (as the scene says).
+  const note = visualCompositionNote(concept.layoutNotes?.[format], copy, { dropProduct: locked });
+  // Locked: an accent "at its (right) base" would sit in the reserved footprint; it goes clearly beside it.
+  const layoutNote = locked ? note.replace(/\bat (?:its|the product's) (?:(left|right) )?base\b/gi, (_m, side?: string) => (side ? `clearly beside it to its ${side.toLowerCase()}` : "clearly beside its base")) : note;
   const names = [context.brandName, context.productName];
   const lockedGrammar = locked ? g.locked : undefined;
   const frame = format === "1:1" ? "square frame" : "vertical frame";

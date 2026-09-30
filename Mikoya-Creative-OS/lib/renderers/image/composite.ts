@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import type { ImageMechanismId, OutputFormat, ProductPlacement } from "@/lib/types";
-import { LOCKED_SCALE } from "./render-brief";
+import { LOCKED_SCALE, lockedFootprint } from "./render-brief";
 
 /**
  * PRODUCT-LOCKED COMPOSITING — deterministic, no model involved.
@@ -179,6 +179,44 @@ export interface ShadowParams {
   color: [number, number, number];
 }
 
+/** A sample counts as neutral when its channels are nearly equal (absolute and relative chroma limits). */
+const NEUTRAL_MAX_CHROMA = 18;
+const NEUTRAL_MAX_REL_CHROMA = 0.14;
+const MIN_NEUTRAL_SAMPLES = 40;
+/** Largest channel spread a shadow colour may have (a warm grey; never visibly green, blue or red). */
+export const SHADOW_MAX_CHROMA = 12;
+
+/**
+ * Shadow colour from the scene's own neutral tones around the product base: dark, low-chroma pixels only,
+ * so powder, plants or coloured props can never tint it. Too few neutral samples → a warm grey from the
+ * local luminance. The result is always a warm-to-neutral grey (R ≥ G ≥ B, spread ≤ SHADOW_MAX_CHROMA).
+ */
+export function neutralShadowTone(scene: Raw, region: { left: number; top: number; right: number; bottom: number }): [number, number, number] {
+  const X0 = clamp(Math.round(region.left), 0, scene.w - 1), X1 = clamp(Math.round(region.right), 1, scene.w);
+  const Y0 = clamp(Math.round(region.top), 0, scene.h - 1), Y1 = clamp(Math.round(region.bottom), 1, scene.h);
+  let sr = 0, sg = 0, sb = 0, n = 0, lsum = 0, ln = 0;
+  for (let y = Y0; y < Y1; y += 2)
+    for (let x = X0; x < X1; x += 2) {
+      const i = (y * scene.w + x) * scene.ch;
+      const R = scene.data[i], G = scene.data[i + 1], B = scene.data[i + 2];
+      const l = lum(R, G, B);
+      lsum += l; ln++;
+      const hi = Math.max(R, G, B), chroma = hi - Math.min(R, G, B);
+      if (l < 150 && chroma <= NEUTRAL_MAX_CHROMA && chroma <= hi * NEUTRAL_MAX_REL_CHROMA) {
+        sr += R; sg += G; sb += B; n++;
+      }
+    }
+  const base: [number, number, number] =
+    n >= MIN_NEUTRAL_SAMPLES
+      ? [sr / n, sg / n, sb / n]
+      : ((l) => [l * 1.04, l, l * 0.92])((ln ? lsum / ln : 128) * 0.45); // warm grey from local luminance
+  // Darken, then force a warm-to-neutral grey: channels ordered R ≥ G ≥ B within SHADOW_MAX_CHROMA.
+  const L = clamp(lum(...base) * 0.55, 0, 90);
+  const r = clamp(base[0] * 0.55, L, L + SHADOW_MAX_CHROMA / 2);
+  const b = clamp(base[2] * 0.55, Math.max(0, L - SHADOW_MAX_CHROMA / 2), L);
+  return [Math.round(r), Math.round(L), Math.round(b)];
+}
+
 /** The production shadow parameters for a product of w×h px (shared by the compositor and its tests). */
 export function defaultShadowParams(w: number, h: number, light: Pick<LightMatch, "direction">, color: [number, number, number]): ShadowParams {
   return {
@@ -304,8 +342,10 @@ export async function compositeProduct(scene: Buffer, master: Buffer, placement:
     .raw()
     .toBuffer({ resolveWithObject: true });
   const w = resized.info.width, h = resized.info.height;
-  const left = clamp(Math.round(W * placement.centerX - w / 2), 0, W - w);
-  const top = clamp(Math.round(H * placement.bottom - h), 0, H - h);
+  // Position from the shared footprint (the scene plate was told the same base line and centre).
+  const fp = lockedFootprint(placement);
+  const left = clamp(Math.round(W * fp.centerX - w / 2), 0, W - w);
+  const top = clamp(Math.round(H * fp.baseline - h), 0, H - h);
   const box = { left, top, width: w, height: h };
 
   const sceneRaw = await sharp(scene).removeAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -322,9 +362,7 @@ export async function compositeProduct(scene: Buffer, master: Buffer, placement:
   // Shadows from the product's own alpha; colour = the scene's shadow tone.
   const alpha = Buffer.alloc(w * h);
   for (let i = 0; i < w * h; i++) alpha[i] = resized.data[i * 4 + 3];
-  const around = sceneStats(S, left - w * 0.3, top + h * 0.8, left + w * 1.3, top + h * 1.1);
-  const darkTone = around.dark.length ? ([0, 1, 2].map((c) => around.dark.reduce((a, d) => a + d[c], 0) / around.dark.length) as [number, number, number]) : ([around.mean[0] * 0.35, around.mean[1] * 0.33, around.mean[2] * 0.3] as [number, number, number]);
-  const shadow = defaultShadowParams(w, h, light, darkTone.map((c) => Math.round(clamp(c * 0.55, 0, 90))) as [number, number, number]);
+  const shadow = defaultShadowParams(w, h, light, neutralShadowTone(S, { left: left - w * 0.3, top: top + h * 0.8, right: left + w * 1.3, bottom: top + h * 1.1 }));
   const sh = await buildShadowAlpha(alpha, w, h, shadow);
   const shadowRgba = Buffer.alloc(sh.width * sh.height * 4);
   for (let i = 0; i < sh.width * sh.height; i++) {
