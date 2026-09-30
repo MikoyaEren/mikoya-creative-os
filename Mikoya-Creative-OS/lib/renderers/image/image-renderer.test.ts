@@ -16,6 +16,8 @@ import { KNIGHTVISION_BASE_URL } from "../knightvision/config";
 import { PARTNER_JOB_ID } from "../knightvision/schemas";
 import type { RenderStore } from "../store/fs-store";
 import { FsImageJobStore, MemoryImageJobStore } from "@/lib/server/render/image-jobs";
+import { FsRenderStore } from "../store/fs-store";
+import { REFERENCE_ASSETS } from "@/lib/projects/mikoya/assets";
 import { imageConceptControls, imageVariantAction, isUnresolvedImageJob, NEW_PAID_GENERATION, replacementNeedsConfirmation, unresolvedReplacement } from "./lifecycle";
 import { normalizeToFormat } from "./normalize";
 import { productFidelityModeFor } from "./render-brief";
@@ -997,5 +999,59 @@ describe("product fidelity modes", () => {
     const html = readdirSync(path.join(process.cwd(), "lib", "renderers", "html"), { recursive: true }).map(String).filter((f) => f.endsWith(".ts"));
     for (const f of html) expect(readFileSync(path.join(process.cwd(), "lib", "renderers", "html", f), "utf8")).not.toMatch(/productFidelityMode|product_locked|compositeProduct/);
     expect(routeFor({ mechanism: "x_post", renderer: "html" })).toEqual({ route: "html" });
+  });
+});
+
+describe("the real product cut-out master in the repo", () => {
+  const file = path.join(process.cwd(), "public", REFERENCE_ASSETS.pouchCutout.previewUrl);
+
+  it("is an RGBA cut-out with transparent corners, no background, powder or shadow, at hero resolution", async () => {
+    const meta = await sharp(file).metadata();
+    expect(meta).toMatchObject({ format: "png", channels: 4, hasAlpha: true, width: REFERENCE_ASSETS.pouchCutout.width, height: REFERENCE_ASSETS.pouchCutout.height });
+    const { data, info } = await sharp(file).raw().toBuffer({ resolveWithObject: true });
+    const W = info.width, H = info.height;
+    const a = (x: number, y: number) => data[(y * W + x) * 4 + 3];
+    expect([a(0, 0), a(W - 1, 0), a(0, H - 1), a(W - 1, H - 1)]).toEqual([0, 0, 0, 0]);
+    let transparent = 0, lightEdge = 0, green = 0, minY = H, maxY = 0;
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const i = (y * W + x) * 4, al = data[i + 3];
+        if (al === 0) { transparent++; continue; }
+        if (al > 8) { minY = Math.min(minY, y); maxY = Math.max(maxY, y); }
+        if (al < 255 && (data[i] + data[i + 1] + data[i + 2]) / 3 > 200) lightEdge++; // leftover light background = halo
+        if (al > 200 && data[i + 1] > data[i] + 30 && data[i + 1] > data[i + 2] + 30) green++;
+      }
+    expect(transparent / (W * H)).toBeGreaterThan(0.4); // the background is really gone
+    expect(lightEdge).toBeLessThan(200); // no halo of the old studio background
+    expect(green).toBeLessThan(10_000); // only the printed leaf icon, no powder pile (~160k px in the packshot)
+    // Hero placement needs the product ≈ 56% of 2048 (1:1) / 42% of 2720 (9:16): the master must not be upscaled.
+    expect(maxY - minY + 1).toBeGreaterThanOrEqual(Math.round(Math.max(2048 * 0.56, 2720 * 0.42)));
+    // No baked shadow: after the last fully opaque row only an edge-smoothing fade of a few rows follows.
+    let lastOpaque = 0, lastAny = 0;
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        if (a(x, y) === 255) lastOpaque = y;
+        if (a(x, y) > 0) lastAny = y;
+      }
+    expect(lastAny - lastOpaque).toBeLessThanOrEqual(12);
+  });
+
+  it("is classified as a cut-out by the render store and makes Product Hero eligible in product_locked mode", async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), "cos-master-"));
+    try {
+      const store = new FsRenderStore(dir);
+      const master = await store.putAsset(readFileSync(file));
+      expect(master.treatment).toBe("cutout");
+      const packshot = await store.putAsset(readFileSync(path.join(process.cwd(), "public", REFERENCE_ASSETS.pouch.previewUrl)));
+      expect(packshot.treatment).toBe("light_studio");
+      const kv = fakeKnightVision();
+      const out = await startImageRender(heroRequest([{ hash: packshot.hash, role: "main" }, { hash: master.hash, role: REFERENCE_ASSETS.pouchCutout.role as "packaging" }], ["1:1", "9:16"]), { renderer: renderer(kv.fetchImpl), store, jobs: new MemoryImageJobStore() });
+      for (const f of ["1:1", "9:16"] as const) {
+        expect(out[f]!.record).toMatchObject({ status: "rendering", image: { productFidelityMode: "product_locked", brief: { referenceAssets: [], lockedProduct: { assetId: master.hash, role: "packaging" } } } });
+      }
+      expect(generateCalls(kv.calls)).toBe(2); // fake provider only
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
