@@ -198,8 +198,11 @@ export function footprintAccent(concept: { layoutNotes?: Partial<Record<OutputFo
 
 /** Explicit footprint geometry for the accent: fully outside, to one side, visible gap, same surface and depth. */
 const accentWords = (p: ProductPlacement, a: FootprintAccent) => [
-  `Keep the entire ${horizontalWords(p.centerX)} product footprint completely clear`,
-  `Place the complete ${a.noun} to the ${a.side} of that footprint, fully outside its boundary, with a visible horizontal gap between them`,
+  `Leave the existing continuous tabletop unobstructed ${horizontalWords(p.centerX) === "centred" ? "at the centre" : horizontalWords(p.centerX)} where the product will later stand`,
+  "Do not create or place any placeholder, panel, slab, block, plinth, pedestal, card, backdrop, stand, platform, box or marker there",
+  "It must remain ordinary visible tabletop, identical to the surrounding surface",
+  "Keep all supporting objects and accents fully outside this clear tabletop area",
+  `Place the complete ${a.noun} to the ${a.side} of that clear area, fully outside its boundary, with a visible horizontal gap between them`,
   `No part of the ${a.noun}, its loose scatter, props or decoration may sit behind, underneath or inside the reserved area`,
   `The ${a.noun} stands on the same standing surface as the footprint, at about the same depth, not further back`,
   `The ${a.noun} must remain fully visible after the real product is inserted`,

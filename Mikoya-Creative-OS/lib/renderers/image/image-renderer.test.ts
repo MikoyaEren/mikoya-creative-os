@@ -1179,8 +1179,11 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
     expect(brief.lockedProduct!.placement.centerX).toBe(0.5);
     const fidelity = prompt.split("\n").find((l) => l.startsWith("Product fidelity:"))!;
     for (const line of [
-      "Keep the entire centred product footprint completely clear.",
-      "Place the complete powder mound to the right of that footprint, fully outside its boundary, with a visible horizontal gap between them.",
+      "Leave the existing continuous tabletop unobstructed at the centre where the product will later stand.",
+      "Do not create or place any placeholder, panel, slab, block, plinth, pedestal, card, backdrop, stand, platform, box or marker there.",
+      "It must remain ordinary visible tabletop, identical to the surrounding surface.",
+      "Keep all supporting objects and accents fully outside this clear tabletop area.",
+      "Place the complete powder mound to the right of that clear area, fully outside its boundary, with a visible horizontal gap between them.",
       "No part of the powder mound, its loose scatter, props or decoration may sit behind, underneath or inside the reserved area.",
       "The powder mound stands on the same standing surface as the footprint, at about the same depth, not further back.",
       "The powder mound must remain fully visible after the real product is inserted.",
@@ -1191,7 +1194,7 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
     expect(fidelity.indexOf("Place the complete powder mound")).toBeLessThan(fidelity.indexOf("Do not mark the footprint"));
     expect(prompt).not.toMatch(/at its base|clearly beside its base/);
     // 1:1 is unchanged: no explicit accent geometry.
-    expect(plate("1:1").prompt).not.toMatch(/Place the complete|fully outside its boundary|centred product footprint/);
+    expect(plate("1:1").prompt).not.toMatch(/Place the complete|fully outside its boundary|unobstructed|placeholder, panel, slab/);
   });
 
   it("derives the accent from the concept's own notes, product-agnostic", () => {
