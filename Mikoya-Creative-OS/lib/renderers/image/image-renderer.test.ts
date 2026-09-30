@@ -856,7 +856,10 @@ describe("negative space stays part of the photographed scene", () => {
       // Brand direction about whitespace / background colours is tied to the real scene.
       const style = p.split("\n").find((l) => l.startsWith("Style:"))!;
       for (const m of style.matchAll(/[^;]*\b(whitespace|backgrounds?)\b[^;]*/gi)) expect(m[0]).toMatch(/through the real scene/);
-      expect(style).toMatch(/whitespace/i); // the Mikoya direction is present, only re-expressed
+      // The Mikoya direction is present, only re-expressed: as whitespace tied to the scene (reference-conditioned),
+      // or as breathing room inside the set (product_locked scene plates never mention whitespace).
+      if (p.includes("Leave a clean, naturally lit product placement area")) expect(style).toContain("calm visual breathing room created naturally by the set, surfaces, light and depth");
+      else expect(style).toMatch(/whitespace/i);
     }
   });
 
@@ -1159,6 +1162,18 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
       expect(prompt).toContain("Do not create blank, flat, solid-colour, artificial or graphic bands for text");
       expect(prompt).toContain("no blank, flat, solid-colour, artificial or graphic bands, panels or empty areas");
       expect(prompt).toContain("The image carries no advertising copy");
+    }
+  });
+
+  it("keeps whitespace / negative-space / empty-space wording out of the whole locked prompt, style cues intact", () => {
+    for (const f of ["1:1", "9:16"] as const) {
+      const { prompt } = plate(f);
+      expect(prompt).not.toMatch(/white ?space|negative space|empty space/i);
+      const style = prompt.split("\n").find((l) => l.startsWith("Style:"))!;
+      expect(style).toContain("calm visual breathing room created naturally by the set, surfaces, light and depth");
+      for (const keep of ["Cream backgrounds", "deep green", "premium editorial campaign photography", "The vivid green colour as a scroll-stopping visual", "palette hints: #255C33 and #2F5AA8"]) expect(style).toContain(keep);
+      expect(prompt).toContain("The real scene must continue across the entire frame");
+      expect(prompt).toContain("no blank, flat, solid-colour, artificial or graphic bands, panels or empty areas");
     }
   });
 

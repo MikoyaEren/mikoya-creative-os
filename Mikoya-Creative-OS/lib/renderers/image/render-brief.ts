@@ -191,6 +191,14 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** Whitespace / negative-space wording ("generous whitespace") invites flat empty areas; in a scene plate it is restated as part of the set. */
 const WHITESPACE = /\b(white ?space|negative space|empty (?:space|area)s?)\b/i;
 const SET_BREATHING_ROOM = "calm uncluttered breathing room formed naturally by the real set, surface, light and depth";
+const STYLE_BREATHING_ROOM = "calm visual breathing room created naturally by the set, surfaces, light and depth";
+
+/** Locked plates: whitespace wording in a brand direction statement ("lots of whitespace") becomes breathing room inside the set. */
+const lockedStyleDirection = (d: string) =>
+  d
+    .split(/,(?![^(]*\))/)
+    .map((c) => (WHITESPACE.test(c) ? `${c.match(/^\s*/)![0]}${STYLE_BREATHING_ROOM}` : c))
+    .join(",");
 
 /**
  * A locked scene plate describes only the set: product noun phrases become the placement spot,
@@ -463,7 +471,7 @@ export function compileImageRenderBrief(args: {
     camera: lockedGrammar?.camera[format] ?? g.camera[format],
     lighting: g.lighting,
     mood: mood.join("; "),
-    visualStyle: [g.style, ...direction.map(asScene), `palette hints: ${context.brandColors.dark} and ${context.brandColors.accent}`].join("; "),
+    visualStyle: [g.style, ...direction.map((d) => asScene(locked ? lockedStyleDirection(d) : d)), `palette hints: ${context.brandColors.dark} and ${context.brandColors.accent}`].join("; "),
     // A locked plate never describes the product: its role is the placement spot, set by the fidelity rules.
     productRole: locked ? "" : [neutralizeNames(concept.productRole, names), references.length && looks ? `Product appearance: ${neutralizeNames(looks, names)}` : ""].filter(Boolean).join(". "),
     referenceAssets: references,
