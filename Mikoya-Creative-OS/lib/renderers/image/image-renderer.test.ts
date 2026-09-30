@@ -1289,6 +1289,11 @@ describe("locked compositor", () => {
     expect(h.gains).toEqual([1, 1, 1]);
   });
 
+  it("uses the approved Product Hero defaults: 36 % (1:1) and 34 % (9:16) of the frame height", () => {
+    expect(resolveProductHeight("product_hero", "1:1", null).height).toBe(0.36);
+    expect(resolveProductHeight("product_hero", "9:16", null).height).toBe(0.34);
+  });
+
   it("resolves a smaller hero scale than before, clamped to mechanism bounds", () => {
     expect(resolveProductHeight("product_hero", "1:1", null).height).toBeLessThan(0.56);
     expect(resolveProductHeight("product_hero", "9:16", null).height).toBeLessThan(0.42);

@@ -25,7 +25,7 @@ export class ProductMasterUnusable extends Error {}
 
 /** Product height as a share of the frame height: bounds and default per mechanism and format. */
 export const LOCKED_SCALE: Record<"product_hero" | "choose_your_fighter", Record<OutputFormat, { min: number; max: number; default: number }>> = {
-  product_hero: { "1:1": { min: 0.3, max: 0.46, default: 0.4 }, "9:16": { min: 0.26, max: 0.4, default: 0.34 } },
+  product_hero: { "1:1": { min: 0.3, max: 0.46, default: 0.36 }, "9:16": { min: 0.26, max: 0.4, default: 0.34 } },
   choose_your_fighter: { "1:1": { min: 0.28, max: 0.46, default: 0.4 }, "9:16": { min: 0.2, max: 0.32, default: 0.28 } },
 };
 
