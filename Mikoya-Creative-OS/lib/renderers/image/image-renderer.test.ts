@@ -1158,43 +1158,43 @@ describe("product_locked scene plate (real Product Hero concept)", () => {
     expect(box.height).toBe(Math.round(2048 * placement.height));
   });
 
-  it("keeps the whole reserved footprint clear, puts accents clearly beside it on one continuous surface, unmarked", () => {
-    for (const f of ["1:1", "9:16"] as const) {
-      const { prompt } = plate(f);
-      expect(prompt).toContain("Keep the entire reserved product footprint clear: no powder, props, bowls, utensils or decorative objects may overlap or occupy it");
-      expect(prompt).toContain("Any supporting accent such as powder sits clearly beside the reserved footprint, not behind it and not underneath it, with roughly one product-width of separation where practical");
-      expect(prompt).toContain("The reserved footprint sits on one continuous, physically believable horizontal standing surface");
-      expect(prompt).toContain("Do not mark the footprint: no outlines, boxes, guides or markers");
-      // The concept's "powder at its (right) base" would put the accent inside the footprint.
-      expect(prompt).not.toMatch(/at its (right |left )?base/i);
-    }
+  it("1:1 keeps the whole reserved footprint clear, puts accents clearly beside it on one continuous surface, unmarked", () => {
+    const { prompt } = plate("1:1");
+    expect(prompt).toContain("Keep the entire reserved product footprint clear: no powder, props, bowls, utensils or decorative objects may overlap or occupy it");
+    expect(prompt).toContain("Any supporting accent such as powder sits clearly beside the reserved footprint, not behind it and not underneath it, with roughly one product-width of separation where practical");
+    expect(prompt).toContain("The reserved footprint sits on one continuous, physically believable horizontal standing surface");
+    expect(prompt).toContain("Do not mark the footprint: no outlines, boxes, guides or markers");
+    // The concept's "powder at its (right) base" would put the accent inside the footprint.
+    expect(prompt).not.toMatch(/at its (right |left )?base/i);
     expect(hero.layoutNotes!["1:1"]).toContain("powder mound low at its right base");
-    expect(hero.layoutNotes!["9:16"]).toContain("powder mound at its base");
-    expect(plate("1:1").prompt).toContain("Concept note: powder mound low clearly beside it to its right.");
-    expect(plate("9:16").prompt).toContain("Concept note: powder mound fully to the right of the reserved product footprint, never inside or behind it.");
+    expect(prompt).toContain("Concept note: powder mound low clearly beside it to its right.");
   });
 
-  it("9:16 places the supporting accent explicitly outside and to the right of the centred footprint", () => {
+  it("9:16 states the accent placement once, in one compact block, without internal footprint vocabulary", () => {
     const { prompt, brief } = plate("9:16");
     expect(brief.lockedProduct!.placement.centerX).toBe(0.5);
     const fidelity = prompt.split("\n").find((l) => l.startsWith("Product fidelity:"))!;
-    for (const line of [
-      "Leave the existing continuous tabletop unobstructed at the centre where the product will later stand.",
-      "Do not create or place any placeholder, panel, slab, block, plinth, pedestal, card, backdrop, stand, platform, box or marker there.",
-      "It must remain ordinary visible tabletop, identical to the surrounding surface.",
-      "Keep all supporting objects and accents fully outside this clear tabletop area.",
-      "Place the complete powder mound to the right of that clear area, fully outside its boundary, with a visible horizontal gap between them.",
-      "No part of the powder mound, its loose scatter, props or decoration may sit behind, underneath or inside the reserved area.",
-      "The powder mound stands on the same standing surface as the footprint, at about the same depth, not further back.",
-      "The powder mound must remain fully visible after the real product is inserted.",
-    ])
-      expect(fidelity).toContain(line);
-    // The accent is placed relative to the footprint, after the standing line and before the unmarked-footprint rule.
-    expect(fidelity.indexOf("The real product will stand")).toBeLessThan(fidelity.indexOf("Place the complete powder mound"));
-    expect(fidelity.indexOf("Place the complete powder mound")).toBeLessThan(fidelity.indexOf("Do not mark the footprint"));
-    expect(prompt).not.toMatch(/at its base|clearly beside its base/);
-    // 1:1 is unchanged: no explicit accent geometry.
-    expect(plate("1:1").prompt).not.toMatch(/Place the complete|fully outside its boundary|unobstructed|placeholder, panel, slab/);
+    const block = [
+      "Keep the existing continuous standing surface unobstructed at the centre where the real product will later stand.",
+      "Do not create any placeholder object, artificial marker, panel, slab, block, plinth, pedestal, card, stand, platform, box, outline or guide specifically to represent that future product position.",
+      "That location must remain ordinary visible scene surface, continuous with its surroundings.",
+      "Keep all supporting props and accents completely outside that location.",
+      "Place the complete powder mound to the right of the future product position with a clearly visible horizontal gap.",
+      "The powder mound, including any loose scatter, must remain fully outside the future product position, on the same standing surface and approximately the same depth plane, so it remains fully visible after the real product is inserted.",
+    ];
+    expect(fidelity).toContain(block.join(" "));
+    // Provider-facing text carries none of the internal vocabulary, and no hardcoded tabletop in the placement rules.
+    expect(prompt).not.toMatch(/footprint|reserved area|clear tabletop|reserved/i);
+    expect(fidelity).not.toMatch(/tabletop/i);
+    // Stated once: no second accent rule in the fidelity list or the concept note.
+    expect(fidelity.match(/powder mound/g)).toHaveLength(2);
+    expect(prompt).not.toMatch(/Concept note:/);
+    expect(prompt).not.toMatch(/at its base|beside its base|Any supporting accent such as powder|Do not mark/);
+    // Order: placement, standing line, the block, then focus / no-product / light.
+    expect(fidelity.indexOf("The real product will stand")).toBeLessThan(fidelity.indexOf(block[0]));
+    expect(fidelity.indexOf(block[5])).toBeLessThan(fidelity.indexOf("Reserve visual focus"));
+    // 1:1 is unchanged: no compact block.
+    expect(plate("1:1").prompt).not.toMatch(/future product position|unobstructed|placeholder object/);
   });
 
   it("derives the accent from the concept's own notes, product-agnostic", () => {

@@ -196,31 +196,42 @@ export function footprintAccent(concept: { layoutNotes?: Partial<Record<OutputFo
   return { noun, side: (named?.toLowerCase() as "left" | "right" | undefined) ?? "right" };
 }
 
-/** Explicit footprint geometry for the accent: fully outside, to one side, visible gap, same surface and depth. */
-const accentWords = (p: ProductPlacement, a: FootprintAccent) => [
-  `Leave the existing continuous tabletop unobstructed ${horizontalWords(p.centerX) === "centred" ? "at the centre" : horizontalWords(p.centerX)} where the product will later stand`,
-  "Do not create or place any placeholder, panel, slab, block, plinth, pedestal, card, backdrop, stand, platform, box or marker there",
-  "It must remain ordinary visible tabletop, identical to the surrounding surface",
-  "Keep all supporting objects and accents fully outside this clear tabletop area",
-  `Place the complete ${a.noun} to the ${a.side} of that clear area, fully outside its boundary, with a visible horizontal gap between them`,
-  `No part of the ${a.noun}, its loose scatter, props or decoration may sit behind, underneath or inside the reserved area`,
-  `The ${a.noun} stands on the same standing surface as the footprint, at about the same depth, not further back`,
-  `The ${a.noun} must remain fully visible after the real product is inserted`,
-];
+/**
+ * Locked plates with a concept accent: ONE compact spatial block replaces the footprint / accent / marker rules.
+ * Provider-facing wording speaks of the existing standing surface and "the future product position" only — the
+ * internal footprint vocabulary never reaches the image model. The accent noun and side come from the concept.
+ */
+const accentBlock = (p: ProductPlacement, a: FootprintAccent) => {
+  const where = horizontalWords(p.centerX) === "centred" ? "at the centre" : `${horizontalWords(p.centerX)} in the frame`;
+  return [
+    `Keep the existing continuous standing surface unobstructed ${where} where the real product will later stand`,
+    "Do not create any placeholder object, artificial marker, panel, slab, block, plinth, pedestal, card, stand, platform, box, outline or guide specifically to represent that future product position",
+    "That location must remain ordinary visible scene surface, continuous with its surroundings",
+    "Keep all supporting props and accents completely outside that location",
+    `Place the complete ${a.noun} to the ${a.side} of the future product position with a clearly visible horizontal gap`,
+    `The ${a.noun}, including any loose scatter, must remain fully outside the future product position, on the same standing surface and approximately the same depth plane, so it remains fully visible after the real product is inserted`,
+  ];
+};
 
-/** Scene-plate instructions: the model builds the set; the real product is composited afterwards. */
-const LOCKED = (p: ProductPlacement, accent: FootprintAccent | null = null) => [
-  `Leave a clean, naturally lit product placement area ${placementWords(p)}`,
-  standingWords(p),
-  "Keep the entire reserved product footprint clear: no powder, props, bowls, utensils or decorative objects may overlap or occupy it",
-  "Any supporting accent such as powder sits clearly beside the reserved footprint, not behind it and not underneath it, with roughly one product-width of separation where practical",
-  ...(accent ? accentWords(p, accent) : []),
-  "The reserved footprint sits on one continuous, physically believable horizontal standing surface",
-  "Do not mark the footprint: no outlines, boxes, guides or markers",
+const LOCKED_FOCUS = [
   "Reserve visual focus for the real product that will be composited there later",
   "Do not draw any product, package, bottle, box, pouch, jar or label: the real product photo is added afterwards",
   "Light that spot and its level surface straight-on at product height so an object standing there sits naturally",
 ];
+
+/** Scene-plate instructions: the model builds the set; the real product is composited afterwards. */
+const LOCKED = (p: ProductPlacement, accent: FootprintAccent | null = null) =>
+  accent
+    ? [`Leave a clean, naturally lit product placement area ${placementWords(p)}`, standingWords(p), ...accentBlock(p, accent), ...LOCKED_FOCUS]
+    : [
+        `Leave a clean, naturally lit product placement area ${placementWords(p)}`,
+        standingWords(p),
+        "Keep the entire reserved product footprint clear: no powder, props, bowls, utensils or decorative objects may overlap or occupy it",
+        "Any supporting accent such as powder sits clearly beside the reserved footprint, not behind it and not underneath it, with roughly one product-width of separation where practical",
+        "The reserved footprint sits on one continuous, physically believable horizontal standing surface",
+        "Do not mark the footprint: no outlines, boxes, guides or markers",
+        ...LOCKED_FOCUS,
+      ];
 
 // ---------------------------------------------------------------------------
 // Text-free sanitising (deterministic)
@@ -535,9 +546,12 @@ export function compileImageRenderBrief(args: {
   const note = visualCompositionNote(concept.layoutNotes?.[format], copy, { dropProduct: locked });
   // Locked: an accent "at its (right) base" would sit in the reserved footprint; it goes clearly beside it.
   const accent = locked ? footprintAccent(concept, format, note) : null;
-  const layoutNote = locked
-    ? note.replace(/\bat (?:its|the product's) (?:(left|right) )?base\b/gi, (_m, side?: string) => (side ? `clearly beside it to its ${side.toLowerCase()}` : accent ? `fully to the ${accent.side} of the reserved product footprint, never inside or behind it` : "clearly beside its base"))
-    : note;
+  // With an accent block, the accent clause is dropped from the note: the spatial rule is stated once.
+  const layoutNote = !locked
+    ? note
+    : accent
+      ? note.replace(/(^|[,;.]\s*)[^,;.]*\bat (?:its|the product's) base\b[^,;.]*\.?/i, "$1").replace(/^[\s,;.]+|[\s,;]+$/g, "")
+      : note.replace(/\bat (?:its|the product's) (?:(left|right) )?base\b/gi, (_m, side?: string) => (side ? `clearly beside it to its ${side.toLowerCase()}` : "clearly beside its base"));
   const names = [context.brandName, context.productName];
   const lockedGrammar = locked ? g.locked : undefined;
   const frame = format === "1:1" ? "square frame" : "vertical frame";
