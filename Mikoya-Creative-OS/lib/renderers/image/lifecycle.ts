@@ -43,7 +43,9 @@ export type ReplaceReason =
   /** The user deliberately replaces a job that is still unresolved. */
   | "replace_unresolved"
   /** Replacing a finished image. */
-  | "replace_complete";
+  | "replace_complete"
+  /** The provider delivered a scene plate, but it had no clean position for the locked product (it was charged). */
+  | "plate_conflict";
 
 export type ImageVariantAction =
   | { kind: "busy" }
@@ -58,6 +60,7 @@ export function imageVariantAction(v: Pick<CreativeVariant, "status" | "render">
   if (v.status === "queued" || v.status === "rendering" || v.status === "provider_pending") return { kind: "busy" };
   if (!r) return { kind: "render" };
   if (r.status === "complete") return { kind: "replace", reason: "replace_complete", confirm: true };
+  if (r.error?.code === "scene_plate_product_conflict") return { kind: "replace", reason: "plate_conflict", confirm: true };
   if (r.image?.providerStatus === "failed" || r.error?.code === "provider_failed") return { kind: "replace", reason: "provider_failed", confirm: false };
   if (r.error && DEFINITE_NO_JOB.includes(r.error.code) && !providerJobOf(r)) return { kind: "replace", reason: "submit_rejected", confirm: false };
   return { kind: "replace", reason: "ambiguous", confirm: true };
@@ -88,6 +91,7 @@ export function replacementConfirmText(items: { format: OutputFormat; reason: Re
     if (i.reason === "replace_unresolved") lines.push(`${i.format}: the previous provider job${i.providerJob ? ` (${i.providerJob})` : ""} is still unresolved and may still complete — it is not cancelled and may be charged as well.`);
     else if (i.reason === "ambiguous") lines.push(`${i.format}: the previous submit got no clear answer; a provider job may exist, may still complete and may be charged as well.`);
     else if (i.reason === "replace_complete") lines.push(`${i.format}: replaces an image that is already finished.`);
+    else if (i.reason === "plate_conflict") lines.push(`${i.format}: the previous scene was generated and charged, but it had no clean position for the real product; a replacement is a new generation.`);
   }
   lines.push("Continue?");
   return lines.join("\n\n");

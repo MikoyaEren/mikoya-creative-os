@@ -324,6 +324,21 @@ export interface CompositeResult {
   shadowAlpha?: { data: Buffer; width: number; height: number; left: number; top: number };
 }
 
+/**
+ * The product exactly as the compositor places it: trimmed to its alpha, scaled uniformly to `productHeight` of the
+ * frame (never wider than 90 %), as raw RGBA. Shared with the placement solver so both see the same silhouette.
+ */
+export async function fitProduct(master: Buffer, W: number, H: number, productHeight: number) {
+  const trimmed = await sharp(master).ensureAlpha().trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 1 }).png().toBuffer();
+  const tm = await sharp(trimmed).metadata();
+  const resized = await sharp(trimmed)
+    .resize({ height: Math.round(H * productHeight), width: Math.round(W * 0.9), fit: "inside" })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  return { resized, masterHeight: tm.height ?? resized.info.height };
+}
+
 export async function compositeProduct(scene: Buffer, master: Buffer, placement: ProductPlacement, opts: CompositeOptions = {}): Promise<CompositeResult> {
   if (opts.legacy) return legacyComposite(scene, master, placement);
   const sm = await sharp(scene).metadata();
@@ -333,14 +348,9 @@ export async function compositeProduct(scene: Buffer, master: Buffer, placement:
   if (!mm.hasAlpha) throw new ProductMasterUnusable("The product master has no transparency; a locked composite needs a cut-out.");
 
   // Scale: uniform, fitted inside the resolved height (never stretched).
-  const trimmed = await sharp(master).ensureAlpha().trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 1 }).png().toBuffer();
-  const tm = await sharp(trimmed).metadata();
   const productHeight = opts.productHeight ?? placement.height;
-  const resized = await sharp(trimmed)
-    .resize({ height: Math.round(H * productHeight), width: Math.round(W * 0.9), fit: "inside" })
-    .ensureAlpha()
-    .raw()
-    .toBuffer({ resolveWithObject: true });
+  const { resized, masterHeight } = await fitProduct(master, W, H, productHeight);
+  const tm = { height: masterHeight };
   const w = resized.info.width, h = resized.info.height;
   // Position from the shared footprint (the scene plate was told the same base line and centre).
   const fp = lockedFootprint(placement);

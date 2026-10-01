@@ -147,6 +147,11 @@ export interface ImageRenderMeta {
     contactShadow: boolean;
     transforms?: ProductCompositeTransforms;
   };
+  /**
+   * product_locked: the deterministic placement solver's decision on the raw scene plate (horizontal only; scale and
+   * base line never change). Present on complete renders and on scene_plate_product_conflict failures.
+   */
+  placementSolver?: PlacementSolverAudit;
   submittedAt: string;
   completedAt?: string;
 }
@@ -191,4 +196,26 @@ export interface ProductCompositeTransforms {
     cast: { opacity: number; offsetX: number; radiusX: number; radiusY: number } | null;
     color: [number, number, number];
   };
+}
+
+/** Audit of the locked placement solver (see lib/renderers/image/placement-solver.ts). */
+export interface PlacementSolverAudit {
+  /** preferred_window: decided in the normal window; extended_window: the fallback was needed; conflict: no acceptable x. */
+  searchStage: "preferred_window" | "extended_window" | "conflict";
+  preferredX: number;
+  selectedX: number;
+  /** selectedX − preferredX (fraction of the frame width). */
+  horizontalShift: number;
+  /** Weighted obstruction score (0–1) of the preferred / selected position. */
+  preferredScore: number;
+  selectedScore: number;
+  /** True when the product was moved away from the preferred x. */
+  adjusted: boolean;
+  status: "ok" | "conflict";
+  /** Normal search bounds; extended bounds only when the fallback was searched. */
+  normalRange: [number, number];
+  extendedRange: [number, number] | null;
+  failScore: number;
+  /** Minimum product-to-frame-edge gap (fraction of the frame width). */
+  sideMargin: number;
 }

@@ -361,7 +361,9 @@ export type RenderErrorCode =
   | "provider_unavailable"
   | "provider_failed"
   | "provider_malformed"
-  | "output_unavailable";
+  | "output_unavailable"
+  /** product_locked: the generated scene plate has no clean position for the real product (no composite, no new generation). */
+  | "scene_plate_product_conflict";
 
 /** Final size of one fitted text unit (after deterministic step-down). */
 export interface RenderFitResult {

@@ -9,6 +9,7 @@ import { routeFor } from "@/lib/renderers/image/router";
 import { IMAGE_LOCAL_WAIT_MS, PROVIDER_PENDING_RECHECK_MS, RATE_LIMIT_WAIT_MS, asProviderError, pollOnce, providerPendingNote } from "@/lib/renderers/image/image-renderer";
 import { isUnresolvedImageJob, replacementNeedsConfirmation } from "@/lib/renderers/image/lifecycle";
 import { normalizeToFormat } from "@/lib/renderers/image/normalize";
+import { solveLockedPlacement, solverAppliesTo } from "@/lib/renderers/image/placement-solver";
 import type { ImageRenderer, ReferenceImage } from "@/lib/renderers/image/types";
 import type { RenderStore } from "@/lib/renderers/store/fs-store";
 import type { ImageJob, ImageJobStore } from "./image-jobs";
@@ -304,6 +305,7 @@ async function advance(job: ImageJob, deps: ImageServiceDeps, now: () => number,
     await deps.store.putRender(`${stem}.provider.png`, original);
     const providerOriginalUrl = `/api/renders/${stem}.provider.png`;
     let productComposite: ImageRenderMeta["productComposite"];
+    let placementSolver: ImageRenderMeta["placementSolver"];
     const locked = done.brief.lockedProduct;
     if (done.productFidelityMode === "product_locked") {
       // The generated file is only the scene: the real product must be composited, or the render fails (never shipped without it).
@@ -311,14 +313,37 @@ async function advance(job: ImageJob, deps: ImageServiceDeps, now: () => number,
       if (!locked || !master) {
         return finish({ ...job.record, image: { ...done, normalization: { ...normalization, providerOriginalUrl } }, status: "failed", warnings, error: { code: "missing_locked_product_asset", message: "The product cut-out is no longer available; the generated scene was kept as the provider original but not shipped without the real product." } });
       }
-      const c = await compositeProduct(body, master.body, locked.placement, { productHeight: resolveProductHeight(done.brief.mechanism, job.record.format, null).height });
+      const productHeight = resolveProductHeight(done.brief.mechanism, job.record.format, null).height;
+      let placement = locked.placement;
+      if (solverAppliesTo(done.brief.mechanism, job.record.format)) {
+        // The plate may hold an accent or prop where the product stands: pick the closest clean x (scale and base fixed).
+        const solved = await solveLockedPlacement(body, master.body, locked.placement, { productHeight });
+        const { candidates: _evaluated, ...audit } = solved;
+        void _evaluated;
+        placementSolver = audit;
+        if (solved.status === "conflict") {
+          return finish({
+            ...job.record,
+            image: { ...done, normalization: { ...normalization, providerOriginalUrl }, placementSolver },
+            status: "failed",
+            warnings,
+            error: {
+              code: "scene_plate_product_conflict",
+              message: `The generated scene has no acceptable position for the real product (best obstruction ${solved.selectedScore} at x=${solved.selectedX}, limit ${solved.failScore}; searched x ${solved.normalRange[0]}–${solved.normalRange[1]}${solved.extendedRange ? `, then the fallback ${solved.extendedRange[0]}–${solved.extendedRange[1]}` : ""}, side margin ${solved.sideMargin}). Nothing was composited and no new generation was submitted; the scene plate is kept as the provider original.`,
+            },
+          });
+        }
+        placement = { ...locked.placement, centerX: solved.selectedX };
+        if (solved.adjusted) warnings.push(`placement_adjusted: the product was moved from x=${solved.preferredX} to x=${solved.selectedX} (${solved.searchStage === "extended_window" ? "extended fallback window" : "normal window"}; obstruction ${solved.preferredScore} → ${solved.selectedScore}); scale and base line unchanged.`);
+      }
+      const c = await compositeProduct(body, master.body, placement, { productHeight });
       body = c.body;
       productComposite = { masterAssetId: locked.assetId, box: c.box, contactShadow: c.contactShadow, transforms: c.transforms };
     }
     await deps.store.putRender(`${stem}.png`, body);
     return finish({
       ...job.record,
-      image: { ...done, normalization: { ...normalization, providerOriginalUrl }, ...(productComposite ? { productComposite } : {}) },
+      image: { ...done, normalization: { ...normalization, providerOriginalUrl }, ...(productComposite ? { productComposite } : {}), ...(placementSolver ? { placementSolver } : {}) },
       status: "complete",
       width: normalization.normalizedWidth,
       height: normalization.normalizedHeight,

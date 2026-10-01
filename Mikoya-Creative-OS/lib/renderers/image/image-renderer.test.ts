@@ -20,6 +20,7 @@ import { FsRenderStore } from "../store/fs-store";
 import { REFERENCE_ASSETS } from "@/lib/projects/mikoya/assets";
 import { imageConceptControls, imageVariantAction, isUnresolvedImageJob, NEW_PAID_GENERATION, replacementNeedsConfirmation, unresolvedReplacement } from "./lifecycle";
 import { normalizeToFormat } from "./normalize";
+import { SOLVER_CLEAN_SCORE, SOLVER_FAIL_SCORE, SOLVER_SIDE_MARGIN, solveLockedPlacement } from "./placement-solver";
 import { buildShadowAlpha, bottomContour, compositeProduct, defaultShadowParams, deriveHarmonisation, detectLightDirection, LOCKED_SCALE, neutralShadowTone, resolveProductHeight, SHADOW_MAX_CHROMA } from "./composite";
 import { createHash } from "node:crypto";
 import { footprintAccent, lockedFootprint, productFidelityModeFor, productHorizontalIntent, resolveLockedPlacement, scenePlateText } from "./render-brief";
@@ -1493,5 +1494,167 @@ describe("locked compositor", () => {
       shadow: { contact: { opacity: expect.any(Number) }, ambient: { opacity: expect.any(Number) } },
     });
     expect(createHash("sha256").update(readFileSync(file)).digest("hex")).toBe(before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Locked placement solver (9:16 Product Hero): closest clean x on the raw plate
+// ---------------------------------------------------------------------------
+
+describe("locked placement solver", () => {
+  const W = 1530, H = 2720;
+  const cutout = () => readFileSync(path.join(process.cwd(), "public", REFERENCE_ASSETS.pouchCutout.previewUrl));
+  const preferred = { centerX: 0.5, bottom: 0.78, height: 0.34 };
+  type Obj = { x0: number; x1: number; y0: number; y1: number; rgb: [number, number, number]; outline?: number };
+  /** A plain warm surface with mild deterministic texture, plus generic objects (no product- or colour-specific shapes). */
+  const plateWith = async (objs: Obj[]) => {
+    const d = Buffer.alloc(W * H * 3);
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        const n = ((x * 7 + y * 13) % 5) - 2;
+        d.set([226 + n, 216 + n, 201 + n], (y * W + x) * 3);
+      }
+    for (const o of objs) {
+      const X0 = Math.round(o.x0 * W), X1 = Math.round(o.x1 * W), Y0 = Math.round(o.y0 * H), Y1 = Math.round(o.y1 * H);
+      for (let y = Y0; y < Y1; y++)
+        for (let x = X0; x < X1; x++) {
+          const edge = o.outline && (x - X0 < o.outline || X1 - 1 - x < o.outline || y - Y0 < o.outline || Y1 - 1 - y < o.outline);
+          if (edge) d.set([150, 142, 130], (y * W + x) * 3);
+          else if (o.rgb) d.set(o.rgb, (y * W + x) * 3);
+        }
+    }
+    return sharp(d, { raw: { width: W, height: H, channels: 3 } }).png().toBuffer();
+  };
+  const atBase = (x0: number, x1: number, rgb: [number, number, number]): Obj => ({ x0, x1, y0: 0.7, y1: 0.785, rgb });
+  const flanked = [atBase(0.12, 0.33, [70, 78, 112]), atBase(0.62, 0.86, [150, 96, 70])];
+
+  it("keeps the preferred x on a plain surface", async () => {
+    const s = await solveLockedPlacement(await plateWith([]), cutout(), preferred, { productHeight: 0.34 });
+    expect(s).toMatchObject({ searchStage: "preferred_window", preferredX: 0.5, selectedX: 0.5, horizontalShift: 0, adjusted: false, status: "ok", extendedRange: null });
+    expect(s.preferredScore).toBeLessThanOrEqual(SOLVER_CLEAN_SCORE);
+    expect(s.normalRange).toEqual([0.4, 0.6]);
+  });
+
+  it("moves to the closest clean x when an object at the base would be hidden (dark object, same-coloured outlined box)", async () => {
+    // A dark object, and a same-hue box (shaded face + contour, like a placeholder plinth) — both at the base.
+    for (const obj of [atBase(0.66, 0.8, [70, 78, 112]), { ...atBase(0.64, 0.8, [188, 180, 168]), outline: 4 }]) {
+      const s = await solveLockedPlacement(await plateWith([obj]), cutout(), preferred, { productHeight: 0.34 });
+      expect(s.status).toBe("ok");
+      expect(s.searchStage).toBe("preferred_window"); // decided in the normal window: never pushed further out
+      expect(s.extendedRange).toBeNull();
+      expect(s.adjusted).toBe(true);
+      expect(s.selectedX).toBeLessThan(0.5);
+      expect(s.selectedX).toBeGreaterThanOrEqual(0.4);
+      expect(s.preferredScore).toBeGreaterThan(SOLVER_CLEAN_SCORE);
+      expect(s.selectedScore).toBeLessThanOrEqual(SOLVER_CLEAN_SCORE);
+      // Closest clean: the next position towards the preferred x is not clean.
+      const next = s.candidates.find((c) => Math.abs(c.centerX - (s.selectedX + 0.01)) < 1e-6)!;
+      expect(next.score).toBeGreaterThan(SOLVER_CLEAN_SCORE);
+      // Scale and base line never change.
+      expect(s.horizontalShift).toBeCloseTo(s.selectedX - 0.5, 6);
+    }
+  });
+
+  it("allows normal background occlusion behind the upper part of the product", async () => {
+    // An object behind the upper third of the silhouette (well above the base): the product may hide it.
+    const s = await solveLockedPlacement(await plateWith([{ x0: 0.42, x1: 0.58, y0: 0.45, y1: 0.53, rgb: [150, 112, 80] }]), cutout(), preferred, { productHeight: 0.34 });
+    expect(s).toMatchObject({ selectedX: 0.5, adjusted: false, status: "ok" });
+  });
+
+  it("reports a conflict when no position in range is clean", async () => {
+    // Objects at the base on both sides: every candidate x would hide one of them.
+    const s = await solveLockedPlacement(await plateWith(flanked), cutout(), preferred, { productHeight: 0.34 });
+    expect(s.status).toBe("conflict");
+    expect(s.searchStage).toBe("conflict");
+    expect(s.extendedRange).toEqual([0.3, 0.7]); // the fallback was searched and found nothing acceptable either
+    expect(s.selectedScore).toBeGreaterThan(SOLVER_FAIL_SCORE);
+  });
+
+  // Objects at the base from x 0.55 to 0.82: nothing acceptable in 0.40–0.60, a clean spot further left.
+  const rightCluster = [atBase(0.55, 0.68, [70, 78, 112]), atBase(0.68, 0.82, [150, 96, 70])];
+
+  it("falls back to the extended window only when the normal window has no acceptable position", async () => {
+    const s = await solveLockedPlacement(await plateWith(rightCluster), cutout(), preferred, { productHeight: 0.34 });
+    expect(s.searchStage).toBe("extended_window");
+    expect(s.status).toBe("ok");
+    expect(s.normalRange).toEqual([0.4, 0.6]);
+    expect(s.extendedRange).toEqual([0.3, 0.7]);
+    expect(s.selectedX).toBeLessThan(0.4);
+    expect(s.selectedX).toBeGreaterThanOrEqual(0.3);
+    expect(s.selectedScore).toBeLessThanOrEqual(SOLVER_FAIL_SCORE);
+    // Nothing in the normal window was acceptable.
+    for (const c of s.candidates.filter((c) => c.centerX >= 0.4 && c.centerX <= 0.6)) expect(c.score).toBeGreaterThan(SOLVER_FAIL_SCORE);
+    // Same score + distance penalty: no acceptable candidate has a lower total than the selected one.
+    const sel = s.candidates.find((c) => c.centerX === s.selectedX)!;
+    for (const c of s.candidates.filter((c) => c.withinMargin && c.score <= SOLVER_FAIL_SCORE)) expect(c.total).toBeGreaterThanOrEqual(sel.total);
+  });
+
+  it("never accepts a position whose product box is closer to the frame edge than the side margin", async () => {
+    // With a wide margin the only clean spots (near the left edge) are out of bounds → conflict, not an edge-hugging composite.
+    const s = await solveLockedPlacement(await plateWith(rightCluster), cutout(), preferred, { productHeight: 0.34, sideMargin: 0.2 });
+    expect(s.status).toBe("conflict");
+    const near = s.candidates.filter((c) => c.centerX <= 0.4);
+    expect(near.every((c) => !c.withinMargin)).toBe(true);
+    expect(near.some((c) => c.score <= SOLVER_CLEAN_SCORE)).toBe(true); // clean, but too close to the edge: still rejected
+    // Default margin (5 %): the pouch (≈ 42 % of the width) still clears both edges across 0.30–0.70.
+    const d = await solveLockedPlacement(await plateWith(rightCluster), cutout(), preferred, { productHeight: 0.34 });
+    expect(d.sideMargin).toBe(SOLVER_SIDE_MARGIN);
+    expect(d.candidates.every((c) => c.withinMargin)).toBe(true);
+  });
+
+  const hero = FIXTURES.find((f) => f.concept.id === "batch_ac340d04_c01")!.concept as Fixture["concept"];
+  const renderWith = async (plate: Buffer, formats: ("1:1" | "9:16")[]) => {
+    const kv = fakeKnightVision({ download: () => new Response(new Uint8Array(plate), { status: 200, headers: { "content-type": "image/png" } }) });
+    let t = 0;
+    const deps = { renderer: renderer(kv.fetchImpl), store: await productStore(true), jobs: new MemoryImageJobStore(), now: () => t };
+    const started = await startImageRender({ ...request(hero, formats), assets: [{ hash: MASTER, role: "packaging" }] }, deps);
+    t += 4000;
+    const done = await pollImageJobs(Object.values(started).map((j) => j!.jobId), deps);
+    return { kv, done: Object.fromEntries(Object.entries(started).map(([f, j]) => [f, done[j!.jobId]])) as Record<string, RenderRecord> };
+  };
+
+  it("composites 9:16 at the solved x and records the decision in the audit", async () => {
+    // (The test store's cut-out is narrower than the real pouch, so the object sits closer to the centre.)
+    const { done } = await renderWith(await plateWith([atBase(0.6, 0.78, [70, 78, 112])]), ["9:16"]);
+    const r = done["9:16"];
+    expect(r.status).toBe("complete");
+    const a = r.image!.placementSolver!;
+    expect(a).toMatchObject({ searchStage: "preferred_window", preferredX: 0.5, adjusted: true, status: "ok", failScore: SOLVER_FAIL_SCORE, normalRange: [0.4, 0.6], extendedRange: null, sideMargin: SOLVER_SIDE_MARGIN });
+    expect(a).not.toHaveProperty("candidates");
+    expect(a.selectedX).toBeLessThan(0.5);
+    expect(a.horizontalShift).toBeCloseTo(a.selectedX - a.preferredX, 6);
+    expect(a.selectedScore).toBeLessThan(a.preferredScore);
+    const box = r.image!.productComposite!.box;
+    expect(Math.abs(box.left + box.width / 2 - W * a.selectedX)).toBeLessThanOrEqual(1);
+    expect(box.top + box.height).toBe(Math.round(H * 0.78)); // base line unchanged
+    expect(box.height).toBe(Math.round(H * 0.34)); // scale unchanged
+    expect(r.image!.brief.lockedProduct!.placement.centerX).toBe(0.5); // the brief keeps the concept's preferred x
+    expect(r.warnings.some((w) => w.startsWith("placement_adjusted:"))).toBe(true);
+  });
+
+  it("fails 9:16 deterministically with scene_plate_product_conflict, composites nothing and submits no new generation", async () => {
+    const { done, kv } = await renderWith(await plateWith([atBase(0.2, 0.36, [70, 78, 112]), atBase(0.6, 0.8, [150, 96, 70])]), ["9:16"]);
+    const r = done["9:16"];
+    expect(r.status).toBe("failed");
+    expect(r.error?.code).toBe("scene_plate_product_conflict");
+    expect(r.outputUrl).toBeNull();
+    expect(r.image!.productComposite).toBeUndefined();
+    expect(r.image!.placementSolver).toMatchObject({ status: "conflict", searchStage: "conflict", normalRange: [0.4, 0.6], extendedRange: [0.3, 0.7] });
+    expect(r.error!.message).toContain("then the fallback 0.3–0.7");
+    expect(r.image!.normalization!.providerOriginalUrl).toMatch(/\.provider\.png$/); // the plate is kept for inspection
+    expect(kv.calls.filter((c) => c.url.endsWith("/generate-image"))).toHaveLength(1);
+    // The UI offers only an explicit, confirmed NEW PAID GENERATION.
+    const action = imageVariantAction({ status: r.status, render: r });
+    expect(action).toEqual({ kind: "replace", reason: "plate_conflict", confirm: true });
+    expect(replacementNeedsConfirmation(r)).toBe(true);
+  });
+
+  it("leaves 1:1 Product Hero on its fixed placement (no solver)", async () => {
+    const plate = await sharp({ create: { width: 2048, height: 2048, channels: 3, background: "#e2d8c9" } }).png().toBuffer();
+    const { done } = await renderWith(plate, ["1:1"]);
+    expect(done["1:1"].status).toBe("complete");
+    expect(done["1:1"].image!.placementSolver).toBeUndefined();
+    const box = done["1:1"].image!.productComposite!.box;
+    expect(Math.abs(box.left + box.width / 2 - 2048 * 0.36)).toBeLessThanOrEqual(1);
   });
 });
