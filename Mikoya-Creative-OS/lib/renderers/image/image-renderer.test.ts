@@ -20,8 +20,9 @@ import { FsRenderStore } from "../store/fs-store";
 import { REFERENCE_ASSETS } from "@/lib/projects/mikoya/assets";
 import { imageConceptControls, imageVariantAction, isUnresolvedImageJob, NEW_PAID_GENERATION, replacementNeedsConfirmation, unresolvedReplacement } from "./lifecycle";
 import { normalizeToFormat } from "./normalize";
-import { SOLVER_CLEAN_SCORE, SOLVER_FAIL_SCORE, SOLVER_SIDE_MARGIN, solveLockedPlacement } from "./placement-solver";
-import { buildShadowAlpha, bottomContour, compositeProduct, defaultShadowParams, deriveHarmonisation, detectLightDirection, LOCKED_SCALE, neutralShadowTone, resolveProductHeight, SHADOW_MAX_CHROMA } from "./composite";
+import { SLOT_MAX_SHIFT, SLOT_OCCUPANCY_MIN, SOLVER_CLEAN_SCORE, SOLVER_FAIL_SCORE, SOLVER_SIDE_MARGIN, solveLockedPlacement, solveSlotPlacement } from "./placement-solver";
+import { CYF_DEFAULT_SCENE, CYF_SIDE_MARGIN, CYF_SLOT_FILL, cyfProductPlacement, cyfRouting, cyfSlotLayout } from "./cyf";
+import { buildShadowAlpha, bottomContour, compositeProduct, defaultShadowParams, deriveHarmonisation, detectLightDirection, LOCKED_SCALE, neutralShadowTone, resolveProductHeight, SHADOW_MAX_CHROMA, trimmedAspect } from "./composite";
 import { createHash } from "node:crypto";
 import { footprintAccent, lockedFootprint, productFidelityModeFor, productHorizontalIntent, resolveLockedPlacement, scenePlateText } from "./render-brief";
 import { renderSummary, renderSummaryText } from "@/lib/constants";
@@ -921,8 +922,11 @@ describe("product fidelity modes", () => {
     expect(productFidelityModeFor("product_hero", { productRole: "supporting" })).toBe("product_locked");
   });
 
-  it("locks choose-your-fighter when the package is visually central, not when it only supports the scene", () => {
-    expect(productFidelityModeFor("choose_your_fighter", { productRole: "the pouch is one of the fighters" })).toBe("product_locked");
+  it("locks choose-your-fighter only through the structured product-fighter marker, never from free text", () => {
+    const fighters = (marked: number[]) => [{ key: "fighters", text: "", rows: [0, 1].map((i) => ({ label: `F${i}`, text: "t", note: "", ...(marked.includes(i) ? { product: true } : {}) })) }];
+    // Free text alone never locks (it used to).
+    expect(productFidelityModeFor("choose_your_fighter", { productRole: "the pouch is one of the fighters" })).toBe("reference_conditioned");
+    expect(productFidelityModeFor("choose_your_fighter", { productRole: "hero — one of the fighters", copyFields: fighters([1]) })).toBe("product_locked");
     expect(productFidelityModeFor("choose_your_fighter", { productRole: "supporting: pouch in the background" })).toBe("reference_conditioned");
     expect(productFidelityModeFor("choose_your_fighter", { productRole: "none — the options are rituals" })).toBe("reference_conditioned");
   });
@@ -1656,5 +1660,331 @@ describe("locked placement solver", () => {
     expect(done["1:1"].image!.placementSolver).toBeUndefined();
     const box = done["1:1"].image!.productComposite!.box;
     expect(Math.abs(box.left + box.width / 2 - 2048 * 0.36)).toBeLessThanOrEqual(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Locked Choose Your Fighter (v1: two fighters, explicit product fighter)
+// ---------------------------------------------------------------------------
+
+describe("locked choose your fighter", () => {
+  type Row = { label: string; text: string; note: string; product?: boolean };
+  // Semantically valid line-ups: the real product is always "The Original"; only its row index changes.
+  const ORIGINAL: Row = { label: "The Original", text: "the real thing, unchanged", note: "" };
+  const SLOW: Row = { label: "The Slow Morning", text: "warm bowl, no rush", note: "" };
+  const THIRD: Row = { label: "The Third", text: "iced, no fuss", note: "" };
+  /** Product LEFT: row 0 is the product; product RIGHT: row 1 is the product. */
+  const rowsAt = (p: number): Row[] => (p === 0 ? [{ ...ORIGINAL, product: true }, SLOW] : [SLOW, { ...ORIGINAL, product: true }]);
+  /** A product-agnostic two-fighter concept with explicit rows (markers exactly as given). */
+  const cyfRows = (rows: Row[], over: Partial<BriefConcept> = {}) => {
+    const tag = rows.map((r, i) => (r.product ? `p${i}` : "")).join("") || "none";
+    return {
+      ...lifestyle,
+      id: `c_cyf_${tag}_${rows.length}`,
+      mechanism: "choose_your_fighter" as const,
+      renderer: "image",
+      objective: "Make the viewer pick a side",
+      angle: "identity",
+      visualDescription: "A character-select line-up on a warm stone counter: a steaming bowl with a whisk next to the matte black pouch, each on its own pedestal, under soft morning light.",
+      productRole: "hero — the package is one of the two fighters",
+      tone: "playful, warm",
+      layoutNotes: { "1:1": "Two fighters side by side.", "9:16": "Two fighters side by side, header on top." },
+      copyFields: [{ key: "header", text: "Choose your fighter", rows: [] }, { key: "fighters", text: "", rows }],
+      variants: [{ id: `v_cyf_${tag}_${rows.length}_1x1`, aspectRatio: "1:1" as const }, { id: `v_cyf_${tag}_${rows.length}_9x16`, aspectRatio: "9:16" as const }],
+      ...over,
+    } as Fixture["concept"] & BriefConcept;
+  };
+  /** The valid line-up with the product at row `p` (0 = left, 1 = right). */
+  const cyf = (p: number, over: Partial<BriefConcept> = {}) => cyfRows(rowsAt(p), over);
+  const ASPECT = 0.8;
+  const compile = (c: BriefConcept, f: "1:1" | "9:16", opts: { withAspect?: boolean } = {}) => {
+    const lockedMaster = opts.withAspect === false ? { assetId: MASTER, role: "packaging" as const } : { assetId: MASTER, role: "packaging" as const, productAspect: ASPECT };
+    const brief = compileImageRenderBrief({ concept: c, variant: { id: `v_${f}`, aspectRatio: f }, context, references: [], lockedMaster });
+    return { brief, prompt: new KnightVisionImageRenderer({ apiKey: null }).prompt(brief) };
+  };
+  const line = (prompt: string, key: string) => prompt.split("\n").find((l) => l.startsWith(`${key}:`)) ?? "";
+
+  it("routes an explicit product fighter (first or second) to product_locked", () => {
+    expect(cyfRouting(cyf(0))).toEqual({ mode: "product_locked", productFighterIndex: 0 });
+    expect(cyfRouting(cyf(1))).toEqual({ mode: "product_locked", productFighterIndex: 1 });
+    expect(productFidelityModeFor("choose_your_fighter", cyf(1))).toBe("product_locked");
+    expect(compile(cyf(0), "1:1").brief.lockedProduct!.cyf!.layout).toMatchObject({ productFighterIndex: 0, productSlot: 0 });
+    expect(compile(cyf(1), "1:1").brief.lockedProduct!.cyf!.layout).toMatchObject({ productFighterIndex: 1, productSlot: 1 });
+  });
+
+  it("requires exactly one product fighter: none (hero), two, a contradicting role or an unsupported count are ineligible", () => {
+    expect(cyfRouting(cyfRows([SLOW, ORIGINAL]))).toMatchObject({ mode: "ineligible", code: "product_fighter_unresolved" });
+    expect(cyfRouting(cyfRows([{ ...SLOW, product: true }, { ...ORIGINAL, product: true }]))).toMatchObject({ mode: "ineligible", code: "product_fighter_unresolved" });
+    expect(cyfRouting(cyf(1, { productRole: "supporting — in the background" }))).toMatchObject({ mode: "ineligible", code: "product_fighter_unresolved" });
+    expect(cyfRouting(cyfRows([...rowsAt(1), THIRD]))).toMatchObject({ mode: "ineligible", code: "locked_layout_unsupported" });
+  });
+
+  it("keeps implied, supporting and non-product line-ups reference-conditioned", () => {
+    for (const role of ["implied — the rituals stand for it", "supporting — pouch in the background", "absent — the fighters are rituals", "the fighters are moods"]) {
+      expect(cyfRouting(cyfRows([SLOW, ORIGINAL], { productRole: role }))).toEqual({ mode: "reference_conditioned" });
+      expect(productFidelityModeFor("choose_your_fighter", cyfRows([SLOW, ORIGINAL], { productRole: role }))).toBe("reference_conditioned");
+    }
+  });
+
+  it("refuses an unmarked, doubly marked or three-fighter locked line-up before submission (zero provider calls)", async () => {
+    for (const [c, code] of [
+      [cyfRows([SLOW, ORIGINAL]), "product_fighter_unresolved"],
+      [cyfRows([{ ...SLOW, product: true }, { ...ORIGINAL, product: true }]), "product_fighter_unresolved"],
+      [cyfRows([...rowsAt(0), THIRD]), "locked_layout_unsupported"],
+    ] as const) {
+      const kv = fakeKnightVision();
+      const out = await startImageRender({ ...request(c), assets: [{ hash: MASTER, role: "packaging" }] }, { renderer: renderer(kv.fetchImpl), store: await productStore(true), jobs: new MemoryImageJobStore() });
+      for (const f of ["1:1", "9:16"] as const) expect(out[f]!.record).toMatchObject({ status: "failed", error: { code } });
+      expect(kv.calls).toEqual([]);
+    }
+  });
+
+  it("lays out two equal slots in row order with one shared height and base line, inside the 9:16 safe zone", () => {
+    for (const f of ["1:1", "9:16"] as const)
+      for (const p of [0, 1]) {
+        const l = cyfSlotLayout(f, p, ASPECT);
+        expect(l.slots.map((s) => s.centerX)).toEqual([0.28, 0.72]);
+        expect(l.slots.map((s) => s.fighterIndex)).toEqual([0, 1]);
+        expect(l.slots[p].role).toBe("product");
+        expect(l.slots[1 - p].role).toBe("generated");
+        expect(l.slots[0].left).toBeCloseTo(CYF_SIDE_MARGIN, 6);
+        expect(l.slots[1].right).toBeCloseTo(1 - CYF_SIDE_MARGIN, 6);
+        expect(l.slots[0].right - l.slots[0].left).toBeCloseTo(l.slots[1].right - l.slots[1].left, 6);
+        // The product's width fits its slot at the shared height.
+        const ratio = f === "1:1" ? 1 : 9 / 16;
+        expect((l.height * l.productAspect) / ratio).toBeLessThanOrEqual(CYF_SLOT_FILL * l.pitch + 1e-4);
+        expect(l.labels.map((b) => b.centerX)).toEqual(l.slots.map((s) => s.centerX));
+        expect(l.header.bottom).toBeLessThan(l.baseline - l.height);
+        expect(l.labels[0].top).toBeGreaterThan(l.baseline);
+      }
+    expect(cyfSlotLayout("1:1", 1, ASPECT)).toMatchObject({ baseline: 0.8, height: 0.396 });
+    expect(cyfSlotLayout("9:16", 1, ASPECT).baseline).toBe(0.72);
+    expect(cyfSlotLayout("9:16", 1, ASPECT).height).toBeCloseTo((CYF_SLOT_FILL * 0.44 * (9 / 16)) / ASPECT, 3);
+    // 9:16 platform UI: nothing above 250 px or below 1920 − 340 px (of 1920).
+    const l = cyfSlotLayout("9:16", 0, ASPECT);
+    expect(l.header.top).toBeGreaterThanOrEqual(250 / 1920);
+    // Labels end at ≈ 0.79–0.80 with a clear buffer (≥ 2 % of the height) above the bottom UI band.
+    for (const b of l.labels) {
+      expect(b.bottom).toBeLessThanOrEqual(0.8);
+      expect(1 - 340 / 1920 - b.bottom).toBeGreaterThanOrEqual(0.02);
+      expect(b.top).toBeGreaterThan(l.baseline);
+    }
+    expect(cyfSlotLayout("1:1", 0, ASPECT).labels[0]).toMatchObject({ top: 0.825, bottom: 0.945 }); // 1:1 unchanged
+    expect(l.baseline).toBeLessThanOrEqual(1 - 340 / 1920);
+    // A tall, narrow product is capped by the format, a wide one by its slot.
+    expect(cyfSlotLayout("1:1", 0, 0.3).height).toBe(0.4);
+    expect(cyfSlotLayout("1:1", 0, 2).height).toBeCloseTo((CYF_SLOT_FILL * 0.44) / 2, 3);
+    expect(() => cyfSlotLayout("1:1", 0, ASPECT, 3)).toThrow();
+  });
+
+  it("drives the provider prompt and the compositor placement from the same geometry", () => {
+    for (const f of ["1:1", "9:16"] as const)
+      for (const p of [0, 1]) {
+        const { brief, prompt } = compile(cyf(p), f);
+        const l = brief.lockedProduct!.cyf!.layout;
+        expect(l).toEqual(cyfSlotLayout(f, p, ASPECT));
+        expect(brief.lockedProduct!.placement).toEqual(cyfProductPlacement(l));
+        expect(brief.lockedProduct!.placement).toEqual({ centerX: l.slots[p].centerX, bottom: l.baseline, height: l.height });
+        const pc = (v: number) => `${Math.round(v * 100)}%`;
+        expect(line(prompt, "Composition")).toContain(`at about ${pc(l.slots[0].centerX)} and ${pc(l.slots[1].centerX)} of the frame width`);
+        expect(line(prompt, "Composition")).toContain(`about ${pc(l.height)} of the frame height tall with its base at about ${pc(l.baseline)} of the frame height from the top`);
+        expect(line(prompt, "Product fidelity")).toContain(`unobstructed on the ${p === 0 ? "left" : "right"}, at about ${pc(l.slots[p].centerX)} of the frame width`);
+      }
+    // Without the measured cut-out aspect nothing is locked (the service then refuses before submission).
+    expect(compile(cyf(1), "1:1", { withAspect: false }).brief.lockedProduct).toBeNull();
+  });
+
+  it("removes the product fighter from the positive options and never asks for the product or a placeholder", () => {
+    for (const f of ["1:1", "9:16"] as const)
+      for (const p of [0, 1]) {
+        const { prompt, brief } = compile(cyf(p), f);
+        const product = rowsAt(p)[p], drawn = rowsAt(p)[1 - p];
+        expect(product.label).toBe("The Original"); // semantically valid: the real product is always the product fighter
+        expect(brief.choices).toHaveLength(1);
+        expect(line(prompt, "Option to draw (the only one the image draws, without any label)")).toContain(`${drawn.label} — ${drawn.text}`);
+        expect(prompt).not.toContain(product.label);
+        expect(prompt).not.toContain(product.text);
+        expect(prompt).not.toMatch(/Options to show/);
+        // Positive instructions carry no product/package nouns and no placeholder objects.
+        for (const k of ["Scene", "Subject", "Option to draw (the only one the image draws, without any label)", "Composition"]) {
+          expect(line(prompt, k)).not.toMatch(/\b(pouch|package|packaging|bottle|jar|box|tube|tin|sachet|pack|carton)\b/i);
+          expect(line(prompt, k)).not.toMatch(/\b(pedestal|plinth|podium|riser|platform)s?\b/i);
+        }
+        // Scene is environment-only (no visual description fallback): the option line is the only fighter description.
+        expect(line(prompt, "Scene")).toBe(`Scene: ${CYF_DEFAULT_SCENE}`);
+        expect(line(prompt, "Product fidelity")).toContain("Do not draw the advertised product or its packaging anywhere");
+        expect(line(prompt, "Avoid")).toContain("no pedestals, plinths, podiums, stands, platforms, boxes or cards");
+        expect(brief.referenceAssets).toEqual([]);
+        expect(brief.productRole).toBe("");
+      }
+  });
+
+  it("keeps the locked Scene environment-only: it never describes a fighter, so it cannot contradict the option line", () => {
+    for (const f of ["1:1", "9:16"] as const)
+      for (const p of [0, 1]) {
+        // No structured setting: the neutral set; the concept's visual description (bowl, whisk, pouch, pedestals) is never used.
+        const plain = compile(cyf(p), f).prompt;
+        expect(line(plain, "Scene")).toBe(`Scene: ${CYF_DEFAULT_SCENE}`);
+        expect(line(plain, "Scene")).not.toMatch(/bowl|whisk|pouch|pedestal|stone/i);
+        // A structured environment-only setting is used as given (placeholder clauses still dropped).
+        const set = compile(cyf(p, { sceneSetting: "a warm stone counter in a quiet kitchen, a pedestal for each option, soft morning light through a window" }), f).prompt;
+        expect(line(set, "Scene")).toBe("Scene: A warm stone counter in a quiet kitchen, soft morning light through a window.");
+        // Neither fighter is described in the Scene; the drawn one only in the option line.
+        const drawn = rowsAt(p)[1 - p], product = rowsAt(p)[p];
+        for (const sc of [line(plain, "Scene"), line(set, "Scene")])
+          for (const r of [drawn, product]) {
+            expect(sc.toLowerCase()).not.toContain(r.label.toLowerCase());
+            expect(sc.toLowerCase()).not.toContain(r.text.toLowerCase());
+          }
+        expect(line(set, "Option to draw (the only one the image draws, without any label)")).toContain(`${drawn.label} — ${drawn.text}`);
+      }
+    // Reference-conditioned line-ups keep their visual description (unchanged behaviour).
+    const ref = new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: cyfRows([SLOW, ORIGINAL], { productRole: "implied — rituals" }), variant: { id: "v", aspectRatio: "1:1" }, context, references: [] }));
+    expect(line(ref, "Scene")).toContain("a steaming bowl with a whisk");
+  });
+
+  it("leaks no Product Hero or product-specific wording (powder, footprint, reserved)", () => {
+    for (const f of ["1:1", "9:16"] as const)
+      for (const p of [0, 1]) {
+        const { prompt } = compile(cyf(p), f);
+        // Nothing renderer-authored mentions a material or Product Hero's footprint vocabulary.
+        for (const k of ["Subject", "Option to draw (the only one the image draws, without any label)", "Composition", "Camera", "Lighting", "Product fidelity", "Avoid"]) expect(line(prompt, k)).not.toMatch(/powder|matcha|accent such as/i);
+        expect(prompt).not.toMatch(/footprint|reserved|clear product placement area|Keep the entire reserved/i);
+      }
+  });
+
+  // --- in-slot placement check ------------------------------------------------
+  const plate = async (W: number, H: number, objs: { x0: number; x1: number; y0: number; y1: number; rgb: [number, number, number] }[]) => {
+    const d = Buffer.alloc(W * H * 3);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const n = ((x * 7 + y * 13) % 5) - 2; d.set([226 + n, 216 + n, 201 + n], (y * W + x) * 3); }
+    for (const o of objs) for (let y = Math.round(o.y0 * H); y < Math.round(o.y1 * H); y++) for (let x = Math.round(o.x0 * W); x < Math.round(o.x1 * W); x++) d.set(o.rgb, (y * W + x) * 3);
+    return sharp(d, { raw: { width: W, height: H, channels: 3 } }).png().toBuffer();
+  };
+  const realCutout = () => readFileSync(path.join(process.cwd(), "public", REFERENCE_ASSETS.pouchCutout.previewUrl));
+  /** The drawn fighter standing in its own slot (a generic object on the shared surface). */
+  const drawnFighter = (l: ReturnType<typeof cyfSlotLayout>) => { const g = l.slots.find((s) => s.role === "generated")!; return { x0: g.centerX - 0.1, x1: g.centerX + 0.1, y0: l.baseline - l.height * 0.8, y1: l.baseline + 0.005, rgb: [92, 104, 140] as [number, number, number] }; };
+
+  it("keeps the slot centre on a clean slot and adjusts only slightly for a small obstruction", async () => {
+    const l = cyfSlotLayout("1:1", 1, await trimmedAspect(realCutout()));
+    const clean = await solveSlotPlacement(await plate(1024, 1024, [drawnFighter(l)]), realCutout(), l);
+    expect(clean).toMatchObject({ requestedX: 0.72, selectedX: 0.72, adjusted: false, status: "ok" });
+    expect(clean.generatedSlotOccupancy).toBeGreaterThan(SLOT_OCCUPANCY_MIN);
+    // An object just inside the product slot's outer edge at the base: a small move towards the centre clears it.
+    const half = (l.height * l.productAspect) / 2;
+    const edge = l.slots[1].centerX + half; // the product's right edge at the slot centre
+    const small = await solveSlotPlacement(await plate(1024, 1024, [drawnFighter(l), { x0: edge - 0.025, x1: edge + 0.06, y0: l.baseline - 0.1, y1: l.baseline + 0.005, rgb: [150, 96, 70] }]), realCutout(), l);
+    expect(small.requestedScore).toBeGreaterThan(SOLVER_CLEAN_SCORE);
+    expect(small.status).toBe("ok");
+    expect(small.adjusted).toBe(true);
+    expect(Math.abs(small.horizontalShift)).toBeLessThanOrEqual(small.maxShift + 1e-9);
+    expect(small.maxShift).toBeLessThanOrEqual(SLOT_MAX_SHIFT);
+  });
+
+  it("fails a blocked slot with a conflict and never crosses into the other fighter's slot", async () => {
+    const aspect = await trimmedAspect(realCutout());
+    const l = cyfSlotLayout("9:16", 0, aspect);
+    const slot = l.slots[0];
+    const blocked = await solveSlotPlacement(await plate(765, 1360, [drawnFighter(l), { x0: slot.centerX - 0.08, x1: slot.centerX + 0.08, y0: l.baseline - 0.08, y1: l.baseline + 0.005, rgb: [70, 78, 112] }]), realCutout(), l);
+    expect(blocked.status).toBe("conflict");
+    expect(blocked.selectedScore).toBeGreaterThan(SOLVER_FAIL_SCORE);
+    // Every candidate keeps the product box inside its own slot — even though the other slot is clean of obstruction at its edge.
+    const pw = Math.round(1360 * l.height * aspect) / 765;
+    for (const c of blocked.candidates) {
+      expect(c.centerX - pw / 2).toBeGreaterThanOrEqual(slot.left - 0.002);
+      expect(c.centerX + pw / 2).toBeLessThanOrEqual(slot.right + 0.002);
+    }
+    expect(Math.max(...blocked.candidates.map((c) => c.centerX))).toBeLessThan(l.slots[1].left);
+  });
+
+  // --- end to end (fake provider) -------------------------------------------
+  const run = async (c: Fixture["concept"], format: "1:1" | "9:16", scene: Buffer) => {
+    const kv = fakeKnightVision({ download: () => new Response(new Uint8Array(scene), { status: 200, headers: { "content-type": "image/png" } }) });
+    let t = 0;
+    const deps = { renderer: renderer(kv.fetchImpl), store: await productStore(true), jobs: new MemoryImageJobStore(), now: () => t };
+    const { jobId, record } = (await startImageRender({ ...request(c, [format]), assets: [{ hash: MASTER, role: "packaging" }] }, deps))[format]!;
+    t += 4000;
+    const done = (await pollImageJobs([jobId], deps))[jobId];
+    return { kv, deps, jobId, submitted: record, done, t: () => (t += 4000) };
+  };
+  const sizeOf = (f: "1:1" | "9:16") => (f === "1:1" ? [2048, 2048] : [1530, 2720]) as [number, number];
+
+  it("composites the real product into its slot, aligns both labels with their fighters and leaves the artwork untouched", async () => {
+    for (const [f, p] of [["1:1", 1], ["9:16", 0]] as const) {
+      const [W, H] = sizeOf(f);
+      const aspect = 80 / 180; // the test store's cut-out, trimmed
+      const l = cyfSlotLayout(f, p, aspect);
+      const { done, submitted, deps } = await run(cyf(p), f, await plate(W, H, [drawnFighter(l)]));
+      expect(submitted.image!.brief.lockedProduct!.cyf!.layout).toEqual(l);
+      expect(done.status).toBe("complete");
+      const a = done.image!.cyfComposition!;
+      expect(a).toMatchObject({ fighterCount: 2, productFighterIndex: p, productSlot: p, productHeight: l.height, baseline: l.baseline, status: "ok", requestedX: l.slots[p].centerX });
+      expect(a.slots).toEqual(l.slots);
+      // Product box: in its slot, on the shared base line, at the shared height.
+      const box = done.image!.productComposite!.box;
+      expect(Math.abs(box.left + box.width / 2 - W * a.selectedX)).toBeLessThanOrEqual(1);
+      expect(box.top + box.height).toBe(Math.round(H * l.baseline));
+      expect(box.height).toBe(Math.round(H * l.height));
+      expect(box.left / W).toBeGreaterThanOrEqual(l.slots[p].left);
+      expect((box.left + box.width) / W).toBeLessThanOrEqual(l.slots[p].right);
+      // Overlay: the concept's wording, unchanged, each label centred on its own fighter's slot.
+      expect(a.overlay!.header.text).toBe("Choose your fighter");
+      expect(a.overlay!.labels.map((x) => [x.fighterIndex, x.slotIndex, x.centerX, x.name, x.trait])).toEqual(l.slots.map((s) => [s.fighterIndex, s.index, s.centerX, rowsAt(p)[s.fighterIndex].label, rowsAt(p)[s.fighterIndex].text]));
+      // Pixels: the overlay only touches the header and label boxes; the product (artwork, text) is identical to a plain composite.
+      const stored = deps.store.files.get(done.outputUrl!.replace(/^\/api\/renders\//, ""))!;
+      const plain = await compositeProduct(await plate(W, H, [drawnFighter(l)]), await cutoutMaster(), cyfProductPlacement(l, a.selectedX), { productHeight: l.height });
+      const F = await sharp(stored).removeAlpha().raw().toBuffer(), P = await sharp(plain.body).removeAlpha().raw().toBuffer();
+      const boxes = [a.overlay!.header.box, ...a.overlay!.labels.map((x) => x.box)];
+      const inBox = (x: number, y: number, pad: number) => boxes.find((b) => x >= b.left * W - pad && x <= b.right * W + pad && y >= b.top * H - pad && y <= b.bottom * H + pad);
+      const perBox = new Map<object, number>();
+      let outside = 0;
+      for (let y = 0; y < H; y += 2)
+        for (let x = 0; x < W; x += 2) {
+          const i = (y * W + x) * 3;
+          if (Math.abs(F[i] - P[i]) + Math.abs(F[i + 1] - P[i + 1]) + Math.abs(F[i + 2] - P[i + 2]) <= 6) continue;
+          const b = inBox(x, y, Math.round(H * 0.012)); // the soft halo may spill a few px beyond a box
+          if (b) perBox.set(b, (perBox.get(b) ?? 0) + 1);
+          else outside++;
+        }
+      expect(outside).toBe(0);
+      for (const b of boxes) expect(perBox.get(b) ?? 0).toBeGreaterThan(50); // every block actually drew ink
+      // Product box pixels untouched by the overlay.
+      const pa = await sharp(plain.product!).extractChannel("alpha").raw().toBuffer();
+      let diff = 0;
+      for (let y = 0; y < box.height; y++)
+        for (let x = 0; x < box.width; x++) {
+          if (pa[y * box.width + x] !== 255) continue;
+          const i = ((box.top + y) * W + box.left + x) * 3;
+          if (F[i] !== P[i] || F[i + 1] !== P[i + 1] || F[i + 2] !== P[i + 2]) diff++;
+        }
+      expect(diff).toBe(0);
+    }
+  }, 60_000);
+
+  it("fails a blocked line-up with scene_plate_product_conflict after exactly one generation, with no retry", async () => {
+    const [W, H] = sizeOf("1:1");
+    const l = cyfSlotLayout("1:1", 1, 80 / 180);
+    const slot = l.slots[1];
+    const r = await run(cyf(1), "1:1", await plate(W, H, [drawnFighter(l), { x0: slot.centerX - 0.08, x1: slot.centerX + 0.08, y0: l.baseline - 0.1, y1: l.baseline + 0.005, rgb: [70, 78, 112] }]));
+    expect(r.done.status).toBe("failed");
+    expect(r.done.error?.code).toBe("scene_plate_product_conflict");
+    expect(r.done.outputUrl).toBeNull();
+    expect(r.done.image!.productComposite).toBeUndefined();
+    expect(r.done.image!.cyfComposition).toMatchObject({ status: "conflict", productSlot: 1, fighterCount: 2 });
+    expect(r.done.image!.cyfComposition!.overlay).toBeUndefined();
+    expect(r.done.image!.normalization!.providerOriginalUrl).toMatch(/\.provider\.png$/);
+    // Polling again does nothing new: still one generation, never resubmitted.
+    r.t();
+    await pollImageJobs([r.jobId], r.deps);
+    expect(r.kv.calls.filter((c) => c.url.endsWith("/generate-image"))).toHaveLength(1);
+  });
+
+  it("fails instead of cutting or rewording copy that cannot fit its overlay box (text_overflow)", async () => {
+    const [W, H] = sizeOf("9:16");
+    const l = cyfSlotLayout("9:16", 0, 80 / 180);
+    const long = cyf(0, { copyFields: [{ key: "header", text: "Choose your fighter ".repeat(12).trim(), rows: [] }, { key: "fighters", text: "", rows: rowsAt(0) }] });
+    const r = await run(long, "9:16", await plate(W, H, [drawnFighter(l)]));
+    expect(r.done.status).toBe("failed");
+    expect(r.done.error?.code).toBe("text_overflow");
+    expect(r.done.outputUrl).toBeNull();
   });
 });

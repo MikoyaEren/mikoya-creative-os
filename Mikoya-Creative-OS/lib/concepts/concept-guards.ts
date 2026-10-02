@@ -46,6 +46,8 @@ export interface RawConceptDraft {
   cta: string;
   supportingProof: string[];
   visualIdea: string;
+  /** Environment-only setting (optional; written for choose_your_fighter). */
+  sceneSetting?: string;
   productRole: string;
   offerRole: string;
   tone: string;
@@ -137,7 +139,7 @@ export function unsupportedSensitive(text: string, inputs: Pick<ConceptInputs, "
 
 /** Checks read the copy fields' text and row parts, never the recipe's field names (e.g. "bio"). */
 const onCanvas = (d: RawConceptDraft) => [d.hook, d.coreMessage, copyFieldsCanvasText(d.copyFields), d.cta].join("\n");
-const describing = (d: RawConceptDraft) => [d.visualIdea, d.productRole, d.offerRole].join("\n");
+const describing = (d: RawConceptDraft) => [d.visualIdea, d.sceneSetting ?? "", d.productRole, d.offerRole].join("\n");
 
 /**
  * A composition note may not carry copy: no quoted text the copy doesn't have,
@@ -342,6 +344,14 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
       drop("invalid_copy_structure", structure.issues.slice(0, 3).join(" "));
       continue;
     }
+    // The scene setting is environment only: one that repeats a list row's own copy (e.g. a fighter's name or
+    // trait) describes a subject, so it is dropped and the renderer uses its neutral set instead (exact match only).
+    let setting = (d.sceneSetting ?? "").replace(/\s+/g, " ").trim();
+    const rowCopy = structure.fields.flatMap((f) => f.rows.flatMap((r) => [r.label, r.text])).map((t) => t.trim().toLowerCase()).filter((t) => t.length >= 3);
+    if (setting && rowCopy.some((t) => setting.toLowerCase().includes(t))) {
+      warnings.push(`${slot.slotId}: scene setting repeated option copy — dropped (environment only).`);
+      setting = "";
+    }
     // A hook the template draws as a headline must fit with the copy (recipe hook limits); otherwise it is metadata.
     const hookIssues = validateHook(mechanismId, d.hook, structure.fields);
     if (hookIssues.length) {
@@ -398,6 +408,7 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
       copy: copyFieldsToText(structure.fields),
       copyFields: structure.fields,
       visualDescription: d.visualIdea.trim(),
+      ...(setting ? { sceneSetting: setting } : {}),
       cta: d.cta.trim(),
       supportingProof: proof,
       productRole: d.productRole.trim(),

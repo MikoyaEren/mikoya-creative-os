@@ -48,9 +48,12 @@ function checkSlot(slot: RecipeCopySlot, field: CopyField | undefined, issues: s
     const max = slot.maxRows ?? 12;
     if (rows.length < min || rows.length > max) issues.push(`${where}: ${rows.length} rows (allowed ${min}–${max}).`);
     const spec = slot.row ?? { text: { meaning: "row", maxChars: slot.maxChars ?? 200, required: true } };
+    const raw = (field?.rows ?? []).filter((r) => clean(r.label) || clean(r.text) || clean(r.note));
     const normalised: CopyRow[] = rows.map((r, i) => {
       const at = `${where}[${i + 1}]`;
-      return { label: checkPart(spec.label, r.label, at, issues), text: checkPart(spec.text, r.text, at, issues), note: checkPart(spec.note, r.note, at, issues) };
+      const row: CopyRow = { label: checkPart(spec.label, r.label, at, issues), text: checkPart(spec.text, r.text, at, issues), note: checkPart(spec.note, r.note, at, issues) };
+      // The structured product marker survives only where the recipe declares it (never inferred from words).
+      return slot.productMarker && raw[i]?.product === true ? { ...row, product: true } : row;
     });
     const total = normalised.reduce((n, r) => n + r.label.length + r.text.length + r.note.length, 0);
     if (slot.maxChars && total > slot.maxChars) issues.push(`${where}: ${total} chars across rows (max ${slot.maxChars}).`);

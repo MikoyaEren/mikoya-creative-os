@@ -10,6 +10,9 @@ import type { AnthropicLike } from "@/lib/server/product-analysis/analyzers";
 import { generateConcepts } from "./generate-concepts";
 import { ConceptOutputSchema, type ConceptOutput } from "./output-schema";
 import { demoCopyFields } from "@/lib/mock/demo-copy-fields";
+import { buildImageRenderContext, compileImageRenderBrief } from "@/lib/renderers/image/render-brief";
+import { knightVisionPrompt } from "@/lib/renderers/knightvision/prompt";
+import { CYF_DEFAULT_SCENE, cyfRouting } from "@/lib/renderers/image/cyf";
 
 const request = (over: Partial<GenerationRequest> = {}): GenerationRequest => ({
   projectId: "mikoya",
@@ -153,5 +156,107 @@ describe("POST /api/generate-concepts", () => {
     expect((await post("{nope")).status).toBe(400);
     expect((await post({ ...request(), outputMix: "lots" })).status).toBe(400);
     expect(await (await post(request())).text()).not.toMatch(/stack|at \w+ \(|sk-ant/i);
+  });
+});
+
+describe("choose your fighter: environment-only sceneSetting", () => {
+  const cyfReq = request({ outputMix: { static: 0, video: 0, ugc: 0, experimental: 1 }, mechanismIds: ["choose_your_fighter"] });
+  const cyfPlan = allocateSlots({ snapshot, outputMix: cyfReq.outputMix, mechanismIds: ["choose_your_fighter"], seed: BATCH_ID });
+  const SETTING = "A warm stone breakfast counter in a calm kitchen, with soft morning window light.";
+  const fighters = [
+    { label: "The Slow Morning", text: "warm bowl, no rush", note: "" },
+    { label: "The Original", text: "the real thing, unchanged", note: "", product: true },
+  ];
+  const cyfOutput = (sceneSetting?: string): ConceptOutput => ({
+    concepts: cyfPlan.slots.map((s) => ({
+      slotId: s.slotId,
+      mechanismId: "choose_your_fighter",
+      title: "Pick your morning",
+      strategicAngle: "Identity: two ways to start the day",
+      objective: "stop the scroll",
+      addresses: s.focus.statement,
+      hook: "Choose your fighter",
+      coreMessage: "Your morning, your pick",
+      copyFields: [{ key: "header", text: "Choose your fighter", rows: [] }, { key: "fighters", text: "", rows: fighters }],
+      cta: "Shop now",
+      supportingProof: [],
+      visualIdea: "A character-select line-up: a warm bowl beside the real product.",
+      ...(sceneSetting !== undefined ? { sceneSetting } : {}),
+      productRole: "hero — the product is one of the two fighters",
+      offerRole: "none",
+      tone: "playful",
+      rendererType: "image",
+      presentedAsRealCustomer: false,
+      rationale: "Identity play.",
+      basis: [s.focus.ref || "fact:name"],
+      confidence: 0.8,
+      layout_1x1: "Two fighters side by side.",
+      layout_9x16: "Two fighters side by side.",
+    })),
+    declinedSlots: [],
+    warnings: [],
+  });
+  const generate = async (out: ConceptOutput) => {
+    let sent = "";
+    const batch = await generateConcepts(cyfReq, { batchId: BATCH_ID, createClient: fake(ok(out), (p) => (sent = JSON.stringify(p))), now: () => Date.parse("2026-10-02T00:00:00.000Z") });
+    return { batch, sent };
+  };
+
+  it("exposes sceneSetting in the concept output schema as an optional, environment-only, inline field", () => {
+    const { schema } = betaZodOutputFormat(ConceptOutputSchema) as unknown as { schema: { $defs?: Record<string, { properties?: Record<string, { type?: string; description?: string }>; required?: string[] }>; properties: object } };
+    const concept = Object.values(schema.$defs ?? {}).find((d) => d.properties?.visualIdea)!;
+    const field = (concept ?? (schema.properties as { concepts: { items: { properties: Record<string, { type?: string; description?: string }>; required: string[] } } }).concepts.items).properties!.sceneSetting;
+    expect(field).toMatchObject({ type: "string" });
+    expect(field.description).toMatch(/^Environment only: place, surface, background and light/);
+    expect(field.description).toMatch(/Never an option\/fighter, the product, packaging, where the product goes, labels or copy/);
+    expect(JSON.stringify(schema)).toContain('"sceneSetting":{"type":"string"'); // inline, not a $ref
+    expect(Object.keys(schema.$defs ?? {}).length).toBeLessThanOrEqual(5);
+  });
+
+  it("tells the writer to fill sceneSetting for choose_your_fighter as the environment only, never a fighter", async () => {
+    const { sent } = await generate(cyfOutput(SETTING));
+    expect(sent).toContain("Always write sceneSetting: the environment only (place, surface, background, light)");
+    expect(sent).toContain("drawn from the concept's visual direction, the brand's visual direction, the mood, the safe product category and the angle");
+    expect(sent).toContain("Never name or describe a fighter, the product, packaging, where the product goes, labels or copy, and never copy a fighter's words");
+    expect(sent).toContain("set product: true on that one row only");
+  });
+
+  it("keeps a generated environment-specific setting and the product marker; the locked Scene uses it without fighter copy", async () => {
+    const { batch } = await generate(cyfOutput(SETTING));
+    const c = batch.concepts[0];
+    expect(c.mechanism).toBe("choose_your_fighter");
+    expect(c.sceneSetting).toBe(SETTING);
+    expect(c.copyFields!.find((f) => f.key === "fighters")!.rows.map((r) => r.product === true)).toEqual([false, true]);
+    // Compile the generated concept as a locked line-up.
+    const ctx = buildImageRenderContext(batch.strategy, batch.brand.colors);
+    for (const v of c.variants) {
+      const brief = compileImageRenderBrief({ concept: { ...c, mechanism: "choose_your_fighter" }, variant: v, context: ctx, references: [], lockedMaster: { assetId: "d".repeat(64), role: "packaging", productAspect: 0.7 } });
+      expect(brief.productFidelityMode).toBe("product_locked");
+      const prompt = knightVisionPrompt(brief);
+      const scene = prompt.split("\n").find((l) => l.startsWith("Scene:"))!;
+      expect(scene).toBe(`Scene: ${SETTING}`);
+      for (const r of fighters) {
+        expect(scene.toLowerCase()).not.toContain(r.label.toLowerCase());
+        expect(scene.toLowerCase()).not.toContain(r.text.toLowerCase());
+      }
+      expect(prompt).toContain("Option to draw (the only one the image draws, without any label): on the left, at about 28% of the frame width: The Slow Morning — warm bowl, no rush.");
+    }
+  });
+
+  it("drops a setting that repeats a fighter's copy (exact match) and falls back to the neutral set", async () => {
+    const { batch } = await generate(cyfOutput("The Original on the right, on a warm stone counter."));
+    expect(batch.concepts[0].sceneSetting).toBeUndefined();
+    expect(batch.conceptRun!.warnings.some((w: string) => /scene setting repeated option copy — dropped/.test(w))).toBe(true);
+  });
+
+  it("keeps legacy line-ups without sceneSetting valid: the locked Scene uses the neutral fallback; routing unchanged", async () => {
+    const { batch } = await generate(cyfOutput(undefined));
+    const c = batch.concepts[0];
+    expect(c.sceneSetting).toBeUndefined();
+    const ctx = buildImageRenderContext(batch.strategy, batch.brand.colors);
+    const brief = compileImageRenderBrief({ concept: { ...c, mechanism: "choose_your_fighter" }, variant: c.variants[0], context: ctx, references: [], lockedMaster: { assetId: "d".repeat(64), role: "packaging", productAspect: 0.7 } });
+    expect(brief.productFidelityMode).toBe("product_locked");
+    expect(brief.scene).toBe(CYF_DEFAULT_SCENE);
+    expect(cyfRouting(c)).toEqual({ mode: "product_locked", productFighterIndex: 1 });
   });
 });

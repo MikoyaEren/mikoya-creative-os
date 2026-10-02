@@ -23,14 +23,28 @@ const ConceptOut = z.object({
         key: z.string().describe("A copy field key from the mechanism's recipe."),
         text: z.string().describe("Text fields: the text. List fields: empty."),
         rows: z
-          .array(z.object({ label: z.string(), text: z.string(), note: z.string() }))
-          .describe("List fields: one entry per row, parts as the recipe defines them (unused parts empty). Text fields: empty."),
+          .array(
+            z.object({
+              label: z.string(),
+              text: z.string(),
+              note: z.string(),
+              product: z.boolean().optional(),
+            }),
+          )
+          .describe(
+            "List fields: one entry per row, parts as the recipe defines them (unused parts empty). Text fields: empty. `product`: Choose Your Fighter `fighters` only — true on the ONE row that is the real product itself (it is shown as the real product photo); omit it everywhere else.",
+          ),
       }),
     )
     .describe("All on-canvas copy, one entry per recipe copy field. Never put separators, speakers or labels inside text — use rows."),
   cta: z.string(),
   supportingProof: z.array(z.string()).describe("Only [proof:…] or [fact:…] reference ids. Empty if the concept states no proof."),
   visualIdea: z.string().describe("What is shown. Composition-neutral; no new product facts."),
+  // describe() before optional(): keeps the field inline (no extra $defs shape in the structured-output grammar).
+  sceneSetting: z
+    .string()
+    .describe("Environment only: place, surface, background and light of the set, e.g. 'A minimal bathroom vanity with pale stone surfaces and diffused daylight.' Never an option/fighter, the product, packaging, where the product goes, labels or copy. Required for choose_your_fighter; otherwise omit.")
+    .optional(),
   productRole: z.string().describe("hero | supporting | implied | absent — plus a few words."),
   offerRole: z.string().describe("none | soft | explicit — explicit only with an [fact:offer…] reference."),
   tone: z.string(),

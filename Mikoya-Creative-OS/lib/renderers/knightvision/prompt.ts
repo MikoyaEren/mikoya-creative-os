@@ -20,7 +20,11 @@ export function knightVisionPrompt(b: ImageRenderBrief): string {
     `Purpose: ${b.objective}.`,
     `Scene: ${b.scene}`,
     `Subject: ${b.subject}.`,
-    b.choices.length ? `Options to show, each as its own distinct visual choice without any labels: ${b.choices.join("; ")}.` : "",
+    b.mechanism === "choose_your_fighter" && b.productFidelityMode === "product_locked"
+      ? `Option to draw (the only one the image draws, without any label): ${b.choices.join("; ")}.`
+      : b.choices.length
+        ? `Options to show, each as its own distinct visual choice without any labels: ${b.choices.join("; ")}.`
+        : "",
     `Environment: ${b.environment}.`,
     `Composition: ${b.composition}.`,
     `Camera: ${b.camera}.`,

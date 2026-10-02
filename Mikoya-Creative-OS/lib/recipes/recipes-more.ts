@@ -312,14 +312,20 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A character-select screen of personas or options.",
     type: "experimental",
     renderer: "image",
-    version: 2,
+    version: 3,
     structure: {
       layout: "'Choose your fighter' header, 3–4 character cards with short labels.",
       copySlots: [
         { key: "header", label: "Header", maxChars: 30, required: true },
-        { key: "fighters", label: "Fighters", maxChars: 160, required: true, kind: "list", minRows: 2, maxRows: 4, row: { label: { meaning: "fighter name", maxChars: 24, required: true }, text: { meaning: "trait", maxChars: 40, required: true } } },
+        { key: "fighters", label: "Fighters", maxChars: 160, required: true, kind: "list", minRows: 2, maxRows: 4, row: { label: { meaning: "fighter name", maxChars: 24, required: true }, text: { meaning: "trait", maxChars: 40, required: true } }, productMarker: true },
       ],
-      visualRules: ["Game-select styling", "Equal-sized cards", "Product appears as a fighter or an item"],
+      visualRules: [
+        "Game-select styling",
+        "Equal-sized cards",
+        "Product appears as a fighter or an item",
+        "If one fighter IS the real product, set product: true on that one row only; leave every row unmarked when the fighters are rituals, uses, moods or benefits",
+        "Always write sceneSetting: the environment only (place, surface, background, light), drawn from the concept's visual direction, the brand's visual direction, the mood, the safe product category and the angle — e.g. 'A warm stone breakfast counter in a calm kitchen, with soft morning window light.' Never name or describe a fighter, the product, packaging, where the product goes, labels or copy, and never copy a fighter's words",
+      ],
     },
     formatLayouts: {
       "1:1": "Header on top, 2×2 fighter grid.",

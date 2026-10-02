@@ -60,6 +60,86 @@ export interface ImageLockedProduct {
   assetId: string;
   role: AssetRole;
   placement: ProductPlacement;
+  /** Choose-your-fighter only: the line-up geometry and the copy the deterministic overlay draws. */
+  cyf?: CyfLockedBrief;
+}
+
+/** A rectangle as fractions of the frame (0–1). */
+export interface FrameBox {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** One position of a choose-your-fighter line-up (fractions of the frame). */
+export interface CyfSlot {
+  /** Position left → right; equals the fighter row index (row order is preserved). */
+  index: number;
+  fighterIndex: number;
+  /** "product": the real locked product is composited here; "generated": the image model draws this fighter. */
+  role: "product" | "generated";
+  centerX: number;
+  /** Horizontal bounds of the slot (the product may move only inside them). */
+  left: number;
+  right: number;
+}
+
+/**
+ * The single deterministic line-up geometry of a locked choose-your-fighter render (cyfSlotLayout): the provider
+ * prompt, the placement check, the compositor and the text overlay all read it.
+ */
+export interface CyfLayout {
+  format: OutputFormat;
+  fighterCount: number;
+  productFighterIndex: number;
+  productSlot: number;
+  /** Shared base line (fraction of the frame height from the top) and shared height of every fighter. */
+  baseline: number;
+  height: number;
+  /** Width / height of the trimmed product cut-out the height was fitted for. */
+  productAspect: number;
+  sideMargin: number;
+  pitch: number;
+  slots: CyfSlot[];
+  /** Overlay regions: the header above the line-up, one label box under each slot. */
+  header: FrameBox;
+  labels: (FrameBox & { fighterIndex: number; slotIndex: number; centerX: number })[];
+}
+
+export interface CyfLockedBrief {
+  layout: CyfLayout;
+  /** The concept's own copy, unchanged, for the deterministic overlay (never sent to the image model as text to draw). */
+  copy: { header: string; fighters: { label: string; text: string }[] };
+  /** Ink candidates for the overlay (from the brand palette). */
+  ink: { dark: string; light: string };
+}
+
+/** Audit of a locked choose-your-fighter composition: slot geometry, placement check and text overlay. */
+export interface CyfCompositionAudit {
+  fighterCount: number;
+  productFighterIndex: number;
+  productSlot: number;
+  slots: CyfSlot[];
+  productHeight: number;
+  baseline: number;
+  /** Placement inside the product's own slot only. */
+  requestedX: number;
+  selectedX: number;
+  horizontalShift: number;
+  maxShift: number;
+  requestedScore: number;
+  selectedScore: number;
+  adjusted: boolean;
+  status: "ok" | "conflict";
+  failScore: number;
+  /** Mean obstruction in the drawn fighter's slot base (low = the drawn fighter may be missing). */
+  generatedSlotOccupancy: number;
+  /** Text overlay mapping (absent on conflict: nothing is composited). */
+  overlay?: {
+    header: { text: string; box: FrameBox; fontPx: number; ink: string };
+    labels: { fighterIndex: number; slotIndex: number; centerX: number; name: string; trait: string; box: FrameBox; nameFontPx: number; traitFontPx: number; ink: string }[];
+  };
 }
 
 /** One product reference the brief asks the provider to follow. */
@@ -152,6 +232,8 @@ export interface ImageRenderMeta {
    * base line never change). Present on complete renders and on scene_plate_product_conflict failures.
    */
   placementSolver?: PlacementSolverAudit;
+  /** Locked choose-your-fighter: line-up geometry, in-slot placement check and text-overlay mapping. */
+  cyfComposition?: CyfCompositionAudit;
   submittedAt: string;
   completedAt?: string;
 }

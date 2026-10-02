@@ -4,12 +4,14 @@ import type { ImageMechanismId, ImageRenderMeta, OutputFormat, RenderErrorCode, 
 import { OUTPUT_FORMATS } from "@/lib/pipeline/formats";
 import { fingerprint } from "@/lib/strategy/strategy-inputs";
 import { LOCKED_MASTER_ROLES, compileImageRenderBrief, productFidelityModeFor, selectReferences, type BriefConcept } from "@/lib/renderers/image/render-brief";
-import { compositeProduct, resolveProductHeight } from "@/lib/renderers/image/composite";
+import { compositeProduct, resolveProductHeight, trimmedAspect } from "@/lib/renderers/image/composite";
+import { cyfProductPlacement, cyfRouting } from "@/lib/renderers/image/cyf";
+import { OverlayTextOverflow, renderCyfOverlay } from "@/lib/renderers/image/cyf-overlay";
 import { routeFor } from "@/lib/renderers/image/router";
 import { IMAGE_LOCAL_WAIT_MS, PROVIDER_PENDING_RECHECK_MS, RATE_LIMIT_WAIT_MS, asProviderError, pollOnce, providerPendingNote } from "@/lib/renderers/image/image-renderer";
 import { isUnresolvedImageJob, replacementNeedsConfirmation } from "@/lib/renderers/image/lifecycle";
 import { normalizeToFormat } from "@/lib/renderers/image/normalize";
-import { solveLockedPlacement, solverAppliesTo } from "@/lib/renderers/image/placement-solver";
+import { SLOT_OCCUPANCY_MIN, solveLockedPlacement, solveSlotPlacement, solverAppliesTo } from "@/lib/renderers/image/placement-solver";
 import type { ImageRenderer, ReferenceImage } from "@/lib/renderers/image/types";
 import type { RenderStore } from "@/lib/renderers/store/fs-store";
 import type { ImageJob, ImageJobStore } from "./image-jobs";
@@ -40,7 +42,7 @@ export const IMAGE_RENDERER_VERSION = "image-renderer@2";
 
 const Id = z.string().regex(/^[A-Za-z0-9_-]{1,120}$/);
 const Text = (n: number) => z.string().max(n);
-const Row = z.object({ label: Text(200), text: Text(600), note: Text(200) });
+const Row = z.object({ label: Text(200), text: Text(600), note: Text(200), product: z.boolean().optional() });
 
 export const ImageRenderRequestSchema = z.object({
   batchId: Id,
@@ -51,6 +53,7 @@ export const ImageRenderRequestSchema = z.object({
     objective: Text(600),
     angle: Text(600),
     visualDescription: Text(2000),
+    sceneSetting: Text(600).optional(),
     productRole: Text(600),
     tone: Text(300),
     layoutNotes: z.object({ "1:1": Text(400).optional(), "9:16": Text(400).optional() }).optional(),
@@ -167,8 +170,20 @@ export async function startImageRender(req: ImageRenderRequest, deps: ImageServi
       continue;
     }
     const concept: BriefConcept = { ...req.concept, mechanism: route.mechanism as ImageMechanismId };
+    // Choose your fighter: an unmarked, doubly marked or unsupported locked line-up is refused before any submission.
+    if (route.mechanism === "choose_your_fighter") {
+      const routing = cyfRouting(concept);
+      if (routing.mode === "ineligible") {
+        record = fail(record, routing.code, routing.message, now(), started);
+        await save(null);
+        continue;
+      }
+    }
     const mode = productFidelityModeFor(route.mechanism, concept);
-    const lockedMaster = mode === "product_locked" ? await lockedMasterOf(req.assets, deps.store) : null;
+    const master = mode === "product_locked" ? await lockedMasterOf(req.assets, deps.store) : null;
+    // A line-up is sized from the cut-out's own proportions (the same trim the compositor applies).
+    const masterFile = master && route.mechanism === "choose_your_fighter" ? await deps.store.readAsset(master.assetId) : null;
+    const lockedMaster = master && masterFile ? { ...master, productAspect: await trimmedAspect(masterFile.body) } : master && route.mechanism !== "choose_your_fighter" ? master : null;
     const refs = mode === "product_locked" ? [] : selectReferences(route.mechanism, concept, req.assets.map((a) => ({ assetId: a.hash, role: a.role })));
     const references: ReferenceImage[] = [];
     for (const r of refs) {
@@ -306,6 +321,7 @@ async function advance(job: ImageJob, deps: ImageServiceDeps, now: () => number,
     const providerOriginalUrl = `/api/renders/${stem}.provider.png`;
     let productComposite: ImageRenderMeta["productComposite"];
     let placementSolver: ImageRenderMeta["placementSolver"];
+    let cyfComposition: ImageRenderMeta["cyfComposition"];
     const locked = done.brief.lockedProduct;
     if (done.productFidelityMode === "product_locked") {
       // The generated file is only the scene: the real product must be composited, or the render fails (never shipped without it).
@@ -313,37 +329,87 @@ async function advance(job: ImageJob, deps: ImageServiceDeps, now: () => number,
       if (!locked || !master) {
         return finish({ ...job.record, image: { ...done, normalization: { ...normalization, providerOriginalUrl } }, status: "failed", warnings, error: { code: "missing_locked_product_asset", message: "The product cut-out is no longer available; the generated scene was kept as the provider original but not shipped without the real product." } });
       }
-      const productHeight = resolveProductHeight(done.brief.mechanism, job.record.format, null).height;
-      let placement = locked.placement;
-      if (solverAppliesTo(done.brief.mechanism, job.record.format)) {
-        // The plate may hold an accent or prop where the product stands: pick the closest clean x (scale and base fixed).
-        const solved = await solveLockedPlacement(body, master.body, locked.placement, { productHeight });
-        const { candidates: _evaluated, ...audit } = solved;
-        void _evaluated;
-        placementSolver = audit;
+      if (locked.cyf) {
+        // Choose your fighter: the product may only adjust inside its own slot; then the deterministic labels.
+        const cyf = locked.cyf;
+        const solved = await solveSlotPlacement(body, master.body, cyf.layout);
+        const audit: NonNullable<ImageRenderMeta["cyfComposition"]> = {
+          fighterCount: cyf.layout.fighterCount,
+          productFighterIndex: cyf.layout.productFighterIndex,
+          productSlot: cyf.layout.productSlot,
+          slots: cyf.layout.slots,
+          productHeight: cyf.layout.height,
+          baseline: cyf.layout.baseline,
+          requestedX: solved.requestedX,
+          selectedX: solved.selectedX,
+          horizontalShift: solved.horizontalShift,
+          maxShift: solved.maxShift,
+          requestedScore: solved.requestedScore,
+          selectedScore: solved.selectedScore,
+          adjusted: solved.adjusted,
+          status: solved.status,
+          failScore: solved.failScore,
+          generatedSlotOccupancy: solved.generatedSlotOccupancy,
+        };
+        const kept = { ...done, normalization: { ...normalization, providerOriginalUrl } };
         if (solved.status === "conflict") {
           return finish({
             ...job.record,
-            image: { ...done, normalization: { ...normalization, providerOriginalUrl }, placementSolver },
+            image: { ...kept, cyfComposition: audit },
             status: "failed",
             warnings,
             error: {
               code: "scene_plate_product_conflict",
-              message: `The generated scene has no acceptable position for the real product (best obstruction ${solved.selectedScore} at x=${solved.selectedX}, limit ${solved.failScore}; searched x ${solved.normalRange[0]}–${solved.normalRange[1]}${solved.extendedRange ? `, then the fallback ${solved.extendedRange[0]}–${solved.extendedRange[1]}` : ""}, side margin ${solved.sideMargin}). Nothing was composited and no new generation was submitted; the scene plate is kept as the provider original.`,
+              message: `The generated line-up has no clean position for the real product inside its own slot (best obstruction ${solved.selectedScore} at x=${solved.selectedX}, limit ${solved.failScore}; in-slot range ±${solved.maxShift}). Nothing was composited and no new generation was submitted; the scene plate is kept as the provider original.`,
             },
           });
         }
-        placement = { ...locked.placement, centerX: solved.selectedX };
-        if (solved.adjusted) warnings.push(`placement_adjusted: the product was moved from x=${solved.preferredX} to x=${solved.selectedX} (${solved.searchStage === "extended_window" ? "extended fallback window" : "normal window"}; obstruction ${solved.preferredScore} → ${solved.selectedScore}); scale and base line unchanged.`);
+        if (solved.adjusted) warnings.push(`placement_adjusted: the product was moved inside its slot from x=${solved.requestedX} to x=${solved.selectedX} (obstruction ${solved.requestedScore} → ${solved.selectedScore}); scale, base line and slot unchanged.`);
+        if (solved.generatedSlotOccupancy < SLOT_OCCUPANCY_MIN) warnings.push(`cyf_generated_slot_empty: little stands in the drawn fighter's slot (occupancy ${solved.generatedSlotOccupancy}); check that the line-up shows both fighters (Creative QA).`);
+        const c = await compositeProduct(body, master.body, cyfProductPlacement(cyf.layout, solved.selectedX), { productHeight: cyf.layout.height });
+        let overlaid;
+        try {
+          overlaid = await renderCyfOverlay(c.body, cyf);
+        } catch (err) {
+          if (!(err instanceof OverlayTextOverflow)) throw err;
+          return finish({ ...job.record, image: { ...kept, cyfComposition: audit }, status: "failed", warnings, error: { code: "text_overflow", message: `${err.message} The scene plate is kept as the provider original; no new generation was submitted.` } });
+        }
+        body = overlaid.body;
+        productComposite = { masterAssetId: locked.assetId, box: c.box, contactShadow: c.contactShadow, transforms: c.transforms };
+        cyfComposition = { ...audit, overlay: overlaid.overlay };
+      } else {
+        const productHeight = resolveProductHeight(done.brief.mechanism, job.record.format, null).height;
+        let placement = locked.placement;
+        if (solverAppliesTo(done.brief.mechanism, job.record.format)) {
+          // The plate may hold an accent or prop where the product stands: pick the closest clean x (scale and base fixed).
+          const solved = await solveLockedPlacement(body, master.body, locked.placement, { productHeight });
+          const { candidates: _evaluated, ...audit } = solved;
+          void _evaluated;
+          placementSolver = audit;
+          if (solved.status === "conflict") {
+            return finish({
+              ...job.record,
+              image: { ...done, normalization: { ...normalization, providerOriginalUrl }, placementSolver },
+              status: "failed",
+              warnings,
+              error: {
+                code: "scene_plate_product_conflict",
+                message: `The generated scene has no acceptable position for the real product (best obstruction ${solved.selectedScore} at x=${solved.selectedX}, limit ${solved.failScore}; searched x ${solved.normalRange[0]}–${solved.normalRange[1]}${solved.extendedRange ? `, then the fallback ${solved.extendedRange[0]}–${solved.extendedRange[1]}` : ""}, side margin ${solved.sideMargin}). Nothing was composited and no new generation was submitted; the scene plate is kept as the provider original.`,
+              },
+            });
+          }
+          placement = { ...locked.placement, centerX: solved.selectedX };
+          if (solved.adjusted) warnings.push(`placement_adjusted: the product was moved from x=${solved.preferredX} to x=${solved.selectedX} (${solved.searchStage === "extended_window" ? "extended fallback window" : "normal window"}; obstruction ${solved.preferredScore} → ${solved.selectedScore}); scale and base line unchanged.`);
+        }
+        const c = await compositeProduct(body, master.body, placement, { productHeight });
+        body = c.body;
+        productComposite = { masterAssetId: locked.assetId, box: c.box, contactShadow: c.contactShadow, transforms: c.transforms };
       }
-      const c = await compositeProduct(body, master.body, placement, { productHeight });
-      body = c.body;
-      productComposite = { masterAssetId: locked.assetId, box: c.box, contactShadow: c.contactShadow, transforms: c.transforms };
     }
     await deps.store.putRender(`${stem}.png`, body);
     return finish({
       ...job.record,
-      image: { ...done, normalization: { ...normalization, providerOriginalUrl }, ...(productComposite ? { productComposite } : {}), ...(placementSolver ? { placementSolver } : {}) },
+      image: { ...done, normalization: { ...normalization, providerOriginalUrl }, ...(productComposite ? { productComposite } : {}), ...(placementSolver ? { placementSolver } : {}), ...(cyfComposition ? { cyfComposition } : {}) },
       status: "complete",
       width: normalization.normalizedWidth,
       height: normalization.normalizedHeight,

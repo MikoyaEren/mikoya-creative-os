@@ -13,6 +13,7 @@ import type {
   StrategySnapshot,
 } from "@/lib/types";
 import { fingerprint } from "@/lib/strategy/strategy-inputs";
+import { CYF_DEFAULT_SCENE, cyfHeaderOf, cyfProductPlacement, cyfPromptParts, cyfRouting, cyfSlotLayout, dropPlaceholderClauses, fightersOf } from "./cyf";
 
 /**
  * IMAGE RENDER BRIEF — CreativeConcept + safe context + variant → a
@@ -87,18 +88,17 @@ export function selectReferences(mechanism: ImageMechanismId, concept: { product
 // Product fidelity mode (product-agnostic)
 // ---------------------------------------------------------------------------
 
-/** The product only participates in the scene (not the visual centre). */
-const SUPPORTING = /\b(supporting|background|in (?:the )?(?:scene|context|frame edge)|incidental|secondary|at the edge)\b/i;
-
 /**
  * Lifestyle and POV need the product inside a photographed moment: the model
  * draws it from references (reference_conditioned). A product hero — and a
  * choose-your-fighter line-up whose real package is visually central — needs
  * the exact product: the real asset is composited (product_locked).
  */
-export function productFidelityModeFor(mechanism: ImageMechanismId, concept: { productRole: string }): ProductFidelityMode {
+export function productFidelityModeFor(mechanism: ImageMechanismId, concept: { productRole: string; copyFields?: CopyField[] }): ProductFidelityMode {
   if (mechanism === "product_hero") return "product_locked";
-  if (mechanism === "choose_your_fighter") return ABSENT.test(concept.productRole) || SUPPORTING.test(concept.productRole) ? "reference_conditioned" : "product_locked";
+  // Choose your fighter: locked only with exactly one structured product-fighter marker (see cyfRouting; an
+  // ineligible concept is refused before submission by the render service).
+  if (mechanism === "choose_your_fighter") return cyfRouting(concept).mode === "product_locked" ? "product_locked" : "reference_conditioned";
   return "reference_conditioned";
 }
 
@@ -106,9 +106,8 @@ export function productFidelityModeFor(mechanism: ImageMechanismId, concept: { p
 export const LOCKED_MASTER_ROLES: AssetRole[] = PRODUCT_ROLES;
 
 /** Composited product height as a share of the frame height: bounds and default per mechanism and format. */
-export const LOCKED_SCALE: Record<"product_hero" | "choose_your_fighter", Record<OutputFormat, { min: number; max: number; default: number }>> = {
+export const LOCKED_SCALE: Record<"product_hero", Record<OutputFormat, { min: number; max: number; default: number }>> = {
   product_hero: { "1:1": { min: 0.3, max: 0.46, default: 0.36 }, "9:16": { min: 0.26, max: 0.4, default: 0.34 } },
-  choose_your_fighter: { "1:1": { min: 0.28, max: 0.46, default: 0.4 }, "9:16": { min: 0.2, max: 0.32, default: 0.28 } },
 };
 
 /**
@@ -116,13 +115,11 @@ export const LOCKED_SCALE: Record<"product_hero" | "choose_your_fighter", Record
  * intent. A product hero's reserved height IS the composited height, so the scene plate leaves exactly the
  * room the real product will fill.
  */
-export const LOCKED_PLACEMENT: Record<"product_hero" | "choose_your_fighter", Record<OutputFormat, ProductPlacement>> = {
+export const LOCKED_PLACEMENT: Record<"product_hero", Record<OutputFormat, ProductPlacement>> = {
   product_hero: {
     "1:1": { centerX: 0.5, bottom: 0.86, height: LOCKED_SCALE.product_hero["1:1"].default },
     "9:16": { centerX: 0.5, bottom: 0.78, height: LOCKED_SCALE.product_hero["9:16"].default },
   },
-  // The product takes the last slot of the line-up; the model draws the other options.
-  choose_your_fighter: { "1:1": { centerX: 0.75, bottom: 0.84, height: 0.46 }, "9:16": { centerX: 0.5, bottom: 0.9, height: 0.3 } },
 };
 
 export type HorizontalIntent = "left" | "centre" | "right";
@@ -149,8 +146,10 @@ export function productHorizontalIntent(concept: { productPlacement?: Partial<Re
 
 /** The one placement a locked render uses: the scene-plate prompt and the compositor both read it from the brief. */
 export function resolveLockedPlacement(mechanism: ImageMechanismId, concept: Parameters<typeof productHorizontalIntent>[0], format: OutputFormat): ProductPlacement {
-  const base = LOCKED_PLACEMENT[mechanism as keyof typeof LOCKED_PLACEMENT][format];
-  return mechanism === "product_hero" ? { ...base, centerX: HORIZONTAL_X[productHorizontalIntent(concept, format)] } : base;
+  // Choose-your-fighter geometry comes only from cyfSlotLayout() (it needs the product fighter and the cut-out's aspect).
+  if (mechanism !== "product_hero") throw new Error(`No fixed locked placement for ${mechanism}.`);
+  const base = LOCKED_PLACEMENT.product_hero[format];
+  return { ...base, centerX: HORIZONTAL_X[productHorizontalIntent(concept, format)] };
 }
 
 /**
@@ -456,6 +455,8 @@ export interface BriefConcept {
   objective: string;
   angle: string;
   visualDescription: string;
+  /** Environment-only setting (no subjects); used by locked choose-your-fighter scene plates. */
+  sceneSetting?: string;
   productRole: string;
   tone: string;
   layoutNotes?: Partial<Record<OutputFormat, string>>;
@@ -523,16 +524,20 @@ export function compileImageRenderBrief(args: {
   variant: { id: string; aspectRatio: OutputFormat };
   context: ImageRenderContext;
   references: ImageReferenceAsset[];
-  /** product_locked: the real cut-out master (from the render store); null / absent when none is available. */
-  lockedMaster?: { assetId: string; role: AssetRole } | null;
+  /**
+   * product_locked: the real cut-out master (from the render store); null / absent when none is available.
+   * `productAspect` (width / height of the trimmed cut-out) is required for a choose-your-fighter line-up.
+   */
+  lockedMaster?: { assetId: string; role: AssetRole; productAspect?: number } | null;
 }): ImageRenderBrief {
   const { concept, variant, context } = args;
+  if (concept.mechanism === "choose_your_fighter" && productFidelityModeFor(concept.mechanism, concept) === "product_locked") return compileLockedCyfBrief(args);
   const productFidelityMode = productFidelityModeFor(concept.mechanism, concept);
   const locked = productFidelityMode === "product_locked";
   // A locked product is never sent as a reference: the model must not redraw it.
   const references = locked ? [] : args.references;
   const placement = locked ? resolveLockedPlacement(concept.mechanism, concept, variant.aspectRatio) : null;
-  const lockedProduct: ImageLockedProduct | null = locked && args.lockedMaster ? { ...args.lockedMaster, placement: placement! } : null;
+  const lockedProduct: ImageLockedProduct | null = locked && args.lockedMaster ? { assetId: args.lockedMaster.assetId, role: args.lockedMaster.role, placement: placement! } : null;
   const g = GRAMMAR[concept.mechanism];
   const format = variant.aspectRatio;
   const productWord = context.category ? `the ${context.category.toLowerCase()} product` : "the product";
@@ -588,6 +593,65 @@ export function compileImageRenderBrief(args: {
     textPolicy: "text_free",
     textFreeInstructions: TEXT_FREE,
     choices: choicesOf(concept).map((c) => neutralizeNames(c, names)),
+  };
+  return { ...brief, briefHash: fingerprint(JSON.stringify(brief)) };
+}
+
+/**
+ * Locked choose-your-fighter brief (two fighters): the model draws only the non-product fighter and leaves the
+ * product's slot as ordinary empty surface. Geometry from cyfSlotLayout(); no Product Hero rule list; the header
+ * and fighter labels are drawn later by the deterministic overlay from the concept's own copy.
+ */
+function compileLockedCyfBrief(args: Parameters<typeof compileImageRenderBrief>[0]): ImageRenderBrief {
+  const { concept, variant, context } = args;
+  const format = variant.aspectRatio;
+  const routing = cyfRouting(concept);
+  if (routing.mode !== "product_locked") throw new Error("compileLockedCyfBrief needs a locked line-up.");
+  const g = GRAMMAR.choose_your_fighter;
+  const names = [context.brandName, context.productName];
+  const copy = (concept.copyFields ?? []).map((f) => f.text);
+  const fighters = fightersOf(concept);
+  const aspect = args.lockedMaster?.productAspect;
+  // Without the cut-out (or its measured aspect) nothing is submitted; the layout below then only fills the audit.
+  const layout = cyfSlotLayout(format, routing.productFighterIndex, aspect && aspect > 0 ? aspect : 1);
+  const drawnRow = fighters[layout.slots.find((s) => s.role === "generated")!.fighterIndex];
+  const parts = cyfPromptParts(layout, { label: neutralizeNames(drawnRow.label, names), text: neutralizeNames(drawnRow.text, names) });
+  const direction = context.visualDirection.filter((d) => !TEXT_ELEMENT.test(d));
+  const mood = [...new Map([...clean(concept.tone).split(/[,;]/), ...context.desiredEmotions].map((m) => m.trim()).filter(Boolean).map((m) => [m.toLowerCase(), m])).values()];
+  const lockedProduct: ImageLockedProduct | null =
+    args.lockedMaster && aspect && aspect > 0
+      ? {
+          assetId: args.lockedMaster.assetId,
+          role: args.lockedMaster.role,
+          placement: cyfProductPlacement(layout),
+          cyf: { layout, copy: { header: cyfHeaderOf(concept), fighters: fighters.map((r) => ({ label: r.label, text: r.text })) }, ink: { dark: context.brandColors.dark, light: "#FFFFFF" } },
+        }
+      : null;
+  const brief: Omit<ImageRenderBrief, "briefHash"> = {
+    conceptId: concept.id,
+    variantId: variant.id,
+    mechanism: concept.mechanism,
+    aspectRatio: format,
+    objective: clean([concept.objective, concept.angle && `Angle: ${concept.angle}`].filter(Boolean).join(". ")).replace(PACKAGE_PHRASE, "the product"),
+    // Environment only: the concept's structured setting, never its visual description (which names the fighters);
+    // the drawn fighter is described once, in the option line, and the product position in the placement block.
+    scene: concept.sceneSetting?.trim() ? dropPlaceholderClauses(scenePlateText(neutralizeNames(concept.sceneSetting, names), copy)) : CYF_DEFAULT_SCENE,
+    subject: parts.subject,
+    environment: `as described in the scene; believable and lived-in, consistent with ${context.category ? `the ${context.category.toLowerCase()} product` : "the product"}`,
+    composition: parts.composition,
+    camera: parts.camera,
+    lighting: parts.lighting,
+    mood: mood.join("; "),
+    visualStyle: [g.style, ...direction.map((d) => asScene(lockedStyleDirection(d))), `palette hints: ${context.brandColors.dark} and ${context.brandColors.accent}`].join("; "),
+    productRole: "",
+    referenceAssets: [],
+    productFidelityMode: "product_locked",
+    lockedProduct,
+    productFidelityInstructions: parts.fidelity,
+    negativeInstructions: [NO_ADDED_TEXT, ...NEGATIVE_COMMON.slice(1), ...parts.negative],
+    textPolicy: "text_free",
+    textFreeInstructions: TEXT_FREE,
+    choices: [parts.option],
   };
   return { ...brief, briefHash: fingerprint(JSON.stringify(brief)) };
 }

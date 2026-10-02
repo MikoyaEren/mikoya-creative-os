@@ -194,6 +194,7 @@ async function renderImageOne(batch: CreativeBatch, concept: CreativeConcept, fo
           objective: concept.objective,
           angle: concept.angle,
           visualDescription: concept.visualDescription,
+          ...(concept.sceneSetting ? { sceneSetting: concept.sceneSetting } : {}),
           productRole: concept.productRole,
           tone: concept.tone,
           layoutNotes: concept.layoutNotes,

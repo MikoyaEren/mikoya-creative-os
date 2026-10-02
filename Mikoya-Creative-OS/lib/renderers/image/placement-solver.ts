@@ -209,20 +209,13 @@ function silhouette(alpha: Buffer, pw: number, ph: number, scale: number): Silho
 }
 
 /**
- * Solve the horizontal position for a locked product on a raw scene plate. Scale and base line never change.
- * `preferred` is the brief's placement (its centreX is the concept's preferred x).
+ * Shared low-level primitive: the product's real alpha silhouette at a fixed scale and base line, scored against
+ * the plate's obstruction map at any centre x (0–1 weighted share of the silhouette that would hide scene
+ * structure). Used by the Product Hero search and the choose-your-fighter in-slot check.
  */
-export async function solveLockedPlacement(
-  scene: Buffer,
-  master: Buffer,
-  preferred: ProductPlacement,
-  opts: { productHeight: number; range?: number; extendedRange?: number; step?: number; failScore?: number; shiftPenalty?: number; sideMargin?: number },
-): Promise<PlacementSolution> {
+export async function silhouetteScorer(scene: Buffer, master: Buffer, opts: { productHeight: number; baseline: number }) {
   const meta = await sharp(scene).metadata();
   const W = meta.width ?? 0, H = meta.height ?? 0;
-  const range = opts.range ?? SOLVER_RANGE, extRange = opts.extendedRange ?? SOLVER_EXTENDED_RANGE, step = opts.step ?? SOLVER_STEP;
-  const failScore = opts.failScore ?? SOLVER_FAIL_SCORE, penalty = opts.shiftPenalty ?? SOLVER_SHIFT_PENALTY, margin = opts.sideMargin ?? SOLVER_SIDE_MARGIN;
-
   const { resized } = await fitProduct(master, W, H, opts.productHeight);
   const pw = resized.info.width, ph = resized.info.height;
   const alpha = Buffer.alloc(pw * ph);
@@ -234,8 +227,7 @@ export async function solveLockedPlacement(
   const O = obstructionMap(work, ww, wh);
   const sil = silhouette(alpha, pw, ph, scale);
 
-  const fp = lockedFootprint(preferred);
-  const top = clamp(Math.round(H * fp.baseline - ph), 0, H - ph); // identical to the compositor's top
+  const top = clamp(Math.round(H * opts.baseline - ph), 0, H - ph); // identical to the compositor's top
   const wy0 = Math.round(top * scale);
 
   const scoreAt = (cx: number) => {
@@ -256,6 +248,33 @@ export async function solveLockedPlacement(
     }
     return norm ? acc / norm : 1;
   };
+
+  /** Mean obstruction of a frame region (fractions of the frame), e.g. to check that a drawn fighter is present. */
+  const meanObstruction = (box: { left: number; top: number; right: number; bottom: number }) => {
+    const x0 = clamp(Math.floor(box.left * ww), 0, ww - 1), x1 = clamp(Math.ceil(box.right * ww), 1, ww);
+    const y0 = clamp(Math.floor(box.top * wh), 0, wh - 1), y1 = clamp(Math.ceil(box.bottom * wh), 1, wh);
+    let acc = 0, n = 0;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { acc += O[y * ww + x]; n++; }
+    return n ? acc / n : 0;
+  };
+
+  return { W, H, pw, ph, scoreAt, meanObstruction };
+}
+
+/**
+ * Solve the horizontal position for a locked product on a raw scene plate. Scale and base line never change.
+ * `preferred` is the brief's placement (its centreX is the concept's preferred x).
+ */
+export async function solveLockedPlacement(
+  scene: Buffer,
+  master: Buffer,
+  preferred: ProductPlacement,
+  opts: { productHeight: number; range?: number; extendedRange?: number; step?: number; failScore?: number; shiftPenalty?: number; sideMargin?: number },
+): Promise<PlacementSolution> {
+  const range = opts.range ?? SOLVER_RANGE, extRange = opts.extendedRange ?? SOLVER_EXTENDED_RANGE, step = opts.step ?? SOLVER_STEP;
+  const failScore = opts.failScore ?? SOLVER_FAIL_SCORE, penalty = opts.shiftPenalty ?? SOLVER_SHIFT_PENALTY, margin = opts.sideMargin ?? SOLVER_SIDE_MARGIN;
+
+  const { W, pw, scoreAt } = await silhouetteScorer(scene, master, { productHeight: opts.productHeight, baseline: lockedFootprint(preferred).baseline });
 
   const leftAt = (cx: number) => clamp(Math.round(W * cx - pw / 2), 0, W - pw);
   const evaluate = (cx: number): PlacementCandidate => {
@@ -320,5 +339,83 @@ export async function solveLockedPlacement(
     failScore,
     sideMargin: margin,
     candidates: candidates.sort((a, b) => a.centerX - b.centerX),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Choose-your-fighter: in-slot placement check (never leaves the product's own slot)
+// ---------------------------------------------------------------------------
+
+/** Largest move inside the product's slot (fraction of the frame width), even when the slot has more room. */
+export const SLOT_MAX_SHIFT = 0.03;
+/** Candidate step inside the slot. */
+export const SLOT_STEP = 0.005;
+/** Below this mean obstruction in the drawn fighter's slot base, the drawn fighter may be missing (QA warning). */
+export const SLOT_OCCUPANCY_MIN = 0.05;
+
+export interface SlotPlacementSolution {
+  requestedX: number;
+  selectedX: number;
+  horizontalShift: number;
+  /** The furthest the product could move without its box leaving its own slot (capped at SLOT_MAX_SHIFT). */
+  maxShift: number;
+  requestedScore: number;
+  selectedScore: number;
+  adjusted: boolean;
+  status: "ok" | "conflict";
+  failScore: number;
+  generatedSlotOccupancy: number;
+  candidates: { centerX: number; score: number; total: number }[];
+}
+
+/**
+ * The product's position inside its own slot of a choose-your-fighter line-up: same scale and base line, a small
+ * in-slot adjustment only (the product box never crosses the slot bounds, so it can never enter or swap with the
+ * other fighter's slot). The slot centre is kept when clean; otherwise the closest clean candidate; otherwise the
+ * lowest score + distance penalty. Above the fail threshold the render must fail (scene_plate_product_conflict).
+ */
+export async function solveSlotPlacement(
+  scene: Buffer,
+  master: Buffer,
+  layout: { baseline: number; height: number; productSlot: number; slots: { index: number; role: "product" | "generated"; centerX: number; left: number; right: number }[] },
+  opts: { failScore?: number; shiftPenalty?: number } = {},
+): Promise<SlotPlacementSolution> {
+  const failScore = opts.failScore ?? SOLVER_FAIL_SCORE, penalty = opts.shiftPenalty ?? SOLVER_SHIFT_PENALTY;
+  const { W, pw, scoreAt, meanObstruction } = await silhouetteScorer(scene, master, { productHeight: layout.height, baseline: layout.baseline });
+  const slot = layout.slots[layout.productSlot];
+  const halfW = pw / 2 / W;
+  // The product box must stay inside its slot: |shift| ≤ slot half-width − product half-width.
+  const room = Math.max(0, Math.min(slot.centerX - halfW - slot.left, slot.right - (slot.centerX + halfW)));
+  const maxShift = r3(Math.min(SLOT_MAX_SHIFT, room));
+  const n = Math.floor(maxShift / SLOT_STEP + 1e-9);
+  const candidates = Array.from({ length: 2 * n + 1 }, (_, k) => {
+    const cx = r3(slot.centerX + (k - n) * SLOT_STEP);
+    const score = r3(scoreAt(cx));
+    return { centerX: cx, score, total: r3(score + penalty * Math.abs(cx - slot.centerX)) };
+  });
+  const req = candidates[n];
+  const dist = (c: { centerX: number }) => Math.abs(c.centerX - slot.centerX);
+  const clean = candidates.filter((c) => c.score <= SOLVER_CLEAN_SCORE);
+  const best =
+    req.score <= SOLVER_CLEAN_SCORE
+      ? req
+      : clean.length
+        ? clean.reduce((b, c) => (dist(c) < dist(b) - 1e-9 || (Math.abs(dist(c) - dist(b)) < 1e-9 && c.score < b.score) ? c : b))
+        : candidates.reduce((b, c) => (c.total < b.total || (c.total === b.total && dist(c) < dist(b)) ? c : b), req);
+  // QA signal: is something standing in the drawn fighter's slot (its lower part, where it stands)?
+  const gen = layout.slots.find((s) => s.role === "generated");
+  const generatedSlotOccupancy = gen ? r3(meanObstruction({ left: gen.left, right: gen.right, top: layout.baseline - layout.height * 0.6, bottom: layout.baseline })) : 0;
+  return {
+    requestedX: req.centerX,
+    selectedX: best.centerX,
+    horizontalShift: r3(best.centerX - req.centerX),
+    maxShift,
+    requestedScore: req.score,
+    selectedScore: best.score,
+    adjusted: best.centerX !== req.centerX,
+    status: best.score > failScore ? "conflict" : "ok",
+    failScore,
+    generatedSlotOccupancy,
+    candidates,
   };
 }

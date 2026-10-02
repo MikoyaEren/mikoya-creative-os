@@ -339,6 +339,13 @@ export async function fitProduct(master: Buffer, W: number, H: number, productHe
   return { resized, masterHeight: tm.height ?? resized.info.height };
 }
 
+/** Width / height of the product as the compositor fits it (trimmed to its alpha, exactly as fitProduct trims). */
+export async function trimmedAspect(master: Buffer): Promise<number> {
+  const trimmed = await sharp(master).ensureAlpha().trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 1 }).png().toBuffer();
+  const m = await sharp(trimmed).metadata();
+  return (m.width ?? 0) / Math.max(1, m.height ?? 1);
+}
+
 export async function compositeProduct(scene: Buffer, master: Buffer, placement: ProductPlacement, opts: CompositeOptions = {}): Promise<CompositeResult> {
   if (opts.legacy) return legacyComposite(scene, master, placement);
   const sm = await sharp(scene).metadata();

@@ -248,6 +248,11 @@ export interface RecipeCopySlot {
   /** "text" (default): one text. "list": rows of up to three parts (label · text · note). */
   kind?: "text" | "list";
   row?: { label?: RowPartSpec; text: RowPartSpec; note?: RowPartSpec };
+  /**
+   * List fields only: a row may carry the structured product marker (`product: true`) — e.g. the one
+   * choose-your-fighter fighter that IS the real product. Never inferred from the row's words.
+   */
+  productMarker?: boolean;
   /** A short neutral example (text fields), shown to the writer. */
   example?: string;
   /** Allowed values (text fields), normalised case-insensitively — for structural choices such as an attachment. */
@@ -268,6 +273,8 @@ export interface CopyRow {
   label: string;
   text: string;
   note: string;
+  /** Structured product marker (only on list fields whose recipe declares `productMarker`). */
+  product?: boolean;
 }
 
 /** One recipe copy field as written by the concept writer. Text fields use `text`, list fields use `rows`. */
@@ -363,7 +370,11 @@ export type RenderErrorCode =
   | "provider_malformed"
   | "output_unavailable"
   /** product_locked: the generated scene plate has no clean position for the real product (no composite, no new generation). */
-  | "scene_plate_product_conflict";
+  | "scene_plate_product_conflict"
+  /** Choose-your-fighter: the concept makes the product a fighter but does not mark exactly one fighter row as the product (nothing submitted). */
+  | "product_fighter_unresolved"
+  /** A locked layout this version does not support, e.g. a locked line-up other than two fighters (nothing submitted). */
+  | "locked_layout_unsupported";
 
 /** Final size of one fitted text unit (after deterministic step-down). */
 export interface RenderFitResult {
@@ -460,6 +471,11 @@ export interface CreativeConceptDraft {
    */
   copyFields?: CopyField[];
   visualDescription: string;
+  /**
+   * Environment only — place, surface, background, light (never the options, fighters or the product). Structured
+   * input for scene plates that must not describe their subjects (locked Choose Your Fighter). Optional.
+   */
+  sceneSetting?: string;
   cta: string;
   supportingProof: ConceptProofRef[];
   productRole: string;
