@@ -213,12 +213,76 @@ describe("choose your fighter: environment-only sceneSetting", () => {
     expect(Object.keys(schema.$defs ?? {}).length).toBeLessThanOrEqual(5);
   });
 
-  it("tells the writer to fill sceneSetting for choose_your_fighter as the environment only, never a fighter", async () => {
+  it("gives the writer the V1 contract: exactly two fighters, one product fighter, image only, environment-only setting", async () => {
     const { sent } = await generate(cyfOutput(SETTING));
-    expect(sent).toContain("Always write sceneSetting: the environment only (place, surface, background, light)");
-    expect(sent).toContain("drawn from the concept's visual direction, the brand's visual direction, the mood, the safe product category and the angle");
-    expect(sent).toContain("Never name or describe a fighter, the product, packaging, where the product goes, labels or copy, and never copy a fighter's words");
-    expect(sent).toContain("set product: true on that one row only");
+    const block = JSON.parse(sent).messages.map((m: { content: string | { text?: string }[] }) => (typeof m.content === "string" ? m.content : m.content.map((c) => c.text ?? "").join(""))).join("\n");
+    const cyf = block.slice(block.indexOf("### Choose Your Fighter [choose_your_fighter]"));
+    const recipe = cyf.slice(0, cyf.indexOf("\n\n") > 0 ? cyf.indexOf("\n\n") : undefined);
+    // 1. exactly two fighters
+    expect(recipe).toContain("exactly two fighters");
+    expect(recipe).toContain("Exactly two fighters, side by side, with equal visual weight");
+    expect(recipe).toContain("fighters (list, exactly 2 rows, ≤160 chars in total; label = fighter name ≤24; text = trait ≤40");
+    // 2. exactly one product fighter
+    expect(recipe).toContain("Exactly one of the two fighter rows represents the real advertised product. Set product: true on that row and on no other row. The other fighter is the alternative that will be generated as part of the scene");
+    expect(recipe).toContain("productRole must say the real product is one of the two fighters and visually central to the comparison — never supporting, background, absent or shared between both fighters");
+    // 3. no 3 / 4 fighters, no grids or cards
+    expect(recipe).not.toMatch(/2×2|2x2|grid|cards?\b|3–4|three|four|\b[34] (?:fighters|cards)/i);
+    // 4. HTML is not offered
+    expect(recipe.split("\n")[0]).toBe("### Choose Your Fighter [choose_your_fighter] — renderers: image");
+    expect(recipe).not.toMatch(/\bhtml\b/i);
+    // 5. environment-only setting (unchanged)
+    expect(recipe).toContain("Always write sceneSetting: the environment only (place, surface, background, light)");
+    expect(recipe).toContain("Never name or describe a fighter, the product, packaging, where the product goes, labels or copy, and never copy a fighter's words");
+    // 6. no blank / empty / whitespace region
+    expect(recipe).toContain("Build the environment from real surfaces, props, light and depth. Do not ask for blank space, empty space, whitespace, an empty panel or a flat reserved region");
+  });
+
+  // 7–12: the deterministic guards reject every contract violation (no repair) and keep a correct concept unchanged.
+  const violating = (over: Partial<ConceptOutput["concepts"][number]>) => ({ ...cyfOutput(SETTING), concepts: cyfOutput(SETTING).concepts.map((c) => ({ ...c, ...over })) });
+  const rowsField = (rows: { label: string; text: string; note: string; product?: boolean }[]) => [{ key: "header", text: "Choose your fighter", rows: [] }, { key: "fighters", text: "", rows }];
+  const S = { label: "The Slow Morning", text: "warm bowl, no rush", note: "" };
+  const O = { label: "The Original", text: "the real thing, unchanged", note: "" };
+
+  it.each([
+    // The recipe's own row limits (minRows = maxRows = 2) reject a wrong fighter count first, as copy-structure validation.
+    ["4 fighters", { copyFields: rowsField([S, { ...O, product: true }, { label: "The Third", text: "iced, no fuss", note: "" }, { label: "The Fourth", text: "slow and late", note: "" }]) }, "invalid_copy_structure", /fighters: 4 rows \(allowed 2–2\)/],
+    ["2 fighters, no marker", { copyFields: rowsField([S, O]) }, "cyf_contract_violation", /Exactly one fighter must carry product: true \(got 0\)/],
+    ["two markers", { copyFields: rowsField([{ ...S, product: true }, { ...O, product: true }]) }, "cyf_contract_violation", /Exactly one fighter must carry product: true \(got 2\)/],
+    ["renderer html", { rendererType: "html" }, "cyf_contract_violation", /renders as an image only \(got "html"\)/],
+    ["supporting role with a marker", { productRole: "supporting — the product sits in the background" }, "cyf_contract_violation", /productRole must say the real product is one of the two fighters/],
+    ["hero role that shares the product", { productRole: "hero — shared across both fighters" }, "cyf_contract_violation", /productRole must say the real product is one of the two fighters/],
+  ] as const)("rejects %s visibly: guard drop → slot unfilled, no repair", async (_name, over, reason, detail) => {
+    // generateConcepts returns the batch: a dropped concept leaves its slot unfilled (existing, auditable behaviour).
+    const batch = await generateConcepts(cyfReq, { batchId: BATCH_ID, createClient: fake(ok(violating(over as never))), now: () => Date.parse("2026-10-02T00:00:00.000Z") });
+    const run = batch.conceptRun!;
+    const slotId = cyfPlan.slots[0].slotId;
+    expect(batch.concepts).toHaveLength(0);
+    expect(run.dropped).toHaveLength(1);
+    expect(run.dropped[0]).toMatchObject({ slotId, mechanismId: "choose_your_fighter", reason });
+    expect(run.dropped[0].detail).toMatch(detail);
+    expect(run.unfilled).toEqual([{ slotId, mechanismId: "choose_your_fighter", reason: expect.stringMatching(detail) }]);
+    // No repair: no renderer substitution, no swap to another mechanism.
+    expect(run.warnings.join(" ")).not.toMatch(/not allowed for choose_your_fighter|using image/);
+    expect(run.swaps).toEqual([]);
+  });
+
+  it("keeps a correct two-fighter / image / one-marker concept unchanged and compiles it on the locked path", async () => {
+    const out = cyfOutput(SETTING);
+    const { batch } = await generate(out);
+    expect(batch.conceptRun!.dropped).toEqual([]);
+    const c = batch.concepts[0];
+    const src = out.concepts[0];
+    expect(c.renderer).toBe("image");
+    expect(c.productRole).toBe(src.productRole);
+    expect(c.sceneSetting).toBe(src.sceneSetting);
+    expect(c.copyFields).toEqual(src.copyFields);
+    const ctx = buildImageRenderContext(batch.strategy, batch.brand.colors);
+    for (const v of c.variants) {
+      const brief = compileImageRenderBrief({ concept: { ...c, mechanism: "choose_your_fighter" }, variant: v, context: ctx, references: [], lockedMaster: { assetId: "d".repeat(64), role: "packaging", productAspect: 0.7 } });
+      expect(brief.productFidelityMode).toBe("product_locked");
+      expect(brief.lockedProduct!.cyf!.layout).toMatchObject({ fighterCount: 2, productFighterIndex: 1, productSlot: 1 });
+      expect(brief.referenceAssets).toEqual([]);
+    }
   });
 
   it("keeps a generated environment-specific setting and the product marker; the locked Scene uses it without fighter copy", async () => {

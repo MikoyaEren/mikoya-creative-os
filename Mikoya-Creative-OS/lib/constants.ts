@@ -1,5 +1,19 @@
-import type { BrandContext, CreativeBatch, CreativeConcept, CreativeType, OutputMix, OutputPreset, RendererType } from "@/lib/types";
+import type { AssetRole, BrandContext, CreativeBatch, CreativeConcept, CreativeType, OutputMix, OutputPreset, RendererType } from "@/lib/types";
 import { OUTPUTS_PER_CONCEPT } from "@/lib/pipeline/formats";
+
+/** Asset roles that show the real product itself (never a scene or set photo): usable as a locked product master. */
+export const PRODUCT_IMAGE_ROLES: AssetRole[] = ["main", "packaging", "closeup"];
+
+/** Fighter count of a locked Choose Your Fighter line-up (V1): shared by the concept contract and the renderer. */
+export const CYF_LOCKED_FIGHTERS = 2;
+
+export type ProductRoleKind = "hero" | "supporting" | "implied" | "absent" | "unspecified";
+
+/** The concept writer's product-role enum ("hero | supporting | implied | absent — plus a few words"): its first word. */
+export function productRoleKind(role: string): ProductRoleKind {
+  const m = /^\s*(hero|supporting|implied|absent)\b/i.exec(role ?? "");
+  return m ? (m[1].toLowerCase() as ProductRoleKind) : "unspecified";
+}
 
 /** Neutral starting point; real defaults come from the active project. */
 export const EMPTY_BRAND_CONTEXT: BrandContext = {

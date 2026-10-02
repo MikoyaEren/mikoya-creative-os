@@ -305,33 +305,37 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     },
     principles: ["The word names a feeling, behaviour or identity people recognise", "Definition is witty and specific", "No product claims in the definition beyond the approved inputs"],
   }),
+  // Choose Your Fighter V1 targets the locked two-fighter image renderer: one fighter IS the real product (composited
+  // from its cut-out), the other is drawn in the scene. TODO: a separate recipe/mode can later cover 2–4 generated
+  // fighters, use-versus-use or habit-versus-habit comparisons with no real product fighter, and reference-conditioned rendering (the image
+  // system still renders such line-ups); it is deliberately not offered to the writer in V1.
   r({
     id: "choose_your_fighter",
     mechanismId: "choose_your_fighter",
     name: "Choose Your Fighter",
-    description: "A character-select screen of personas or options.",
+    description: "A playful two-way choice: the real product versus one alternative, side by side.",
     type: "experimental",
     renderer: "image",
-    version: 3,
+    version: 4,
     structure: {
-      layout: "'Choose your fighter' header, 3–4 character cards with short labels.",
+      layout: "'Choose your fighter' header above exactly two fighters standing side by side on one shared surface, each with its name and trait under it.",
       copySlots: [
         { key: "header", label: "Header", maxChars: 30, required: true },
-        { key: "fighters", label: "Fighters", maxChars: 160, required: true, kind: "list", minRows: 2, maxRows: 4, row: { label: { meaning: "fighter name", maxChars: 24, required: true }, text: { meaning: "trait", maxChars: 40, required: true } }, productMarker: true },
+        { key: "fighters", label: "Fighters (exactly two)", maxChars: 160, required: true, kind: "list", minRows: 2, maxRows: 2, row: { label: { meaning: "fighter name", maxChars: 24, required: true }, text: { meaning: "trait", maxChars: 40, required: true } }, productMarker: true },
       ],
       visualRules: [
-        "Game-select styling",
-        "Equal-sized cards",
-        "Product appears as a fighter or an item",
-        "If one fighter IS the real product, set product: true on that one row only; leave every row unmarked when the fighters are rituals, uses, moods or benefits",
+        "Exactly two fighters, side by side, with equal visual weight",
+        "Exactly one of the two fighter rows represents the real advertised product. Set product: true on that row and on no other row. The other fighter is the alternative that will be generated as part of the scene",
+        "productRole must say the real product is one of the two fighters and visually central to the comparison — never supporting, background, absent or shared between both fighters",
         "Always write sceneSetting: the environment only (place, surface, background, light), drawn from the concept's visual direction, the brand's visual direction, the mood, the safe product category and the angle — e.g. 'A warm stone breakfast counter in a calm kitchen, with soft morning window light.' Never name or describe a fighter, the product, packaging, where the product goes, labels or copy, and never copy a fighter's words",
+        "Build the environment from real surfaces, props, light and depth. Do not ask for blank space, empty space, whitespace, an empty panel or a flat reserved region",
       ],
     },
     formatLayouts: {
-      "1:1": "Header on top, 2×2 fighter grid.",
-      "9:16": "Header in the upper third, fighters stacked or 2×2 in the middle, CTA above safe zone.",
+      "1:1": "Header on top, the two fighters side by side below it, each name and trait under its fighter.",
+      "9:16": "Header in the upper third, the two fighters side by side in the middle, names and traits under them, everything above the bottom safe zone.",
     },
-    principles: ["Personas or moods, never competitor products", "Every fighter is a recognisable type", "Playful, not judgemental"],
+    principles: ["The alternative is a persona, habit or mood, never a competitor product", "Both fighters are recognisable types", "Playful, not judgemental"],
   }),
   r({
     id: "things_that_make_sense",

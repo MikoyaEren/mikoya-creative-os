@@ -16,6 +16,7 @@ import { sameClaim, significantTokens } from "@/lib/strategy/claims";
 import { coversTopic, isSensitiveHypothesis, withheldClaimLeak } from "@/lib/strategy/strategy-guards";
 import type { CreativeSafeProductProfile } from "@/lib/types";
 import type { ConceptInputs } from "./concept-inputs";
+import { CYF_LOCKED_FIGHTERS, PRODUCT_IMAGE_ROLES, productRoleKind } from "@/lib/constants";
 import { copyFieldsCanvasText, copyFieldsToText, fieldRows, fieldText, validateCopyFields, validateHook } from "./copy-fields";
 import { isComparativeClaim, unsupportedOfferWording, medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
 
@@ -344,6 +345,15 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
       drop("invalid_copy_structure", structure.issues.slice(0, 3).join(" "));
       continue;
     }
+    // Choose Your Fighter V1 is a locked two-fighter image: anything else fails visibly — never repaired (no marker
+    // added, no fighter removed, no role rewritten, no renderer switched).
+    if (mechanismId === "choose_your_fighter") {
+      const issue = cyfContractIssue(d, structure.fields, ctx.safeProfile);
+      if (issue) {
+        drop("cyf_contract_violation", issue);
+        continue;
+      }
+    }
     // The scene setting is environment only: one that repeats a list row's own copy (e.g. a fighter's name or
     // trait) describes a subject, so it is dropped and the renderer uses its neutral set instead (exact match only).
     let setting = (d.sceneSetting ?? "").replace(/\s+/g, " ").trim();
@@ -435,6 +445,30 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
     }));
 
   return { kept, dropped, unfilled, swaps, warnings };
+}
+
+/** A role that places the product beside, behind or across the fighters instead of being one of them. */
+const CYF_ROLE_DENIAL = /\b(supporting|background|absent|implied|shared)\b/i;
+
+/**
+ * Choose Your Fighter V1 contract (deterministic, product-agnostic). `product: true` IS the declaration that its row
+ * represents the advertised real product — that is never inferred from or checked against the row's words (a product
+ * fighter may well be called "The Original"). Verified: exactly two fighter rows (also enforced by the recipe's row
+ * limits), exactly one `product: true`, renderer image, a product role of the "hero" kind that does not call the
+ * product supporting, background, absent or shared, and a usable real product/packaging asset for the locked route.
+ * Returns the first violation, or null.
+ */
+export function cyfContractIssue(d: Pick<RawConceptDraft, "rendererType" | "productRole">, fields: CopyField[], profile: Pick<CreativeSafeProductProfile, "availableAssets">): string | null {
+  const rows = fields.find((f) => f.key === "fighters")?.rows ?? [];
+  if (rows.length !== CYF_LOCKED_FIGHTERS) return `Choose Your Fighter V1 needs exactly ${CYF_LOCKED_FIGHTERS} fighters (got ${rows.length}).`;
+  const marked = rows.filter((r) => r.product === true).length;
+  if (marked !== 1) return `Exactly one fighter must carry product: true (got ${marked}).`;
+  const renderer = d.rendererType.trim().toLowerCase();
+  if (renderer !== "image") return `Choose Your Fighter V1 renders as an image only (got "${d.rendererType}").`;
+  const role = d.productRole.trim();
+  if (productRoleKind(role) !== "hero" || CYF_ROLE_DENIAL.test(role)) return `productRole must say the real product is one of the two fighters (got "${role}").`;
+  if (!profile.availableAssets.some((a) => PRODUCT_IMAGE_ROLES.includes(a.role))) return "No usable real product/packaging asset for the locked route (main, packaging or close-up image).";
+  return null;
 }
 
 /** Concept renderer type for a kept draft (html or image only in this phase). */

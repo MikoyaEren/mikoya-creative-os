@@ -160,7 +160,7 @@ export function describeCopySlots(slots: RecipeCopySlot[]): string {
   return slots
     .map((s) =>
       s.kind === "list"
-        ? `${s.key} (list, ${s.minRows ?? 1}–${s.maxRows ?? 12} rows${s.maxChars ? `, ≤${s.maxChars} chars in total` : ""}${s.required ? "" : ", optional"}${s.pairedWith ? `, rows pair 1:1 with ${s.pairedWith}` : ""}${capacity(s)}; ${part("label", s.row?.label)}; ${part("text", s.row?.text)}; ${part("note", s.row?.note)})`
+        ? `${s.key} (list, ${s.minRows !== undefined && s.minRows === s.maxRows ? `exactly ${s.minRows}` : `${s.minRows ?? 1}–${s.maxRows ?? 12}`} rows${s.maxChars ? `, ≤${s.maxChars} chars in total` : ""}${s.required ? "" : ", optional"}${s.pairedWith ? `, rows pair 1:1 with ${s.pairedWith}` : ""}${capacity(s)}; ${part("label", s.row?.label)}; ${part("text", s.row?.text)}; ${part("note", s.row?.note)})`
         : `${s.key} (text${s.values ? `: ${s.values.join(" | ")}` : ""}${s.maxChars && !s.values ? ` ≤${s.maxChars}` : ""}${capacity(s)}${s.required ? "" : ", optional"}${s.example ? `, e.g. "${s.example}"` : ""})`,
     )
     .join("; ");

@@ -13,6 +13,7 @@ import type {
   StrategySnapshot,
 } from "@/lib/types";
 import { fingerprint } from "@/lib/strategy/strategy-inputs";
+import { PRODUCT_IMAGE_ROLES } from "@/lib/constants";
 import { CYF_DEFAULT_SCENE, cyfHeaderOf, cyfProductPlacement, cyfPromptParts, cyfRouting, cyfSlotLayout, dropPlaceholderClauses, fightersOf } from "./cyf";
 
 /**
@@ -59,7 +60,7 @@ export function buildImageRenderContext(snapshot: Pick<StrategySnapshot, "safePr
 /** The provider limit; the selection below normally sends one or two. */
 export const MAX_REFERENCE_IMAGES = 5;
 
-const PRODUCT_ROLES: AssetRole[] = ["main", "packaging", "closeup"];
+const PRODUCT_ROLES: AssetRole[] = PRODUCT_IMAGE_ROLES;
 const ABSENT = /\b(none|no product|not shown|not in (?:the )?frame|absent|without the product|off[- ]screen)\b/i;
 const SET = /\b(bundle|set|kit|collection|tools|accessories)\b/i;
 

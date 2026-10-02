@@ -50,7 +50,9 @@ export type ConceptDropReason =
   | "duplicate_hook"
   | "duplicate_message"
   | "angle_limit"
-  | "invalid_copy_structure";
+  | "invalid_copy_structure"
+  /** Choose Your Fighter V1: not exactly two fighters / one product fighter / image renderer / a product role that agrees. */
+  | "cyf_contract_violation";
 
 export interface DroppedConcept {
   slotId: string;

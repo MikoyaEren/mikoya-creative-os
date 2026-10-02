@@ -22,7 +22,8 @@ export const MECHANISM_TRAITS: Record<MechanismId, MechanismTraits> = {
   breaking_news: { fits: ["reveal", "offer"], renderers: ["html"] },
   missing_poster: { fits: ["desire", "reveal"], renderers: ["html"] },
   dictionary: { fits: ["identity", "reveal"], renderers: ["html"] },
-  choose_your_fighter: { fits: ["identity"], renderers: ["image", "html"], supportsComparison: true },
+  // V1 renders only as a locked two-fighter image (there is no HTML choose-your-fighter template).
+  choose_your_fighter: { fits: ["identity"], renderers: ["image"], supportsComparison: true },
   things_that_make_sense: { fits: ["identity", "habit"], renderers: ["html"] },
   friend_recommendation: { fits: ["social", "objection"], renderers: ["html"] },
   unpopular_opinion: { fits: ["objection", "identity"], renderers: ["html"] },

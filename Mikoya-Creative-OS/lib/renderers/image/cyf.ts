@@ -1,4 +1,5 @@
 import type { CopyField, CopyRow, CyfLayout, CyfSlot, FrameBox, OutputFormat, ProductPlacement } from "@/lib/types";
+import { CYF_LOCKED_FIGHTERS, productRoleKind } from "@/lib/constants";
 
 /**
  * CHOOSE YOUR FIGHTER — locked line-up (v1).
@@ -11,16 +12,8 @@ import type { CopyField, CopyRow, CyfLayout, CyfSlot, FrameBox, OutputFormat, Pr
  * compositor and text overlay. Product-agnostic throughout.
  */
 
-/** Fighter count a locked line-up supports in this version. */
-export const CYF_LOCKED_FIGHTERS = 2;
-
-export type ProductRoleKind = "hero" | "supporting" | "implied" | "absent" | "unspecified";
-
-/** The concept writer's product-role enum ("hero | supporting | implied | absent — plus a few words"): its first word. */
-export function productRoleKind(role: string): ProductRoleKind {
-  const m = /^\s*(hero|supporting|implied|absent)\b/i.exec(role ?? "");
-  return m ? (m[1].toLowerCase() as ProductRoleKind) : "unspecified";
-}
+// Fighter count and product-role kind are shared with the concept contract (lib/constants).
+export { CYF_LOCKED_FIGHTERS, productRoleKind, type ProductRoleKind } from "@/lib/constants";
 
 type CyfConcept = { productRole: string; copyFields?: Pick<CopyField, "key" | "text" | "rows">[] };
 
