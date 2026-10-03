@@ -145,38 +145,50 @@ export interface CyfPromptParts {
   composition: string;
   camera: string;
   lighting: string;
+  /** Photography-first style lead (brand direction and palette hints are appended by the brief). */
+  style: string;
   fidelity: string[];
   negative: string[];
 }
 
-/** Dedicated locked choose-your-fighter grammar (no Product Hero rule list, no product- or brand-specific words). */
+/**
+ * Dedicated locked choose-your-fighter grammar (no Product Hero rule list, no product- or brand-specific words).
+ * The plate is a real photographed still life with exactly one drawn physical object. The future product side is
+ * described only as the same real surface continuing: it is never called empty, blank, reserved or a position, so
+ * the model has nothing to draw there (no placeholder card, panel or divider).
+ */
 export function cyfPromptParts(l: CyfLayout, drawn: { label: string; text: string }): CyfPromptParts {
   const product = l.slots[l.productSlot];
   const gen = l.slots.find((s) => s.role === "generated")!;
+  const genSide = sideOf(gen.centerX), productSide = sideOf(product.centerX);
   const frame = l.format === "1:1" ? "square frame" : "vertical frame";
   const height = `about ${pct(l.height)}% of the frame height tall with its base at about ${pct(l.baseline)}% of the frame height from the top`;
-  const upper = l.format === "1:1" ? "the upper part of the scene above the row continues calmly as real background" : "the upper third continues calmly as real background, and nothing important sits in the bottom fifth of the frame";
+  const upper = l.format === "1:1" ? "the upper part of the scene above the surface continues calmly as real background" : "the upper third continues calmly as real background, and nothing important sits in the bottom fifth of the frame";
   return {
-    subject: "a playful two-way choice: two positions side by side on one shared, continuous surface at the same depth, given equal visual weight; the image draws only one of them",
-    option: `on the ${sideOf(gen.centerX)}, at about ${pct(gen.centerX)}% of the frame width: ${[drawn.label, drawn.text].filter(Boolean).join(" — ")}`,
-    composition: `${frame}; exactly two positions in one row at about ${pct(l.slots[0].centerX)}% and ${pct(l.slots[1].centerX)}% of the frame width, on the same continuous standing surface and at the same depth, with a clear equal gap between them; each position ${height}; the drawn option stands at the ${sideOf(gen.centerX)} position and the ${sideOf(product.centerX)} position stays empty; ${upper}; the strip just below the row continues as plain surface`,
-    camera: "eye-level, straight-on to the row, both positions equally sharp; the standing surface seen nearly edge-on, not from above",
-    lighting: "even, soft natural light falling the same way on both positions; gentle realistic shadows",
+    subject: "a photorealistic still life: exactly one real physical hero object standing on one continuous real surface that runs across the whole frame",
+    option: `on the ${genSide}, at about ${pct(gen.centerX)}% of the frame width: ${[drawn.label, drawn.text].filter(Boolean).join(" — ")}`,
+    composition: `${frame}; the drawn object stands on the ${genSide} side, centred at about ${pct(gen.centerX)}% of the frame width, ${height}; the complete object, including every protruding part and its contact shadow, stays between about ${pct(gen.left)}% and ${pct(gen.right)}% of the frame width; the same surface and background continue naturally across the ${productSide} side; ${upper}; the strip just below the object's base continues as plain surface`,
+    camera: "eye-level, straight-on to the surface, the object and the whole surface equally sharp; the standing surface seen nearly edge-on, not from above",
+    lighting: "real environmental light falling the same way across the whole surface; gentle realistic shadows",
+    style: "premium editorial still-life photography in one continuous real set; tactile physical materials, believable depth, natural perspective and real environmental light",
     fidelity: [
-      `Keep the existing continuous standing surface unobstructed on the ${sideOf(product.centerX)}, at about ${pct(product.centerX)}% of the frame width, where the real product will later stand at the same height as the drawn option (${height})`,
-      "Do not create any placeholder object, artificial marker, panel, slab, block, plinth, pedestal, card, stand, platform, box, outline or guide specifically to represent that future product position",
-      "That location must remain ordinary visible scene surface, continuous with its surroundings",
-      `The drawn option stays completely within the ${sideOf(gen.centerX)} half of the frame, fully outside the future product position, with a clearly visible horizontal gap, on the same standing surface and the same depth plane`,
-      "The drawn option stands directly on the shared surface, not on a pedestal, plinth, stand or platform",
-      "Do not draw the advertised product or its packaging anywhere: the real product photo is added afterwards in the empty position",
-      "Light the empty position exactly like the drawn option so an object standing there sits naturally",
+      "The drawn fighter must be a real physical object photographed in the scene — never an illustration, vector graphic, sticker, icon, cartoon, cut-out artwork, collage or poster",
+      "Represent the drawn fighter with exactly one primary real physical hero object that communicates the fighter concept. Do not duplicate it and do not build a pile, collection, collage, cluster or montage of related objects. Small natural scene props may exist only in the background and must not become additional fighter objects",
+      `Keep the complete physical object, including every protruding part and its contact shadow, inside the assigned fighter slot on the ${genSide} (between about ${pct(gen.left)}% and ${pct(gen.right)}% of the frame width); it never spills into the ${productSide} side`,
+      "The drawn object stands directly on the shared surface, not on a pedestal, plinth, stand or platform",
+      `Across the future product side (the ${productSide} side, around ${pct(product.centerX)}% of the frame width), the same real standing surface and background continue naturally and uninterrupted, with their normal texture, lighting, depth and shadows. Nothing is placed there and nothing visually marks or signifies that location`,
+      "Do not create a panel, card, slab, block, plinth, pedestal, divider, vertical line, border, frame, backdrop element or other visual stand-in for something that is not present",
+      "Do not draw the advertised product or its packaging anywhere: the real product photo is added afterwards",
+      "The same environmental light falls across the whole surface, so a real object added later sits naturally",
     ],
     negative: [
-      "no pedestals, plinths, podiums, stands, platforms, boxes or cards",
+      "no illustrations, vector graphics, stickers, icons, cartoons, cut-out artwork, collages or posters",
+      "no second fighter object, no duplicates, piles, clusters or montages",
+      "no panels, cards, slabs, blocks, plinths, pedestals, podiums, stands, platforms, boxes, dividers, vertical lines, borders, frames or backdrop elements",
       "no branded products, packages or labels",
       "no competitor products or other brands",
       "no option shown as worse, broken or ridiculed",
-      "no labels, names or stats on the options",
+      "no labels, names, captions, stats, UI chrome or option frames",
       "no top-down, high-angle or overhead view",
     ],
   };

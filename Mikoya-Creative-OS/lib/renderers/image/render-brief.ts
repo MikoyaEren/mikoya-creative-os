@@ -433,6 +433,9 @@ const NEGATIVE_COMMON = [
  * graphic area: a real 9:16 render once answered "negative space in the upper
  * third" with a flat cream band across the top fifth.
  */
+/** Locked line-up variant of the full-frame rule: it never names empty or blank areas (the model drew placeholders for them). */
+const LOCKED_CYF_FULL_FRAME = "no flat, solid-colour, artificial or graphic bands or panels: the photographed scene fills the whole frame edge to edge";
+
 const TEXT_FREE = [
   "The image carries no advertising copy; copy is overlaid later by the Creative OS",
   "Leave subtle uncluttered breathing room naturally within the photographed environment for future copy placement",
@@ -443,6 +446,24 @@ const TEXT_FREE = [
 /** Brand direction about space or background colours is expressed through the real scene, not as empty areas. */
 const SPACE_WORDS = /\b(white ?space|negative space|empty|minimal(?:ist)?|background)s?\b/i;
 const asScene = (d: string) => (SPACE_WORDS.test(d) ? `${d} (through the real scene's surfaces, light and props, never as empty or flat areas)` : d);
+
+/**
+ * Locked choose-your-fighter plates never use space metaphors (the provider drew a placeholder panel for "empty"):
+ * a brand clause that asks for whitespace / empty / blank / reserved space becomes breathing room inside the real set,
+ * and space or background direction is tied to the set without naming what it must not be.
+ */
+const CYF_SPACE_METAPHOR = /\b(empty|blank|reserved|white ?space|negative space)\b/i;
+const CYF_BREATHING_ROOM = "calm visual breathing room created naturally by the real set, surfaces, light and depth, never by artificial panels or flat graphic fields";
+const lockedCyfStyleDirection = (d: string) => {
+  const kept = d
+    .split(/,(?![^(]*\))/)
+    .map((c) => (CYF_SPACE_METAPHOR.test(c) ? `${c.match(/^\s*/)![0]}${CYF_BREATHING_ROOM}` : c))
+    .filter((c, i, all) => !c.includes(CYF_BREATHING_ROOM) || all.findIndex((x) => x.includes(CYF_BREATHING_ROOM)) === i)
+    .join(",");
+  return SPACE_WORDS.test(kept) && !kept.includes(CYF_BREATHING_ROOM) ? `${kept} (through the real set's surfaces, light and depth, never by artificial panels or flat graphic fields)` : kept;
+};
+/** Locked line-up variant of the text-free rule, without "blank". */
+const LOCKED_CYF_TEXT_FREE = [...TEXT_FREE.slice(0, 3), "Do not create flat, solid-colour, artificial or graphic bands for text"];
 
 // ---------------------------------------------------------------------------
 // Compilation
@@ -608,7 +629,6 @@ function compileLockedCyfBrief(args: Parameters<typeof compileImageRenderBrief>[
   const format = variant.aspectRatio;
   const routing = cyfRouting(concept);
   if (routing.mode !== "product_locked") throw new Error("compileLockedCyfBrief needs a locked line-up.");
-  const g = GRAMMAR.choose_your_fighter;
   const names = [context.brandName, context.productName];
   const copy = (concept.copyFields ?? []).map((f) => f.text);
   const fighters = fightersOf(concept);
@@ -644,15 +664,15 @@ function compileLockedCyfBrief(args: Parameters<typeof compileImageRenderBrief>[
     camera: parts.camera,
     lighting: parts.lighting,
     mood: mood.join("; "),
-    visualStyle: [g.style, ...direction.map((d) => asScene(lockedStyleDirection(d))), `palette hints: ${context.brandColors.dark} and ${context.brandColors.accent}`].join("; "),
+    visualStyle: [parts.style, ...direction.map(lockedCyfStyleDirection), `palette hints: ${context.brandColors.dark} and ${context.brandColors.accent}`].join("; "),
     productRole: "",
     referenceAssets: [],
     productFidelityMode: "product_locked",
     lockedProduct,
     productFidelityInstructions: parts.fidelity,
-    negativeInstructions: [NO_ADDED_TEXT, ...NEGATIVE_COMMON.slice(1), ...parts.negative],
+    negativeInstructions: [NO_ADDED_TEXT, LOCKED_CYF_FULL_FRAME, ...NEGATIVE_COMMON.slice(2), ...parts.negative],
     textPolicy: "text_free",
-    textFreeInstructions: TEXT_FREE,
+    textFreeInstructions: LOCKED_CYF_TEXT_FREE,
     choices: [parts.option],
   };
   return { ...brief, briefHash: fingerprint(JSON.stringify(brief)) };

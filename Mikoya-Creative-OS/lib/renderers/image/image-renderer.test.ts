@@ -1786,9 +1786,11 @@ describe("locked choose your fighter", () => {
         expect(brief.lockedProduct!.placement).toEqual(cyfProductPlacement(l));
         expect(brief.lockedProduct!.placement).toEqual({ centerX: l.slots[p].centerX, bottom: l.baseline, height: l.height });
         const pc = (v: number) => `${Math.round(v * 100)}%`;
-        expect(line(prompt, "Composition")).toContain(`at about ${pc(l.slots[0].centerX)} and ${pc(l.slots[1].centerX)} of the frame width`);
+        const gen = l.slots[1 - p], side = (x: number) => (x < 0.5 ? "left" : "right");
+        expect(line(prompt, "Composition")).toContain(`the drawn object stands on the ${side(gen.centerX)} side, centred at about ${pc(gen.centerX)} of the frame width`);
         expect(line(prompt, "Composition")).toContain(`about ${pc(l.height)} of the frame height tall with its base at about ${pc(l.baseline)} of the frame height from the top`);
-        expect(line(prompt, "Product fidelity")).toContain(`unobstructed on the ${p === 0 ? "left" : "right"}, at about ${pc(l.slots[p].centerX)} of the frame width`);
+        expect(line(prompt, "Composition")).toContain(`stays between about ${pc(gen.left)} and ${pc(gen.right)} of the frame width`);
+        expect(line(prompt, "Product fidelity")).toContain(`Across the future product side (the ${p === 0 ? "left" : "right"} side, around ${pc(l.slots[p].centerX)} of the frame width)`);
       }
     // Without the measured cut-out aspect nothing is locked (the service then refuses before submission).
     expect(compile(cyf(1), "1:1", { withAspect: false }).brief.lockedProduct).toBeNull();
@@ -1813,7 +1815,7 @@ describe("locked choose your fighter", () => {
         // Scene is environment-only (no visual description fallback): the option line is the only fighter description.
         expect(line(prompt, "Scene")).toBe(`Scene: ${CYF_DEFAULT_SCENE}`);
         expect(line(prompt, "Product fidelity")).toContain("Do not draw the advertised product or its packaging anywhere");
-        expect(line(prompt, "Avoid")).toContain("no pedestals, plinths, podiums, stands, platforms, boxes or cards");
+        expect(line(prompt, "Avoid")).toContain("no panels, cards, slabs, blocks, plinths, pedestals, podiums, stands, platforms, boxes, dividers, vertical lines, borders, frames or backdrop elements");
         expect(brief.referenceAssets).toEqual([]);
         expect(brief.productRole).toBe("");
       }
@@ -1854,6 +1856,66 @@ describe("locked choose your fighter", () => {
         expect(line(prompt, "Environment")).toBe("Environment: as described in the scene; believable and lived-in, consistent with the brand's mood, palette and visual direction.");
         expect(line(prompt, "Environment")).not.toMatch(/\bproduct\b/i);
       }
+  });
+
+  it("asks for a photographed still life with exactly one physical drawn object and never names or marks the product side", () => {
+    // Frozen geometry: the prompt hardening must not move a slot, the shared height or a base line.
+    const frozen = {
+      "1:1": { baseline: 0.8, pitch: 0.44, slots: [[0.06, 0.28, 0.5], [0.5, 0.72, 0.94]], header: { left: 0.08, top: 0.06, right: 0.92, bottom: 0.22 }, labels: [0.825, 0.945] },
+      "9:16": { baseline: 0.72, pitch: 0.44, slots: [[0.06, 0.28, 0.5], [0.5, 0.72, 0.94]], header: { left: 0.08, top: 0.145, right: 0.92, bottom: 0.3 }, labels: [0.732, 0.795] },
+    } as const;
+    for (const f of ["1:1", "9:16"] as const)
+      for (const p of [0, 1]) {
+        const { prompt, brief } = compile(cyf(p), f);
+        const l = brief.lockedProduct!.cyf!.layout, z = frozen[f];
+        expect({ baseline: l.baseline, pitch: l.pitch, slots: l.slots.map((s) => [s.left, s.centerX, s.right]), header: l.header, labels: [l.labels[0].top, l.labels[0].bottom] }).toEqual({ ...z, slots: z.slots.map((s) => [...s]), labels: [...z.labels] });
+        expect(l.height).toBe(cyfSlotLayout(f, p, ASPECT).height);
+        expect(brief.lockedProduct!.placement).toEqual({ centerX: [0.28, 0.72][p], bottom: z.baseline, height: l.height });
+        // Photography first; illustration, collage and graphic media are prohibited.
+        expect(prompt.split("\n")[0]).toBe(`A ${f === "1:1" ? "square 1:1" : "vertical 9:16"} photorealistic editorial still-life photograph for a social media ad.`);
+        expect(line(prompt, "Style")).toContain("Style: premium editorial still-life photography in one continuous real set; tactile physical materials, believable depth, natural perspective and real environmental light");
+        expect(prompt).not.toMatch(/selection|graphic yet|game UI|poster-like|illustrated comparison/i);
+        expect(line(prompt, "Product fidelity")).toContain("The drawn fighter must be a real physical object photographed in the scene — never an illustration, vector graphic, sticker, icon, cartoon, cut-out artwork, collage or poster");
+        expect(line(prompt, "Avoid")).toContain("no illustrations, vector graphics, stickers, icons, cartoons, cut-out artwork, collages or posters");
+        // Exactly one physical hero object, inside its own slot.
+        expect(line(prompt, "Product fidelity")).toContain("Represent the drawn fighter with exactly one primary real physical hero object that communicates the fighter concept. Do not duplicate it and do not build a pile, collection, collage, cluster or montage of related objects");
+        expect(line(prompt, "Product fidelity")).toContain("Keep the complete physical object, including every protruding part and its contact shadow, inside the assigned fighter slot");
+        expect(line(prompt, "Avoid")).toContain("no second fighter object, no duplicates, piles, clusters or montages");
+        // The product side is ordinary continuing surface: never empty, blank, reserved or a placeholder, and never marked.
+        expect(prompt).not.toMatch(/empty (slot|position|area)|blank area|reserved area|placeholder area|stays empty|in the empty|two positions|both positions/i);
+        expect(line(prompt, "Product fidelity")).toContain("the same real standing surface and background continue naturally and uninterrupted, with their normal texture, lighting, depth and shadows. Nothing is placed there and nothing visually marks or signifies that location");
+        expect(line(prompt, "Product fidelity")).toContain("Do not create a panel, card, slab, block, plinth, pedestal, divider, vertical line, border, frame, backdrop element or other visual stand-in for something that is not present");
+        expect(line(prompt, "Avoid")).toContain("no labels, names, captions, stats, UI chrome or option frames");
+        // Copy stays out: the product fighter, the header and the labels are never requested; nothing is referenced.
+        const product = rowsAt(p)[p];
+        for (const t of [product.label, product.text, "Choose your fighter"]) expect(prompt).not.toContain(t);
+        expect(brief.referenceAssets).toEqual([]);
+      }
+    // Zero space metaphors anywhere in the provider prompt: with the fixture's brand direction and with one that asks
+    // for every such space explicitly (the shared brand direction itself is unchanged; only the locked line is restated).
+    const SPACE_TERMS = /\b(empty|blank|reserved|white ?space|negative space)\b/gi;
+    const spacey = { ...context, visualDirection: ["Cream backgrounds, deep green, lots of whitespace", "Negative space around the hero, blank areas for copy", "Empty, minimal surfaces, reserved zones"] };
+    for (const f of ["1:1", "9:16"] as const)
+      for (const p of [0, 1]) {
+        for (const ctx of [context, spacey]) {
+          const brief = compileImageRenderBrief({ concept: cyf(p), variant: { id: `v_${f}`, aspectRatio: f }, context: ctx, references: [], lockedMaster: { assetId: MASTER, role: "packaging", productAspect: ASPECT } });
+          const prompt = new KnightVisionImageRenderer({ apiKey: null }).prompt(brief);
+          expect(prompt.match(SPACE_TERMS) ?? []).toEqual([]);
+          // Intent kept: breathing room comes from the real set, and the hardening rules are all still present.
+          expect(line(prompt, "Style")).toMatch(/^Style: premium editorial still-life photography in one continuous real set; .*calm visual breathing room created naturally by the real set, surfaces, light and depth, never by artificial panels or flat graphic fields/);
+          expect(line(prompt, "Product fidelity")).toContain("exactly one primary real physical hero object");
+          expect(line(prompt, "Product fidelity")).toContain("the same real standing surface and background continue naturally and uninterrupted");
+          expect(line(prompt, "Product fidelity")).toContain("Do not create a panel, card, slab, block, plinth, pedestal, divider, vertical line, border, frame, backdrop element or other visual stand-in");
+          expect(line(prompt, "Text")).toContain("Do not create flat, solid-colour, artificial or graphic bands for text");
+          expect(brief.lockedProduct!.cyf!.layout).toEqual(cyfSlotLayout(f, p, ASPECT));
+          expect(brief.referenceAssets).toEqual([]);
+        }
+      }
+    expect(spacey.visualDirection[0]).toBe("Cream backgrounds, deep green, lots of whitespace"); // the brand direction itself is untouched
+    // Reference-conditioned line-ups keep their own (unchanged) grammar.
+    const ref = new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: cyfRows([SLOW, ORIGINAL], { productRole: "implied — rituals" }), variant: { id: "v", aspectRatio: "1:1" }, context, references: [] }));
+    expect(ref.split("\n")[0]).toBe("A square 1:1 choose-your-fighter selection photograph for a social media ad.");
+    expect(line(ref, "Style")).toContain("bold, graphic yet photographic selection-screen composition");
   });
 
   // --- in-slot placement check ------------------------------------------------

@@ -15,12 +15,14 @@ const MECHANISM_WORDS: Record<ImageRenderBrief["mechanism"], string> = {
 };
 
 export function knightVisionPrompt(b: ImageRenderBrief): string {
+  // A locked choose-your-fighter plate is a still life; "selection" pulled the provider towards graphic UI art.
+  const lockedCyf = b.mechanism === "choose_your_fighter" && b.productFidelityMode === "product_locked";
   const lines = [
-    `A ${FORMAT_WORDS[b.aspectRatio]} ${MECHANISM_WORDS[b.mechanism]} photograph for a social media ad.`,
+    `A ${FORMAT_WORDS[b.aspectRatio]} ${lockedCyf ? "photorealistic editorial still-life" : MECHANISM_WORDS[b.mechanism]} photograph for a social media ad.`,
     `Purpose: ${b.objective}.`,
     `Scene: ${b.scene}`,
     `Subject: ${b.subject}.`,
-    b.mechanism === "choose_your_fighter" && b.productFidelityMode === "product_locked"
+    lockedCyf
       ? `Option to draw (the only one the image draws, without any label): ${b.choices.join("; ")}.`
       : b.choices.length
         ? `Options to show, each as its own distinct visual choice without any labels: ${b.choices.join("; ")}.`
