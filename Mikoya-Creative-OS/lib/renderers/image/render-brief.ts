@@ -638,7 +638,8 @@ function compileLockedCyfBrief(args: Parameters<typeof compileImageRenderBrief>[
     // the drawn fighter is described once, in the option line, and the product position in the placement block.
     scene: concept.sceneSetting?.trim() ? dropPlaceholderClauses(scenePlateText(neutralizeNames(concept.sceneSetting, names), copy)) : CYF_DEFAULT_SCENE,
     subject: parts.subject,
-    environment: `as described in the scene; believable and lived-in, consistent with ${context.category ? `the ${context.category.toLowerCase()} product` : "the product"}`,
+    // Brand-led, never product-led: the plate must not invite the model to draw the product or its category.
+    environment: "as described in the scene; believable and lived-in, consistent with the brand's mood, palette and visual direction",
     composition: parts.composition,
     camera: parts.camera,
     lighting: parts.lighting,

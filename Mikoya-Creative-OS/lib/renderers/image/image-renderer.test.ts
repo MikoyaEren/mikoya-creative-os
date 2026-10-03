@@ -1848,8 +1848,11 @@ describe("locked choose your fighter", () => {
       for (const p of [0, 1]) {
         const { prompt } = compile(cyf(p), f);
         // Nothing renderer-authored mentions a material or Product Hero's footprint vocabulary.
-        for (const k of ["Subject", "Option to draw (the only one the image draws, without any label)", "Composition", "Camera", "Lighting", "Product fidelity", "Avoid"]) expect(line(prompt, k)).not.toMatch(/powder|matcha|accent such as/i);
+        for (const k of ["Subject", "Option to draw (the only one the image draws, without any label)", "Environment", "Composition", "Camera", "Lighting", "Product fidelity", "Avoid"]) expect(line(prompt, k)).not.toMatch(/powder|matcha|accent such as/i);
         expect(prompt).not.toMatch(/footprint|reserved|clear product placement area|Keep the entire reserved/i);
+        // The environment is brand-led, never tied to the product or its category.
+        expect(line(prompt, "Environment")).toBe("Environment: as described in the scene; believable and lived-in, consistent with the brand's mood, palette and visual direction.");
+        expect(line(prompt, "Environment")).not.toMatch(/\bproduct\b/i);
       }
   });
 
