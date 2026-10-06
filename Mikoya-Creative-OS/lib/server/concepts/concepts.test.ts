@@ -278,6 +278,39 @@ describe("choose your fighter: environment-only sceneSetting", () => {
     expect(run.swaps).toEqual([]);
   });
 
+  it.each([
+    ["an empty basis", [] as string[]],
+    ["basis refs the writer was never given", ["fact:not_a_real_input", "strategy:primaryAngles:99"]],
+  ])("keeps dropping a CYF draft with %s as ungrounded, now with an audit copy of the draft (no repair, no swap)", async (_name, basis) => {
+    const model = violating({ basis });
+    const batch = await generateConcepts(cyfReq, { batchId: BATCH_ID, createClient: fake(ok(model)), now: () => Date.parse("2026-10-02T00:00:00.000Z") });
+    const run = batch.conceptRun!;
+    const slotId = cyfPlan.slots[0].slotId;
+    // 1–3. Same outcome as before: dropped as ungrounded, slot unfilled, nothing swapped or recovered, one model call.
+    expect(batch.concepts).toHaveLength(0);
+    expect(run.dropped).toHaveLength(1);
+    expect(run.dropped[0]).toMatchObject({ slotId, mechanismId: "choose_your_fighter", reason: "ungrounded", detail: "Cites no provided input." });
+    expect(run.unfilled).toEqual([{ slotId, mechanismId: "choose_your_fighter", reason: "ungrounded: Cites no provided input." }]);
+    expect(run.swaps).toEqual([]);
+    expect(run.modelCalls).toBe(1);
+    // 4. The audit keeps the draft exactly as the model returned it: basis, CYF rows with marker and visual object.
+    const src = model.concepts[0];
+    expect(run.dropped[0].draft).toEqual({ basis, copyFields: src.copyFields, rendererType: src.rendererType, productRole: src.productRole, sceneSetting: src.sceneSetting });
+    const rows = run.dropped[0].draft!.copyFields.find((f) => f.key === "fighters")!.rows;
+    expect(rows.map((r) => [r.label, r.product === true, r.visualObject ?? null])).toEqual([
+      ["The Slow Morning", false, "one steaming ceramic bowl"],
+      ["The Original", true, null],
+    ]);
+  });
+
+  it("records the draft audit on every drop reason without changing it (CYF contract drop unchanged)", async () => {
+    const model = violating({ copyFields: rowsField([{ label: S.label, text: S.text, note: "" }, { ...O, product: true }]) });
+    const run = (await generateConcepts(cyfReq, { batchId: BATCH_ID, createClient: fake(ok(model)), now: () => Date.parse("2026-10-02T00:00:00.000Z") })).conceptRun!;
+    expect(run.dropped[0]).toMatchObject({ reason: "cyf_contract_violation", detail: expect.stringMatching(/needs a visualObject naming exactly one physical object \(missing\)/) });
+    expect(run.dropped[0].draft!.copyFields).toEqual(model.concepts[0].copyFields);
+    expect(run.dropped[0].draft!.basis).toEqual(model.concepts[0].basis);
+  });
+
   it("accepts a visualObject only as exactly one object starting with \"one\" (shared validator, product-agnostic)", () => {
     const copy = ["Snooze Button Era", "Five alarms, zero plan"];
     expect(cyfVisualObjectIssue("one vintage twin-bell alarm clock", copy)).toBeNull();

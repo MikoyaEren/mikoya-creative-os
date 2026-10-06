@@ -1,4 +1,4 @@
-import type { CreativeType, MechanismId } from "./index";
+import type { CopyField, CreativeType, MechanismId } from "./index";
 import type { InformationSource } from "./strategy";
 
 /**
@@ -63,6 +63,19 @@ export interface DroppedConcept {
   detail: string;
   /** What the dropped concept said and showed (for audit). */
   text: string;
+  /**
+   * Diagnostic copy of the model draft's structured fields exactly as returned (never repaired, never re-validated):
+   * enough to see why a draft dropped, e.g. its basis references or a choose-your-fighter row's marker and visual object.
+   */
+  draft?: DroppedDraftAudit;
+}
+
+export interface DroppedDraftAudit {
+  basis: string[];
+  copyFields: CopyField[];
+  rendererType: string;
+  productRole: string;
+  sceneSetting?: string;
 }
 
 export interface UnfilledSlot {

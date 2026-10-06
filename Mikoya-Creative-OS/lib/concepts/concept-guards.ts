@@ -5,6 +5,7 @@ import type {
   ConceptProofRef,
   CreativeConceptDraft,
   DroppedConcept,
+  DroppedDraftAudit,
   MechanismId,
   MechanismSwap,
   RendererType,
@@ -266,7 +267,11 @@ export function validateConcepts(raw: RawConceptDraft[], declined: { slotId: str
   for (const d of raw) {
     const drop = (reason: ConceptDropReason, detail: string) => {
       const text = `${onCanvas(d)}\nvisual: ${d.visualIdea}`.slice(0, 800);
-      dropped.push({ slotId: d.slotId, mechanismId: d.mechanismId, title: d.title, hook: d.hook, reason, detail, text });
+      // Audit only: a deep copy of the draft's structured fields as the model returned them (no effect on any guard).
+      const draft: DroppedDraftAudit = JSON.parse(
+        JSON.stringify({ basis: d.basis, copyFields: d.copyFields, rendererType: d.rendererType, productRole: d.productRole, ...(d.sceneSetting !== undefined ? { sceneSetting: d.sceneSetting } : {}) }),
+      );
+      dropped.push({ slotId: d.slotId, mechanismId: d.mechanismId, title: d.title, hook: d.hook, reason, detail, text, draft });
       if (!filled.has(d.slotId)) dropReason.set(d.slotId, `${reason}: ${detail}`);
     };
     const slot = slots.get(d.slotId.trim());
