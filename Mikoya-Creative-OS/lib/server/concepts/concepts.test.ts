@@ -13,6 +13,7 @@ import { demoCopyFields } from "@/lib/mock/demo-copy-fields";
 import { buildImageRenderContext, compileImageRenderBrief } from "@/lib/renderers/image/render-brief";
 import { knightVisionPrompt } from "@/lib/renderers/knightvision/prompt";
 import { CYF_DEFAULT_SCENE, cyfRouting } from "@/lib/renderers/image/cyf";
+import { cyfVisualObjectIssue } from "@/lib/constants";
 
 const request = (over: Partial<GenerationRequest> = {}): GenerationRequest => ({
   projectId: "mikoya",
@@ -164,7 +165,7 @@ describe("choose your fighter: environment-only sceneSetting", () => {
   const cyfPlan = allocateSlots({ snapshot, outputMix: cyfReq.outputMix, mechanismIds: ["choose_your_fighter"], seed: BATCH_ID });
   const SETTING = "A warm stone breakfast counter in a calm kitchen, with soft morning window light.";
   const fighters = [
-    { label: "The Slow Morning", text: "warm bowl, no rush", note: "" },
+    { label: "The Slow Morning", text: "warm bowl, no rush", note: "", visualObject: "one steaming ceramic bowl" },
     { label: "The Original", text: "the real thing, unchanged", note: "", product: true },
   ];
   const cyfOutput = (sceneSetting?: string): ConceptOutput => ({
@@ -224,6 +225,11 @@ describe("choose your fighter: environment-only sceneSetting", () => {
     expect(recipe).toContain("fighters (list, exactly 2 rows, ≤160 chars in total; label = fighter name ≤24; text = trait ≤40");
     // 2. exactly one product fighter
     expect(recipe).toContain("Exactly one of the two fighter rows represents the real advertised product. Set product: true on that row and on no other row. The other fighter is the alternative that will be generated as part of the scene");
+    // Copy and image are separate: names and traits are overlay copy; the drawn fighter's object is a structured field.
+    expect(recipe).toContain("Fighter names and traits are overlay copy only: they are set as text under each fighter and never tell the image what to show");
+    expect(recipe).toContain("On the fighter row WITHOUT product: true, always write visualObject: exactly one singular, real, photographable physical object that stands for that fighter, starting with 'one'");
+    expect(recipe).toContain("Never a group, collection, pile, cluster, montage or several objects, never a number or quantity, and never copy, labels, text or UI. The product fighter needs no visualObject: the real product photo represents it");
+    expect(recipe).toMatch(/visualObject = the one physical object photographed for the non-product fighter, starting with "one" ≤80, an image instruction, never drawn as text/);
     expect(recipe).toContain("productRole must say the real product is one of the two fighters and visually central to the comparison — never supporting, background, absent or shared between both fighters");
     // 3. no 3 / 4 fighters, no grids or cards
     expect(recipe).not.toMatch(/2×2|2x2|grid|cards?\b|3–4|three|four|\b[34] (?:fighters|cards)/i);
@@ -239,8 +245,8 @@ describe("choose your fighter: environment-only sceneSetting", () => {
 
   // 7–12: the deterministic guards reject every contract violation (no repair) and keep a correct concept unchanged.
   const violating = (over: Partial<ConceptOutput["concepts"][number]>) => ({ ...cyfOutput(SETTING), concepts: cyfOutput(SETTING).concepts.map((c) => ({ ...c, ...over })) });
-  const rowsField = (rows: { label: string; text: string; note: string; product?: boolean }[]) => [{ key: "header", text: "Choose your fighter", rows: [] }, { key: "fighters", text: "", rows }];
-  const S = { label: "The Slow Morning", text: "warm bowl, no rush", note: "" };
+  const rowsField = (rows: { label: string; text: string; note: string; product?: boolean; visualObject?: string }[]) => [{ key: "header", text: "Choose your fighter", rows: [] }, { key: "fighters", text: "", rows }];
+  const S = { label: "The Slow Morning", text: "warm bowl, no rush", note: "", visualObject: "one steaming ceramic bowl" };
   const O = { label: "The Original", text: "the real thing, unchanged", note: "" };
 
   it.each([
@@ -251,6 +257,12 @@ describe("choose your fighter: environment-only sceneSetting", () => {
     ["renderer html", { rendererType: "html" }, "cyf_contract_violation", /renders as an image only \(got "html"\)/],
     ["supporting role with a marker", { productRole: "supporting — the product sits in the background" }, "cyf_contract_violation", /productRole must say the real product is one of the two fighters/],
     ["hero role that shares the product", { productRole: "hero — shared across both fighters" }, "cyf_contract_violation", /productRole must say the real product is one of the two fighters/],
+    // The drawn fighter's image instruction is structured: missing or unusable is rejected, never inferred from its copy.
+    ["a drawn fighter without visualObject", { copyFields: rowsField([{ label: S.label, text: S.text, note: "" }, { ...O, product: true }]) }, "cyf_contract_violation", /non-product fighter needs a visualObject naming exactly one physical object \(missing\)/],
+    ["a visualObject naming several objects", { copyFields: rowsField([{ ...S, visualObject: "one pile of five alarm clocks" }, { ...O, product: true }]) }, "cyf_contract_violation", /describes more than one object/],
+    ["a visualObject that repeats the copy", { copyFields: rowsField([{ ...S, visualObject: "one The Slow Morning bowl" }, { ...O, product: true }]) }, "cyf_contract_violation", /repeats the fighter's copy/],
+    ["a visualObject asking for text", { copyFields: rowsField([{ ...S, visualObject: "one mug with a caption" }, { ...O, product: true }]) }, "cyf_contract_violation", /asks for copy, text or UI/],
+    ["a visualObject not starting with \"one\"", { copyFields: rowsField([{ ...S, visualObject: "a steaming ceramic bowl" }, { ...O, product: true }]) }, "cyf_contract_violation", /must name exactly one object, starting with "one"/],
   ] as const)("rejects %s visibly: guard drop → slot unfilled, no repair", async (_name, over, reason, detail) => {
     // generateConcepts returns the batch: a dropped concept leaves its slot unfilled (existing, auditable behaviour).
     const batch = await generateConcepts(cyfReq, { batchId: BATCH_ID, createClient: fake(ok(violating(over as never))), now: () => Date.parse("2026-10-02T00:00:00.000Z") });
@@ -264,6 +276,29 @@ describe("choose your fighter: environment-only sceneSetting", () => {
     // No repair: no renderer substitution, no swap to another mechanism.
     expect(run.warnings.join(" ")).not.toMatch(/not allowed for choose_your_fighter|using image/);
     expect(run.swaps).toEqual([]);
+  });
+
+  it("accepts a visualObject only as exactly one object starting with \"one\" (shared validator, product-agnostic)", () => {
+    const copy = ["Snooze Button Era", "Five alarms, zero plan"];
+    expect(cyfVisualObjectIssue("one vintage twin-bell alarm clock", copy)).toBeNull();
+    expect(cyfVisualObjectIssue("one open paper planner", ["The Manual Way", "Ten tabs, three spreadsheets"])).toBeNull();
+    expect(cyfVisualObjectIssue("One vintage twin-bell alarm clock", copy)).toBeNull(); // the word "one", any case
+    const bad: [string | undefined, RegExp][] = [
+      [undefined, /^missing$/],
+      ["", /^missing$/],
+      ["a vintage twin-bell alarm clock", /starting with "one"/],
+      ["an alarm clock", /starting with "one"/],
+      ["vintage alarm clock", /starting with "one"/],
+      ["one pile of alarm clocks", /more than one object \("pile"\)/],
+      ["one set of keys", /more than one object \("set of"\)/],
+      ["one alarm clock and 5 phones", /more than one object \("5"\)/],
+      ["one clock; one phone", /a list, not one object/],
+      ["one mug with a logo", /asks for copy, text or UI \("logo"\)/],
+      ["one sign that says \"hello\"", /asks for copy, text or UI/],
+      ["one Snooze Button Era clock", /repeats the fighter's copy \("Snooze Button Era"\)/],
+      [`one ${"very ".repeat(20)}old clock`, /chars \(max 80\)/],
+    ];
+    for (const [v, issue] of bad) expect(cyfVisualObjectIssue(v, copy)).toMatch(issue);
   });
 
   it("keeps a correct two-fighter / image / one-marker concept unchanged and compiles it on the locked path", async () => {
@@ -303,7 +338,8 @@ describe("choose your fighter: environment-only sceneSetting", () => {
         expect(scene.toLowerCase()).not.toContain(r.label.toLowerCase());
         expect(scene.toLowerCase()).not.toContain(r.text.toLowerCase());
       }
-      expect(prompt).toContain("Option to draw (the only one the image draws, without any label): on the left, at about 28% of the frame width: The Slow Morning — warm bowl, no rush.");
+      expect(prompt).toContain("Object to photograph (the only object the image draws, without any label): one steaming ceramic bowl, standing on the left, centred at about 28% of the frame width.");
+      for (const copy of ["The Slow Morning", "warm bowl, no rush", "The Original", "the real thing, unchanged"]) expect(prompt).not.toContain(copy);
     }
   });
 

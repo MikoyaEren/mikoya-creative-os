@@ -29,10 +29,11 @@ const ConceptOut = z.object({
               text: z.string(),
               note: z.string(),
               product: z.boolean().optional(),
+              visualObject: z.string().optional(),
             }),
           )
           .describe(
-            "List fields: one entry per row, parts as the recipe defines them (unused parts empty). Text fields: empty. `product`: Choose Your Fighter `fighters` only — true on the ONE row that is the real product itself (it is shown as the real product photo); omit it everywhere else.",
+            "List fields: one entry per row, parts as the recipe defines them (unused parts empty). Text fields: empty. `product`: Choose Your Fighter `fighters` only — true on the ONE row that is the real product itself (it is shown as the real product photo); omit it everywhere else. `visualObject`: Choose Your Fighter `fighters` only — on the row WITHOUT product: true, the one physical object the image photographs for that fighter; never copy.",
           ),
       }),
     )

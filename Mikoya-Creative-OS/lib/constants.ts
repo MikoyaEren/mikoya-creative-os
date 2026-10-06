@@ -15,6 +15,34 @@ export function productRoleKind(role: string): ProductRoleKind {
   return m ? (m[1].toLowerCase() as ProductRoleKind) : "unspecified";
 }
 
+/** Max length of a Choose Your Fighter `visualObject` (an image instruction, never copy). */
+export const CYF_VISUAL_OBJECT_MAX_CHARS = 80;
+/** Structural multiplicity words: a count, a quantity or a grouping noun (never a category of object). */
+const VISUAL_OBJECT_MULTIPLE = /\d|\b(two|three|four|five|six|seven|eight|nine|ten|dozens?|several|multiple|many|various|assorted|piles?|stacks?|heaps?|collections?|clusters?|groups?|montages?|collages?|bunch(?:es)?|set of|row of|array of)\b/i;
+/** Words that ask the image for copy, text or interface elements. */
+const VISUAL_OBJECT_TEXT = /["“”]|\b(text|caption|headline|slogan|logo|lettering|words?|labels?|ui|interface|icons?)\b/i;
+
+/**
+ * Structural check of the drawn fighter's `visualObject`: the one physical object the image photographs (never the
+ * fighter's overlay copy). It must start with the word "one" (deliberately narrow: not "a" / "an"). Product-agnostic:
+ * it checks shape, count and copy leakage, never which object it is.
+ * Returns the first problem, or null when usable.
+ */
+export function cyfVisualObjectIssue(visualObject: string | undefined, copy: string[] = []): string | null {
+  const v = (visualObject ?? "").replace(/\s+/g, " ").trim();
+  if (!v) return "missing";
+  if (v.length > CYF_VISUAL_OBJECT_MAX_CHARS) return `${v.length} chars (max ${CYF_VISUAL_OBJECT_MAX_CHARS})`;
+  if (/[\n;•|]/.test(visualObject ?? "")) return "a list, not one object";
+  if (!/^one\s+\S/i.test(v)) return `must name exactly one object, starting with "one" (got "${v}")`;
+  const multiple = VISUAL_OBJECT_MULTIPLE.exec(v);
+  if (multiple) return `describes more than one object ("${multiple[0]}")`;
+  const text = VISUAL_OBJECT_TEXT.exec(v);
+  if (text) return `asks for copy, text or UI ("${text[0]}")`;
+  const leak = copy.map((c) => c.replace(/\s+/g, " ").trim()).find((c) => c.length >= 3 && v.toLowerCase().includes(c.toLowerCase()));
+  if (leak) return `repeats the fighter's copy ("${leak}")`;
+  return null;
+}
+
 /** Neutral starting point; real defaults come from the active project. */
 export const EMPTY_BRAND_CONTEXT: BrandContext = {
   brandName: "",

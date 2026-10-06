@@ -22,6 +22,7 @@ import { imageConceptControls, imageVariantAction, isUnresolvedImageJob, NEW_PAI
 import { normalizeToFormat } from "./normalize";
 import { SLOT_MAX_SHIFT, SLOT_OCCUPANCY_MIN, SOLVER_CLEAN_SCORE, SOLVER_FAIL_SCORE, SOLVER_SIDE_MARGIN, solveLockedPlacement, solveSlotPlacement } from "./placement-solver";
 import { CYF_DEFAULT_SCENE, CYF_SIDE_MARGIN, CYF_SLOT_FILL, cyfProductPlacement, cyfRouting, cyfSlotLayout } from "./cyf";
+import { renderCyfOverlay } from "./cyf-overlay";
 import { buildShadowAlpha, bottomContour, compositeProduct, defaultShadowParams, deriveHarmonisation, detectLightDirection, LOCKED_SCALE, neutralShadowTone, resolveProductHeight, SHADOW_MAX_CHROMA, trimmedAspect } from "./composite";
 import { createHash } from "node:crypto";
 import { footprintAccent, lockedFootprint, productFidelityModeFor, productHorizontalIntent, resolveLockedPlacement, scenePlateText } from "./render-brief";
@@ -923,7 +924,7 @@ describe("product fidelity modes", () => {
   });
 
   it("locks choose-your-fighter only through the structured product-fighter marker, never from free text", () => {
-    const fighters = (marked: number[]) => [{ key: "fighters", text: "", rows: [0, 1].map((i) => ({ label: `F${i}`, text: "t", note: "", ...(marked.includes(i) ? { product: true } : {}) })) }];
+    const fighters = (marked: number[]) => [{ key: "fighters", text: "", rows: [0, 1].map((i) => ({ label: `F${i}`, text: "t", note: "", ...(marked.includes(i) ? { product: true } : { visualObject: "one ceramic bowl" }) })) }];
     // Free text alone never locks (it used to).
     expect(productFidelityModeFor("choose_your_fighter", { productRole: "the pouch is one of the fighters" })).toBe("reference_conditioned");
     expect(productFidelityModeFor("choose_your_fighter", { productRole: "hero — one of the fighters", copyFields: fighters([1]) })).toBe("product_locked");
@@ -1668,10 +1669,11 @@ describe("locked placement solver", () => {
 // ---------------------------------------------------------------------------
 
 describe("locked choose your fighter", () => {
-  type Row = { label: string; text: string; note: string; product?: boolean };
+  type Row = { label: string; text: string; note: string; product?: boolean; visualObject?: string };
   // Semantically valid line-ups: the real product is always "The Original"; only its row index changes.
   const ORIGINAL: Row = { label: "The Original", text: "the real thing, unchanged", note: "" };
-  const SLOW: Row = { label: "The Slow Morning", text: "warm bowl, no rush", note: "" };
+  // The drawn fighter's image instruction is its structured visual object, never its name or trait.
+  const SLOW: Row = { label: "The Slow Morning", text: "warm bowl, no rush", note: "", visualObject: "one steaming ceramic bowl" };
   const THIRD: Row = { label: "The Third", text: "iced, no fuss", note: "" };
   /** Product LEFT: row 0 is the product; product RIGHT: row 1 is the product. */
   const rowsAt = (p: number): Row[] => (p === 0 ? [{ ...ORIGINAL, product: true }, SLOW] : [SLOW, { ...ORIGINAL, product: true }]);
@@ -1803,12 +1805,12 @@ describe("locked choose your fighter", () => {
         const product = rowsAt(p)[p], drawn = rowsAt(p)[1 - p];
         expect(product.label).toBe("The Original"); // semantically valid: the real product is always the product fighter
         expect(brief.choices).toHaveLength(1);
-        expect(line(prompt, "Option to draw (the only one the image draws, without any label)")).toContain(`${drawn.label} — ${drawn.text}`);
+        expect(line(prompt, "Object to photograph (the only object the image draws, without any label)")).toContain(`${drawn.visualObject}, standing on the ${p === 0 ? "right" : "left"}`);
         expect(prompt).not.toContain(product.label);
         expect(prompt).not.toContain(product.text);
         expect(prompt).not.toMatch(/Options to show/);
         // Positive instructions carry no product/package nouns and no placeholder objects.
-        for (const k of ["Scene", "Subject", "Option to draw (the only one the image draws, without any label)", "Composition"]) {
+        for (const k of ["Scene", "Subject", "Object to photograph (the only object the image draws, without any label)", "Composition"]) {
           expect(line(prompt, k)).not.toMatch(/\b(pouch|package|packaging|bottle|jar|box|tube|tin|sachet|pack|carton)\b/i);
           expect(line(prompt, k)).not.toMatch(/\b(pedestal|plinth|podium|riser|platform)s?\b/i);
         }
@@ -1838,7 +1840,7 @@ describe("locked choose your fighter", () => {
             expect(sc.toLowerCase()).not.toContain(r.label.toLowerCase());
             expect(sc.toLowerCase()).not.toContain(r.text.toLowerCase());
           }
-        expect(line(set, "Option to draw (the only one the image draws, without any label)")).toContain(`${drawn.label} — ${drawn.text}`);
+        expect(line(set, "Object to photograph (the only object the image draws, without any label)")).toContain(`${drawn.visualObject}, standing on the ${p === 0 ? "right" : "left"}`);
       }
     // Reference-conditioned line-ups keep their visual description (unchanged behaviour).
     const ref = new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: cyfRows([SLOW, ORIGINAL], { productRole: "implied — rituals" }), variant: { id: "v", aspectRatio: "1:1" }, context, references: [] }));
@@ -1850,7 +1852,7 @@ describe("locked choose your fighter", () => {
       for (const p of [0, 1]) {
         const { prompt } = compile(cyf(p), f);
         // Nothing renderer-authored mentions a material or Product Hero's footprint vocabulary.
-        for (const k of ["Subject", "Option to draw (the only one the image draws, without any label)", "Environment", "Composition", "Camera", "Lighting", "Product fidelity", "Avoid"]) expect(line(prompt, k)).not.toMatch(/powder|matcha|accent such as/i);
+        for (const k of ["Subject", "Object to photograph (the only object the image draws, without any label)", "Environment", "Composition", "Camera", "Lighting", "Product fidelity", "Avoid"]) expect(line(prompt, k)).not.toMatch(/powder|matcha|accent such as/i);
         expect(prompt).not.toMatch(/footprint|reserved|clear product placement area|Keep the entire reserved/i);
         // The environment is brand-led, never tied to the product or its category.
         expect(line(prompt, "Environment")).toBe("Environment: as described in the scene; believable and lived-in, consistent with the brand's mood, palette and visual direction.");
@@ -1878,7 +1880,12 @@ describe("locked choose your fighter", () => {
         expect(line(prompt, "Product fidelity")).toContain("The drawn fighter must be a real physical object photographed in the scene — never an illustration, vector graphic, sticker, icon, cartoon, cut-out artwork, collage or poster");
         expect(line(prompt, "Avoid")).toContain("no illustrations, vector graphics, stickers, icons, cartoons, cut-out artwork, collages or posters");
         // Exactly one physical hero object, inside its own slot.
-        expect(line(prompt, "Product fidelity")).toContain("Represent the drawn fighter with exactly one primary real physical hero object that communicates the fighter concept. Do not duplicate it and do not build a pile, collection, collage, cluster or montage of related objects");
+        expect(line(prompt, "Product fidelity")).toContain("Photograph exactly the one object named above as the single hero object. Do not duplicate it and do not build a pile, collection, collage, cluster or montage of related objects");
+        // Eye-level still-life camera; no foreground clutter in either slot.
+        expect(line(prompt, "Camera")).toBe("Camera: camera at about the object's mid-height, straight-on eye-level still-life perspective with at most a very slight downward tilt; the object and the whole surface equally sharp; the standing surface seen nearly edge-on, never from above.");
+        expect(line(prompt, "Product fidelity")).toContain("No secondary foreground props, companion objects, accessories, clutter or loose objects inside either fighter slot or in front of the row; environmental dressing may exist only farther back in the shared set and stays visually subordinate");
+        expect(line(prompt, "Avoid")).toContain("no secondary foreground props, companion objects, accessories, clutter or loose objects");
+        expect(line(prompt, "Avoid")).toContain("no top-down, overhead or pronounced high-angle view");
         expect(line(prompt, "Product fidelity")).toContain("Keep the complete physical object, including every protruding part and its contact shadow, inside the assigned fighter slot");
         expect(line(prompt, "Avoid")).toContain("no second fighter object, no duplicates, piles, clusters or montages");
         // The product side is ordinary continuing surface: never empty, blank, reserved or a placeholder, and never marked.
@@ -1903,7 +1910,7 @@ describe("locked choose your fighter", () => {
           expect(prompt.match(SPACE_TERMS) ?? []).toEqual([]);
           // Intent kept: breathing room comes from the real set, and the hardening rules are all still present.
           expect(line(prompt, "Style")).toMatch(/^Style: premium editorial still-life photography in one continuous real set; .*calm visual breathing room created naturally by the real set, surfaces, light and depth, never by artificial panels or flat graphic fields/);
-          expect(line(prompt, "Product fidelity")).toContain("exactly one primary real physical hero object");
+          expect(line(prompt, "Product fidelity")).toContain("Photograph exactly the one object named above as the single hero object");
           expect(line(prompt, "Product fidelity")).toContain("the same real standing surface and background continue naturally and uninterrupted");
           expect(line(prompt, "Product fidelity")).toContain("Do not create a panel, card, slab, block, plinth, pedestal, divider, vertical line, border, frame, backdrop element or other visual stand-in");
           expect(line(prompt, "Text")).toContain("Do not create flat, solid-colour, artificial or graphic bands for text");
@@ -1916,6 +1923,76 @@ describe("locked choose your fighter", () => {
     const ref = new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: cyfRows([SLOW, ORIGINAL], { productRole: "implied — rituals" }), variant: { id: "v", aspectRatio: "1:1" }, context, references: [] }));
     expect(ref.split("\n")[0]).toBe("A square 1:1 choose-your-fighter selection photograph for a social media ad.");
     expect(line(ref, "Style")).toContain("bold, graphic yet photographic selection-screen composition");
+  });
+
+  it("tells the image only the drawn fighter's structured visual object: names and traits stay overlay copy", async () => {
+    const SNOOZE: Row = { label: "Snooze Button Era", text: "Five alarms, zero plan", note: "", visualObject: "one vintage twin-bell alarm clock" };
+    const PRODUCT: Row = { label: "The Original", text: "the real thing, unchanged", note: "", product: true };
+    for (const f of ["1:1", "9:16"] as const)
+      for (const p of [0, 1]) {
+        const rows = p === 0 ? [PRODUCT, SNOOZE] : [SNOOZE, PRODUCT];
+        const { prompt, brief } = compile(cyfRows(rows), f);
+        // 1. The object, never the copy.
+        expect(line(prompt, "Object to photograph (the only object the image draws, without any label)")).toBe(
+          `Object to photograph (the only object the image draws, without any label): one vintage twin-bell alarm clock, standing on the ${p === 0 ? "right" : "left"}, centred at about ${p === 0 ? 72 : 28}% of the frame width.`,
+        );
+        for (const t of ["Snooze Button Era", "Five alarms", "zero plan"]) expect(prompt).not.toContain(t);
+        // 3. The product fighter's copy never reaches the provider either.
+        for (const t of [PRODUCT.label, PRODUCT.text]) expect(prompt).not.toContain(t);
+        // 2. The overlay keeps the exact original copy, in row order.
+        expect(brief.lockedProduct!.cyf!.copy).toEqual({ header: "Choose your fighter", fighters: rows.map((r) => ({ label: r.label, text: r.text })) });
+        expect(brief.referenceAssets).toEqual([]);
+      }
+    const brief = compile(cyfRows([SNOOZE, PRODUCT]), "1:1").brief;
+    const plateImg = await sharp({ create: { width: 2048, height: 2048, channels: 3, background: "#e6dccd" } }).png().toBuffer();
+    const { overlay } = await renderCyfOverlay(plateImg, brief.lockedProduct!.cyf!);
+    expect(overlay.labels.map((l) => [l.name, l.trait, l.slotIndex])).toEqual([["Snooze Button Era", "Five alarms, zero plan", 0], ["The Original", "the real thing, unchanged", 1]]);
+  });
+
+  it("sends no concept purpose, angle or fighter copy: the visual object is the only description of the drawn fighter", () => {
+    const PRODUCT: Row = { label: "The Original", text: "the real thing, unchanged", note: "", product: true };
+    const a = cyfRows([{ label: "Snooze Button Era", text: "Five alarms, zero plan", note: "", visualObject: "one vintage twin-bell alarm clock" }, PRODUCT], {
+      objective: "Stop the scroll with a playful choice",
+      angle: "Your morning is a character choice: chaotic snooze-button you, or the calm ritual you.",
+      visualDescription: "A pile of ringing clocks, a phone, tangled cables and a sleep mask beside the pouch.",
+    });
+    const b = cyfRows([{ label: "Rush Hour Hero", text: "Coffee in a moving car", note: "", visualObject: "one vintage twin-bell alarm clock" }, { ...PRODUCT, label: "Another Name", text: "another trait" }], {
+      objective: "Reassure busy commuters",
+      angle: "Two ways to start a hectic day: the commute scramble or a calm pause.",
+      visualDescription: "A commuter's car interior with a spilled coffee cup and keys.",
+    });
+    for (const f of ["1:1", "9:16"] as const) {
+      const pa = compile(a, f).prompt, pb = compile(b, f).prompt;
+      // Different angle, objective, visual description and fighter copy → the identical provider prompt.
+      expect(pa).toBe(pb);
+      expect(pa).not.toMatch(/^Purpose:/m);
+      for (const t of ["Stop the scroll", "character choice", "snooze-button", "chaotic", "Snooze Button Era", "Five alarms", "zero plan", "pile of ringing", "tangled cables", "The Original", "the real thing"]) expect(pa).not.toContain(t);
+      // Added copy/UI text is forbidden; markings that belong to the object (a clock face's numerals) are not.
+      expect(line(pa, "Avoid")).toMatch(/^Avoid: no added advertising or interface text anywhere in the image: no captions, headlines, prices, badges, UI, option labels or promotional copy; natural markings inherently belonging to the photographed physical object may remain; /);
+      expect(pa).not.toMatch(/no words, letters, numbers/);
+      expect(line(pa, "Avoid")).toContain("no labels, names, captions, stats, UI chrome or option frames");
+      expect(line(pa, "Text")).toContain("The image carries no advertising copy; copy is overlaid later by the Creative OS");
+      // Only the visual object (and the scene setting) changes what is described.
+      const c = compile(cyfRows([{ label: "Rush Hour Hero", text: "Coffee in a moving car", note: "", visualObject: "one open paper planner" }, PRODUCT]), f).prompt;
+      expect(c).not.toBe(pa);
+      expect(c.replace("one open paper planner", "one vintage twin-bell alarm clock")).toBe(pa);
+    }
+    // Reference-conditioned line-ups keep their purpose line (unchanged behaviour).
+    const ref = new KnightVisionImageRenderer({ apiKey: null }).prompt(compileImageRenderBrief({ concept: cyfRows([SLOW, ORIGINAL], { productRole: "implied — rituals" }), variant: { id: "v", aspectRatio: "1:1" }, context, references: [] }));
+    expect(ref).toMatch(/^Purpose: /m);
+    expect(ref).toContain("no added text anywhere in the image: no words, letters, numbers"); // reference-conditioned keeps the shared rule
+  });
+
+  it("refuses a locked line-up whose drawn fighter has no usable visual object before submitting (never inferred from copy)", async () => {
+    const bare: Row = { label: "Snooze Button Era", text: "Five alarms, zero plan", note: "" };
+    const PRODUCT: Row = { label: "The Original", text: "the real thing, unchanged", note: "", product: true };
+    for (const drawn of [bare, { ...bare, visualObject: "five alarm clocks" }, { ...bare, visualObject: "one Snooze Button Era clock" }])
+      expect(cyfRouting(cyfRows([drawn, PRODUCT]))).toMatchObject({ mode: "ineligible", code: "drawn_fighter_object_missing" });
+    const kv = fakeKnightVision();
+    const c = cyfRows([bare, PRODUCT]);
+    const out = await startImageRender(request(c as never, ["1:1", "9:16"]), { renderer: renderer(kv.fetchImpl), store: memoryStore(), jobs: new MemoryImageJobStore() });
+    for (const f of ["1:1", "9:16"] as const) expect(out[f]!.record).toMatchObject({ status: "failed", error: { code: "drawn_fighter_object_missing" } });
+    expect(kv.calls).toEqual([]);
   });
 
   // --- in-slot placement check ------------------------------------------------

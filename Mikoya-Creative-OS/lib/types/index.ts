@@ -253,6 +253,8 @@ export interface RecipeCopySlot {
    * choose-your-fighter fighter that IS the real product. Never inferred from the row's words.
    */
   productMarker?: boolean;
+  /** List fields only: rows may carry `visualObject` (an image instruction, never drawn as text). */
+  visualObject?: { meaning: string; maxChars: number };
   /** A short neutral example (text fields), shown to the writer. */
   example?: string;
   /** Allowed values (text fields), normalised case-insensitively — for structural choices such as an attachment. */
@@ -275,6 +277,11 @@ export interface CopyRow {
   note: string;
   /** Structured product marker (only on list fields whose recipe declares `productMarker`). */
   product?: boolean;
+  /**
+   * Image-generation instruction, never copy (only on list fields whose recipe declares `visualObject`): the one
+   * singular physical object that represents this row in the image, e.g. a drawn choose-your-fighter fighter.
+   */
+  visualObject?: string;
 }
 
 /** One recipe copy field as written by the concept writer. Text fields use `text`, list fields use `rows`. */
@@ -374,7 +381,9 @@ export type RenderErrorCode =
   /** Choose-your-fighter: the concept makes the product a fighter but does not mark exactly one fighter row as the product (nothing submitted). */
   | "product_fighter_unresolved"
   /** A locked layout this version does not support, e.g. a locked line-up other than two fighters (nothing submitted). */
-  | "locked_layout_unsupported";
+  | "locked_layout_unsupported"
+  /** Choose-your-fighter: the drawn fighter has no usable structured visual object (its copy is never drawn; nothing submitted). */
+  | "drawn_fighter_object_missing";
 
 /** Final size of one fitted text unit (after deterministic step-down). */
 export interface RenderFitResult {

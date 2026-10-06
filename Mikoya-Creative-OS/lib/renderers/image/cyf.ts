@@ -1,5 +1,5 @@
 import type { CopyField, CopyRow, CyfLayout, CyfSlot, FrameBox, OutputFormat, ProductPlacement } from "@/lib/types";
-import { CYF_LOCKED_FIGHTERS, productRoleKind } from "@/lib/constants";
+import { CYF_LOCKED_FIGHTERS, cyfVisualObjectIssue, productRoleKind } from "@/lib/constants";
 
 /**
  * CHOOSE YOUR FIGHTER — locked line-up (v1).
@@ -25,13 +25,15 @@ export const productFighterMarkers = (c: CyfConcept): number[] => fightersOf(c).
 export type CyfRouting =
   | { mode: "product_locked"; productFighterIndex: number }
   | { mode: "reference_conditioned" }
-  | { mode: "ineligible"; code: "product_fighter_unresolved" | "locked_layout_unsupported"; message: string };
+  | { mode: "ineligible"; code: "product_fighter_unresolved" | "locked_layout_unsupported" | "drawn_fighter_object_missing"; message: string };
 
 /**
  * How a choose-your-fighter concept renders.
  *  - exactly one marked product fighter (and a product role that does not deny it) → product_locked (two fighters only);
  *  - no marker and a product role that is not "hero" (implied, supporting, absent: rituals, uses, benefits) → reference_conditioned;
- *  - "hero" without a marker, two or more markers, or a marker contradicted by the product role → ineligible (nothing submitted).
+ *  - "hero" without a marker, two or more markers, or a marker contradicted by the product role → ineligible (nothing submitted);
+ *  - a locked line-up whose drawn fighter has no usable `visualObject` → ineligible: the image is never told to draw a
+ *    fighter's name or trait, and no object is inferred from them.
  */
 export function cyfRouting(c: CyfConcept): CyfRouting {
   const markers = productFighterMarkers(c);
@@ -47,6 +49,10 @@ export function cyfRouting(c: CyfConcept): CyfRouting {
     return { mode: "ineligible", code: "product_fighter_unresolved", message: `The concept marks a product fighter but its product role is "${kind}"; the two contradict. Nothing was submitted.` };
   if (fighters.length !== CYF_LOCKED_FIGHTERS)
     return { mode: "ineligible", code: "locked_layout_unsupported", message: `A locked choose-your-fighter line-up supports exactly ${CYF_LOCKED_FIGHTERS} fighters in this version (the concept has ${fighters.length}). Nothing was submitted.` };
+  const drawn = fighters.find((_, i) => i !== markers[0])!;
+  const object = cyfVisualObjectIssue(drawn.visualObject, [drawn.label, drawn.text]);
+  if (object)
+    return { mode: "ineligible", code: "drawn_fighter_object_missing", message: `The drawn fighter has no usable visual object (${object}); its name and trait are overlay copy and are never sent to the image model. Nothing was submitted.` };
   return { mode: "product_locked", productFighterIndex: markers[0] };
 }
 
@@ -157,7 +163,7 @@ export interface CyfPromptParts {
  * described only as the same real surface continuing: it is never called empty, blank, reserved or a position, so
  * the model has nothing to draw there (no placeholder card, panel or divider).
  */
-export function cyfPromptParts(l: CyfLayout, drawn: { label: string; text: string }): CyfPromptParts {
+export function cyfPromptParts(l: CyfLayout, drawn: { visualObject: string }): CyfPromptParts {
   const product = l.slots[l.productSlot];
   const gen = l.slots.find((s) => s.role === "generated")!;
   const genSide = sideOf(gen.centerX), productSide = sideOf(product.centerX);
@@ -166,14 +172,15 @@ export function cyfPromptParts(l: CyfLayout, drawn: { label: string; text: strin
   const upper = l.format === "1:1" ? "the upper part of the scene above the surface continues calmly as real background" : "the upper third continues calmly as real background, and nothing important sits in the bottom fifth of the frame";
   return {
     subject: "a photorealistic still life: exactly one real physical hero object standing on one continuous real surface that runs across the whole frame",
-    option: `on the ${genSide}, at about ${pct(gen.centerX)}% of the frame width: ${[drawn.label, drawn.text].filter(Boolean).join(" — ")}`,
+    option: `${drawn.visualObject.replace(/[.\s]+$/, "")}, standing on the ${genSide}, centred at about ${pct(gen.centerX)}% of the frame width`,
     composition: `${frame}; the drawn object stands on the ${genSide} side, centred at about ${pct(gen.centerX)}% of the frame width, ${height}; the complete object, including every protruding part and its contact shadow, stays between about ${pct(gen.left)}% and ${pct(gen.right)}% of the frame width; the same surface and background continue naturally across the ${productSide} side; ${upper}; the strip just below the object's base continues as plain surface`,
-    camera: "eye-level, straight-on to the surface, the object and the whole surface equally sharp; the standing surface seen nearly edge-on, not from above",
+    camera: "camera at about the object's mid-height, straight-on eye-level still-life perspective with at most a very slight downward tilt; the object and the whole surface equally sharp; the standing surface seen nearly edge-on, never from above",
     lighting: "real environmental light falling the same way across the whole surface; gentle realistic shadows",
     style: "premium editorial still-life photography in one continuous real set; tactile physical materials, believable depth, natural perspective and real environmental light",
     fidelity: [
       "The drawn fighter must be a real physical object photographed in the scene — never an illustration, vector graphic, sticker, icon, cartoon, cut-out artwork, collage or poster",
-      "Represent the drawn fighter with exactly one primary real physical hero object that communicates the fighter concept. Do not duplicate it and do not build a pile, collection, collage, cluster or montage of related objects. Small natural scene props may exist only in the background and must not become additional fighter objects",
+      "Photograph exactly the one object named above as the single hero object. Do not duplicate it and do not build a pile, collection, collage, cluster or montage of related objects",
+      "No secondary foreground props, companion objects, accessories, clutter or loose objects inside either fighter slot or in front of the row; environmental dressing may exist only farther back in the shared set and stays visually subordinate",
       `Keep the complete physical object, including every protruding part and its contact shadow, inside the assigned fighter slot on the ${genSide} (between about ${pct(gen.left)}% and ${pct(gen.right)}% of the frame width); it never spills into the ${productSide} side`,
       "The drawn object stands directly on the shared surface, not on a pedestal, plinth, stand or platform",
       `Across the future product side (the ${productSide} side, around ${pct(product.centerX)}% of the frame width), the same real standing surface and background continue naturally and uninterrupted, with their normal texture, lighting, depth and shadows. Nothing is placed there and nothing visually marks or signifies that location`,
@@ -184,12 +191,13 @@ export function cyfPromptParts(l: CyfLayout, drawn: { label: string; text: strin
     negative: [
       "no illustrations, vector graphics, stickers, icons, cartoons, cut-out artwork, collages or posters",
       "no second fighter object, no duplicates, piles, clusters or montages",
+      "no secondary foreground props, companion objects, accessories, clutter or loose objects",
       "no panels, cards, slabs, blocks, plinths, pedestals, podiums, stands, platforms, boxes, dividers, vertical lines, borders, frames or backdrop elements",
       "no branded products, packages or labels",
       "no competitor products or other brands",
       "no option shown as worse, broken or ridiculed",
       "no labels, names, captions, stats, UI chrome or option frames",
-      "no top-down, high-angle or overhead view",
+      "no top-down, overhead or pronounced high-angle view",
     ],
   };
 }

@@ -1,4 +1,5 @@
 import type { CreativeRecipe } from "@/lib/types";
+import { CYF_VISUAL_OBJECT_MAX_CHARS } from "@/lib/constants";
 
 /**
  * Recipes for the remaining still mechanisms. Like every recipe they describe
@@ -316,17 +317,19 @@ export const MORE_RECIPES: CreativeRecipe[] = [
     description: "A playful two-way choice: the real product versus one alternative, side by side.",
     type: "experimental",
     renderer: "image",
-    version: 4,
+    version: 5,
     structure: {
       layout: "'Choose your fighter' header above exactly two fighters standing side by side on one shared surface, each with its name and trait under it.",
       copySlots: [
         { key: "header", label: "Header", maxChars: 30, required: true },
-        { key: "fighters", label: "Fighters (exactly two)", maxChars: 160, required: true, kind: "list", minRows: 2, maxRows: 2, row: { label: { meaning: "fighter name", maxChars: 24, required: true }, text: { meaning: "trait", maxChars: 40, required: true } }, productMarker: true },
+        { key: "fighters", label: "Fighters (exactly two)", maxChars: 160, required: true, kind: "list", minRows: 2, maxRows: 2, row: { label: { meaning: "fighter name", maxChars: 24, required: true }, text: { meaning: "trait", maxChars: 40, required: true } }, productMarker: true, visualObject: { meaning: "the one physical object photographed for the non-product fighter, starting with \"one\"", maxChars: CYF_VISUAL_OBJECT_MAX_CHARS } },
       ],
       visualRules: [
         "Exactly two fighters, side by side, with equal visual weight",
         "Exactly one of the two fighter rows represents the real advertised product. Set product: true on that row and on no other row. The other fighter is the alternative that will be generated as part of the scene",
         "productRole must say the real product is one of the two fighters and visually central to the comparison — never supporting, background, absent or shared between both fighters",
+        "Fighter names and traits are overlay copy only: they are set as text under each fighter and never tell the image what to show",
+        "On the fighter row WITHOUT product: true, always write visualObject: exactly one singular, real, photographable physical object that stands for that fighter, starting with 'one' — e.g. 'one open paper planner'. Never a group, collection, pile, cluster, montage or several objects, never a number or quantity, and never copy, labels, text or UI. The product fighter needs no visualObject: the real product photo represents it",
         "Always write sceneSetting: the environment only (place, surface, background, light), drawn from the concept's visual direction, the brand's visual direction, the mood, the safe product category and the angle — e.g. 'A warm stone breakfast counter in a calm kitchen, with soft morning window light.' Never name or describe a fighter, the product, packaging, where the product goes, labels or copy, and never copy a fighter's words",
         "Build the environment from real surfaces, props, light and depth. Do not ask for blank space, empty space, whitespace, an empty panel or a flat reserved region",
       ],

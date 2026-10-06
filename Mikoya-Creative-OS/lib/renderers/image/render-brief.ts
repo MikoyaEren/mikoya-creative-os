@@ -433,6 +433,13 @@ const NEGATIVE_COMMON = [
  * graphic area: a real 9:16 render once answered "negative space in the upper
  * third" with a flat cream band across the top fifth.
  */
+/**
+ * Locked line-up variant of the no-text rule: it forbids added advertising, interface and copy text, but not the
+ * markings that belong to the photographed object itself (a clock face's numerals, a planner's printed grid).
+ */
+const LOCKED_CYF_NO_ADDED_TEXT =
+  "no added advertising or interface text anywhere in the image: no captions, headlines, prices, badges, UI, option labels or promotional copy; natural markings inherently belonging to the photographed physical object may remain";
+
 /** Locked line-up variant of the full-frame rule: it never names empty or blank areas (the model drew placeholders for them). */
 const LOCKED_CYF_FULL_FRAME = "no flat, solid-colour, artificial or graphic bands or panels: the photographed scene fills the whole frame edge to edge";
 
@@ -636,7 +643,8 @@ function compileLockedCyfBrief(args: Parameters<typeof compileImageRenderBrief>[
   // Without the cut-out (or its measured aspect) nothing is submitted; the layout below then only fills the audit.
   const layout = cyfSlotLayout(format, routing.productFighterIndex, aspect && aspect > 0 ? aspect : 1);
   const drawnRow = fighters[layout.slots.find((s) => s.role === "generated")!.fighterIndex];
-  const parts = cyfPromptParts(layout, { label: neutralizeNames(drawnRow.label, names), text: neutralizeNames(drawnRow.text, names) });
+  // The image is told only the drawn fighter's structured visual object; its name and trait stay overlay copy.
+  const parts = cyfPromptParts(layout, { visualObject: neutralizeNames(drawnRow.visualObject ?? "", names) });
   const direction = context.visualDirection.filter((d) => !TEXT_ELEMENT.test(d));
   const mood = [...new Map([...clean(concept.tone).split(/[,;]/), ...context.desiredEmotions].map((m) => m.trim()).filter(Boolean).map((m) => [m.toLowerCase(), m])).values()];
   const lockedProduct: ImageLockedProduct | null =
@@ -653,7 +661,9 @@ function compileLockedCyfBrief(args: Parameters<typeof compileImageRenderBrief>[
     variantId: variant.id,
     mechanism: concept.mechanism,
     aspectRatio: format,
-    objective: clean([concept.objective, concept.angle && `Angle: ${concept.angle}`].filter(Boolean).join(". ")).replace(PACKAGE_PHRASE, "the product"),
+    // No purpose or angle: the concept's own wording describes the fighters' meaning (e.g. its alternative), which would
+    // be a second description of what to draw. The drawn fighter is described only by its structured visual object.
+    objective: "",
     // Environment only: the concept's structured setting, never its visual description (which names the fighters);
     // the drawn fighter is described once, in the option line, and the product position in the placement block.
     scene: concept.sceneSetting?.trim() ? dropPlaceholderClauses(scenePlateText(neutralizeNames(concept.sceneSetting, names), copy)) : CYF_DEFAULT_SCENE,
@@ -670,7 +680,7 @@ function compileLockedCyfBrief(args: Parameters<typeof compileImageRenderBrief>[
     productFidelityMode: "product_locked",
     lockedProduct,
     productFidelityInstructions: parts.fidelity,
-    negativeInstructions: [NO_ADDED_TEXT, LOCKED_CYF_FULL_FRAME, ...NEGATIVE_COMMON.slice(2), ...parts.negative],
+    negativeInstructions: [LOCKED_CYF_NO_ADDED_TEXT, LOCKED_CYF_FULL_FRAME, ...NEGATIVE_COMMON.slice(2), ...parts.negative],
     textPolicy: "text_free",
     textFreeInstructions: LOCKED_CYF_TEXT_FREE,
     choices: [parts.option],

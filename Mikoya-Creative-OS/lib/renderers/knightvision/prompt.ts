@@ -19,11 +19,13 @@ export function knightVisionPrompt(b: ImageRenderBrief): string {
   const lockedCyf = b.mechanism === "choose_your_fighter" && b.productFidelityMode === "product_locked";
   const lines = [
     `A ${FORMAT_WORDS[b.aspectRatio]} ${lockedCyf ? "photorealistic editorial still-life" : MECHANISM_WORDS[b.mechanism]} photograph for a social media ad.`,
-    `Purpose: ${b.objective}.`,
+    // Locked choose-your-fighter plates carry no purpose line (see compileLockedCyfBrief): the visual object is the
+    // only description of the drawn fighter.
+    lockedCyf ? "" : `Purpose: ${b.objective}.`,
     `Scene: ${b.scene}`,
     `Subject: ${b.subject}.`,
     lockedCyf
-      ? `Option to draw (the only one the image draws, without any label): ${b.choices.join("; ")}.`
+      ? `Object to photograph (the only object the image draws, without any label): ${b.choices.join("; ")}.`
       : b.choices.length
         ? `Options to show, each as its own distinct visual choice without any labels: ${b.choices.join("; ")}.`
         : "",

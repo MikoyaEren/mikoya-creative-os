@@ -16,7 +16,7 @@ import { sameClaim, significantTokens } from "@/lib/strategy/claims";
 import { coversTopic, isSensitiveHypothesis, withheldClaimLeak } from "@/lib/strategy/strategy-guards";
 import type { CreativeSafeProductProfile } from "@/lib/types";
 import type { ConceptInputs } from "./concept-inputs";
-import { CYF_LOCKED_FIGHTERS, PRODUCT_IMAGE_ROLES, productRoleKind } from "@/lib/constants";
+import { CYF_LOCKED_FIGHTERS, PRODUCT_IMAGE_ROLES, cyfVisualObjectIssue, productRoleKind } from "@/lib/constants";
 import { copyFieldsCanvasText, copyFieldsToText, fieldRows, fieldText, validateCopyFields, validateHook } from "./copy-fields";
 import { isComparativeClaim, unsupportedOfferWording, medicalTreatmentWording, neutralizeNonMedicalTreat, neutralizeNonProductSuperlatives, productTerms } from "./claim-context";
 
@@ -455,14 +455,18 @@ const CYF_ROLE_DENIAL = /\b(supporting|background|absent|implied|shared)\b/i;
  * represents the advertised real product — that is never inferred from or checked against the row's words (a product
  * fighter may well be called "The Original"). Verified: exactly two fighter rows (also enforced by the recipe's row
  * limits), exactly one `product: true`, renderer image, a product role of the "hero" kind that does not call the
- * product supporting, background, absent or shared, and a usable real product/packaging asset for the locked route.
- * Returns the first violation, or null.
+ * product supporting, background, absent or shared, a usable `visualObject` on the drawn (non-product) fighter — the
+ * one object the image photographs, never derived from its name or trait — and a usable real product/packaging asset
+ * for the locked route. Returns the first violation, or null.
  */
 export function cyfContractIssue(d: Pick<RawConceptDraft, "rendererType" | "productRole">, fields: CopyField[], profile: Pick<CreativeSafeProductProfile, "availableAssets">): string | null {
   const rows = fields.find((f) => f.key === "fighters")?.rows ?? [];
   if (rows.length !== CYF_LOCKED_FIGHTERS) return `Choose Your Fighter V1 needs exactly ${CYF_LOCKED_FIGHTERS} fighters (got ${rows.length}).`;
   const marked = rows.filter((r) => r.product === true).length;
   if (marked !== 1) return `Exactly one fighter must carry product: true (got ${marked}).`;
+  const drawn = rows.find((r) => r.product !== true)!;
+  const object = cyfVisualObjectIssue(drawn.visualObject, [drawn.label, drawn.text]);
+  if (object) return `The non-product fighter needs a visualObject naming exactly one physical object (${object}).`;
   const renderer = d.rendererType.trim().toLowerCase();
   if (renderer !== "image") return `Choose Your Fighter V1 renders as an image only (got "${d.rendererType}").`;
   const role = d.productRole.trim();

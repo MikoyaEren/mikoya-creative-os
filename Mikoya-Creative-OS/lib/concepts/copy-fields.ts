@@ -53,7 +53,10 @@ function checkSlot(slot: RecipeCopySlot, field: CopyField | undefined, issues: s
       const at = `${where}[${i + 1}]`;
       const row: CopyRow = { label: checkPart(spec.label, r.label, at, issues), text: checkPart(spec.text, r.text, at, issues), note: checkPart(spec.note, r.note, at, issues) };
       // The structured product marker survives only where the recipe declares it (never inferred from words).
-      return slot.productMarker && raw[i]?.product === true ? { ...row, product: true } : row;
+      const marked = slot.productMarker && raw[i]?.product === true ? { ...row, product: true } : row;
+      // The visual object is an image instruction, kept as written where the recipe declares it (never copy, never derived).
+      const visual = slot.visualObject ? clean(raw[i]?.visualObject) : "";
+      return visual ? { ...marked, visualObject: visual } : marked;
     });
     const total = normalised.reduce((n, r) => n + r.label.length + r.text.length + r.note.length, 0);
     if (slot.maxChars && total > slot.maxChars) issues.push(`${where}: ${total} chars across rows (max ${slot.maxChars}).`);
@@ -160,7 +163,7 @@ export function describeCopySlots(slots: RecipeCopySlot[]): string {
   return slots
     .map((s) =>
       s.kind === "list"
-        ? `${s.key} (list, ${s.minRows !== undefined && s.minRows === s.maxRows ? `exactly ${s.minRows}` : `${s.minRows ?? 1}–${s.maxRows ?? 12}`} rows${s.maxChars ? `, ≤${s.maxChars} chars in total` : ""}${s.required ? "" : ", optional"}${s.pairedWith ? `, rows pair 1:1 with ${s.pairedWith}` : ""}${capacity(s)}; ${part("label", s.row?.label)}; ${part("text", s.row?.text)}; ${part("note", s.row?.note)})`
+        ? `${s.key} (list, ${s.minRows !== undefined && s.minRows === s.maxRows ? `exactly ${s.minRows}` : `${s.minRows ?? 1}–${s.maxRows ?? 12}`} rows${s.maxChars ? `, ≤${s.maxChars} chars in total` : ""}${s.required ? "" : ", optional"}${s.pairedWith ? `, rows pair 1:1 with ${s.pairedWith}` : ""}${capacity(s)}; ${part("label", s.row?.label)}; ${part("text", s.row?.text)}; ${part("note", s.row?.note)}${s.visualObject ? `; visualObject = ${s.visualObject.meaning} ≤${s.visualObject.maxChars}, an image instruction, never drawn as text` : ""})`
         : `${s.key} (text${s.values ? `: ${s.values.join(" | ")}` : ""}${s.maxChars && !s.values ? ` ≤${s.maxChars}` : ""}${capacity(s)}${s.required ? "" : ", optional"}${s.example ? `, e.g. "${s.example}"` : ""})`,
     )
     .join("; ");

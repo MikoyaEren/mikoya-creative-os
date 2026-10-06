@@ -42,7 +42,7 @@ export const IMAGE_RENDERER_VERSION = "image-renderer@2";
 
 const Id = z.string().regex(/^[A-Za-z0-9_-]{1,120}$/);
 const Text = (n: number) => z.string().max(n);
-const Row = z.object({ label: Text(200), text: Text(600), note: Text(200), product: z.boolean().optional() });
+const Row = z.object({ label: Text(200), text: Text(600), note: Text(200), product: z.boolean().optional(), visualObject: Text(200).optional() });
 
 export const ImageRenderRequestSchema = z.object({
   batchId: Id,
