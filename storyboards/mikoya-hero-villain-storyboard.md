@@ -9,7 +9,7 @@
 - **Voices** come from the calibration voice locks adapted to German, because the audio couldn't be listened to directly. The reference uses a villain voice that's separate from the warm female product voice, and this storyboard keeps that split.
 - **Language:** dialogue stays in German, word for word. Prompts are in English for the image and video models.
 - **Captions**, plus the "40€" and "30 Tage" text, are added in the edit, not generated.
-- **Reference images:** every clip lists the files to attach, taken from `brand-references/mikoya/manifest.json`. The pouch and set photos are already available. The character sheets and style frame are marked *pending*: generate and approve them before producing clips.
+- **Reference images:** every clip lists the files to attach, taken from `brand-references/mikoya/manifest.json`. The pouch and set photos are already available. The character sheets and style frame are marked *pending* until you upload them.
 - **Claims:** the heavy-metal/lead line is shown only as an illustration (magnifying glass, cartoon x-ray), with no study documents or charts on screen. Check you can back it up before it runs in DE.
 - **Pacing:** the reference cuts every 1.75 s on average. This storyboard averages 2.4 s per clip so each one can be generated on its own. Trim heads and tails in the edit to get closer to the reference rhythm.
 
@@ -60,7 +60,7 @@
 - **Transitions:** hard cuts, as in the reference, with an optional micro-whoosh.
 - **Mix:** voice always dominant. Music about −18 dB and effects about −12 dB under speech.
 
-**Tip:** make a character sheet for Bad Matcha and the woman, use the real pouch photo for the hero, and attach them to every generation along with a fixed seed if your tool supports it.
+**Tip:** attach the listed reference images to every generation, and use a fixed seed if your tool supports it.
 
 ---
 
@@ -80,8 +80,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Wet bubbling plop as it emerges; villain bed starts. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -101,8 +101,8 @@ The young woman with a chestnut-brown low ponytail, light freckles, and a cream 
 Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Visible characters do not lip-sync. Single loud gulp. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -122,8 +122,8 @@ The young woman with a chestnut-brown low ponytail, light freckles, and a cream 
 Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Visible characters do not lip-sync. Comedic gag “hrrk” (no words) and a cartoon bwomp. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -143,8 +143,8 @@ The young woman with a chestnut-brown low ponytail, light freckles, and a cream 
 Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Visible characters do not lip-sync. Faint suspicious sniff. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -164,8 +164,8 @@ The young woman with a chestnut-brown low ponytail, light freckles, and a cream 
 Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Visible characters do not lip-sync. Ceramic scrape and a shudder “brrr” effect (no words). Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -185,8 +185,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Dry crackle and a faint purple-grey energy fizz. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -206,8 +206,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Trash rustle and a faint fly buzz. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -227,8 +227,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Dry leaf rustle and cicada heat ambience. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -248,8 +248,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Rattling conveyor and clanking grinder, kept low. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -269,8 +269,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Hollow glass clink and a tiny fizzle-out. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -290,8 +290,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Tense pizzicato pluck and a small gulp. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -311,8 +311,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Dull metallic rattle on the bounce, low ominous drone. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 4 seconds
@@ -332,8 +332,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Deck-chair creak and a lazy whiff on the hand flick. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -353,8 +353,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Low industrial hum and a steam hiss. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -374,8 +374,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Coin shower clinks and a cash-register ka-ching on “Profit”. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -395,8 +395,8 @@ The lumpy olive-brown matcha-powder creature with narrow yellowish eyes, heavy d
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Soft thunder rumble; villain bed peaks, then cuts to silence on the last “ha”. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -417,9 +417,9 @@ No dialogue; neither character speaks or lip-syncs. Bright whoosh, landing thump
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -440,8 +440,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -461,8 +461,8 @@ The young woman with a chestnut-brown low ponytail, light freckles, and a cream 
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Soft ice clink and a small ascending chime on her smile. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3.5 seconds
@@ -483,9 +483,9 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -506,8 +506,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -527,7 +527,7 @@ The hands pluck the tender top leaves in one smooth motion as dew glints and gol
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Soft leaf snap and dawn birdsong; koto pluck accent. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -548,8 +548,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -569,7 +569,7 @@ The tiny jade droplet sprites bob happily and multiply along the glowing leaf ve
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Bright golden shimmer and soft rising chimes as the sprites multiply. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -589,7 +589,7 @@ The leaves slowly unfurl as their colour deepens to rich jade green and golden p
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Soft ascending chime as the colour deepens. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -610,8 +610,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -631,8 +631,8 @@ The young woman with a chestnut-brown low ponytail, light freckles, and a cream 
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Soft contented exhale (no words), quiet morning room tone. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -652,8 +652,8 @@ The young woman with a chestnut-brown low ponytail, light freckles, and a cream 
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Light playful pluck on the chef's kiss. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 1.5 seconds
@@ -673,8 +673,8 @@ The young woman with a chestnut-brown low ponytail, light freckles, and a cream 
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Airy swirl effect on the aroma wisps. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 1.5 seconds
@@ -695,8 +695,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -717,9 +717,9 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -740,9 +740,9 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -762,8 +762,8 @@ The young woman with a chestnut-brown low ponytail, light freckles, and a cream 
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Warm swelling chord and a soft golden shimmer. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -783,8 +783,8 @@ The hands of the young woman with a chestnut-brown low ponytail, light freckles,
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Soft sieve tapping and a powdery hush. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -804,8 +804,8 @@ The hands of the young woman with a chestnut-brown low ponytail, light freckles,
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Crisp bamboo whisking and a soft foamy fizz. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -826,8 +826,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -848,9 +848,9 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-starter-set.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -871,9 +871,9 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-starter-set.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 1.5 seconds
@@ -894,9 +894,9 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 1.5 seconds
@@ -917,8 +917,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -939,8 +939,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -961,8 +961,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: generate and approve first)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: generate and approve first)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds

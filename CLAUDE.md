@@ -16,4 +16,15 @@ Before any image or video generation (KnightVision `generate_image`, `generate_v
    - When a shot has more references than the tool accepts, keep them in this order: pouch, pouch_character, character sheets, prep_set, style.
    - For `generate_omni_video`, register each approved character sheet once with `create_omni_character`, record the returned character_id in the manifest under `omni_character_id`, and reuse it.
 
-When a new character sheet or packaging photo is approved, commit it under `brand-references/mikoya/` and update `manifest.json`.
+## Reference images belong to the user
+
+- All reference images are supplied by the user: product photos, character sheets, style frames.
+- Never create a reference image with KnightVision, Higgsfield or any other AI image or video tool. That includes character sheets, turnarounds, style frames and "improved" packaging shots.
+- Never edit, upscale, crop, convert, overwrite, rename, move or delete a reference image unless the user explicitly approves that change in the conversation.
+- Never use a generated image as a substitute reference, not even temporarily.
+- When the user says a reference is uploaded:
+  1. Check that its raw URL returns HTTP 200.
+  2. Look at it and confirm it matches the slot.
+  3. Update only the manifest entry: move the path from `attach_when_available` to `attach`.
+  4. Tell the user it is now used automatically.
+- Generating ad scenes is still allowed when the user asks for it, but only with the required references attached.

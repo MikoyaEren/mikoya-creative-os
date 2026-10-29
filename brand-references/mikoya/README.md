@@ -32,20 +32,37 @@ Photo requirements:
 Optional uploads (nice to have):
 - `product/mikoya-logo.svg`, for captions and end cards in the edit.
 
-## What gets generated and approved (not uploaded)
+## Character sheets and style frame (you also upload these)
 
-Claude generates these once, using the pouch photo as a reference. You approve them, they get committed here, and from then on every generation attaches them.
+You create and supply these yourself. Claude never generates, edits or replaces a reference image. Upload them under these exact names:
 
 | File | Content |
 |---|---|
 | `characters/pouch-character/sheet.png` | The pouch hero character, front plus three-quarter view, neutral and talking expressions, on white |
 | `characters/bad-matcha/sheet.png` | The Bad Matcha villain, front plus three-quarter view, smug and angry expressions, on white |
 | `characters/woman/sheet.png` | The protagonist: face close-up, full body front, full body three-quarter view, default outfit, on white |
-| `style/style-frame.png` | One approved 9:16 frame that defines the look (light, colour, rendering) |
+| `style/style-frame.png` | One 9:16 frame that defines the look (light, colour, rendering) |
+
+Sheet requirements:
+- PNG.
+- At least 2048 px on the long side, under 5 MB.
+- Plain white background.
+- The character's full design visible in every view: exact colours, proportions and outfit.
+- No text or logos other than the real Mikoya label.
+
+## How to upload
+
+1. On GitHub, open the folder (for example `brand-references/mikoya/product`) on the `main` branch.
+2. Click **Add file → Upload files**, drop the image in, and keep the exact file name from the tables above.
+3. Choose **Commit directly to the main branch** and commit.
+4. Tell Claude it's uploaded. Claude checks the file loads, marks it as available in `manifest.json`, and from then on attaches it automatically.
+
+To replace a reference, upload a new file with the same name. Claude never does this for you.
 
 ## Rules (enforced by `CLAUDE.md` at the repo root)
 
 1. Every generation attaches the `attach` files of each subject in the shot, plus each `attach_when_available` file once it exists.
 2. References are passed as public URLs, `https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/<path>`. Files must be merged to `main` before they resolve.
 3. If a required reference is missing, generation stops and asks for it rather than guessing.
-4. Prompts still repeat the canonical descriptor word for word.
+4. Claude never generates, edits, upscales, or replaces reference images. Only you supply them. Claude never commits a change to a reference image file without your explicit approval in the conversation.
+5. Prompts still repeat the canonical descriptor word for word.

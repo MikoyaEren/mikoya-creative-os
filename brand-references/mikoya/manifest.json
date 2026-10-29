@@ -6,7 +6,9 @@
     "Use the public raw URL (raw_base_url + path). Files only resolve once they are on the main branch; check with an HTTP request before generating.",
     "If a subject's required references are missing, stop and tell the user which files to add instead of generating without them.",
     "Prompts still repeat the subject's canonical descriptor word for word; references and descriptors work together.",
-    "Never redraw, re-letter or restyle the real packaging. The cartoon pouch character keeps the exact label layout of the product photos."
+    "Never redraw, re-letter or restyle the real packaging. The cartoon pouch character keeps the exact label layout of the product photos.",
+    "All reference images are supplied by the user. Never generate, edit or replace a reference image with any AI tool, and never change a reference file without the user's explicit approval.",
+    "When the user uploads a file listed under attach_when_available, check it on main and then move it to attach."
   ],
   "subjects": {
     "pouch": {
