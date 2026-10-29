@@ -9,6 +9,8 @@ Before any image or video generation (KnightVision `generate_image`, `generate_v
 1. Read `brand-references/mikoya/manifest.json`.
 2. Work out which subjects appear in the shot (pouch, pouch_character, prep_set, bad_matcha, woman, style, lifestyle).
 3. Attach every `attach` file of those subjects, and every `attach_when_available` file that exists on `main`, as reference images. Use the public URL `raw_base_url + path`, and check it returns HTTP 200 before generating. Never construct any other URL.
+   - URL-encode the path when building the raw URL. Spaces become `%20`, parentheses become `%28` and `%29`.
+   - Never attach a file listed under a subject's `on_hold`.
 4. Start the prompt with each subject's `descriptor`, word for word.
 5. If a subject's required reference is missing or does not resolve, do not generate. Tell the user which file from `brand-references/mikoya/README.md` is missing.
 6. Never redraw, re-letter or restyle the real Mikoya packaging.

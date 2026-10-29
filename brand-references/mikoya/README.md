@@ -12,9 +12,14 @@ This is the single source of reference images for every AI image and video gener
 | Pouch, back | `brand-references/mikoya/product/pouch-back.png.png` | ✅ active (1254×1254, approved) |
 | Preparation set | `Mikoya-Creative-OS/public/references/mikoya-starter-set.webp` | ✅ active, for the set only. It shows the retired "JPN MATCHA" pouch. |
 | Lifestyle mood (photo formats only) | `Mikoya-Creative-OS/public/references/mikoya-lifestyle-iced-matcha.webp` | ✅ mood only. It shows the retired pouch. |
+| Visual concept board (style, characters, stomach scenes) | `brand-references/mikoya/style/hero-villain-concept.webp` | ✅ active as the primary style reference. It is a concept, not final character sheets. |
+| Good Matcha character sheet | `brand-references/mikoya/characters/pouch-character/sheet (3).png` | ✅ active (2304×1536) |
+| Böser Matcha character sheet | `brand-references/mikoya/characters/bad-matcha/sheet (5).png` | ✅ active (2304×1206) |
+| Woman character sheet | `brand-references/mikoya/characters/woman/sheet (4).png` | ✅ active (2304×1026) |
+| Style frame | `brand-references/mikoya/style/style-frame.png` | ⏸ on hold: its Böser Matcha (dark-brown pouch, beige lettering, leaf) conflicts with the approved sheet. Upload a corrected version with the same name. |
 | Old pouch front (`mikoya-jpn-matcha-pouch.webp`) | `Mikoya-Creative-OS/public/references/` | ⛔ retired packaging; kept for the app, never used as a reference |
 
-The product photos keep their uploaded names, which end in `.png.png`. If you rename them on GitHub, tell Claude so the manifest can be updated.
+Reference files keep their uploaded names (for example `.png.png` and `sheet (3).png`). If you rename them on GitHub, tell Claude so the manifest can be updated.
 
 ## What you need to upload (real product photos)
 
