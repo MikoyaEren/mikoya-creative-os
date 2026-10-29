@@ -6,11 +6,15 @@ This is the single source of reference images for every AI image and video gener
 
 | Subject | File | Status |
 |---|---|---|
-| Pouch, front | `Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp` | ✅ present (2000×2000) |
-| Preparation set | `Mikoya-Creative-OS/public/references/mikoya-starter-set.webp` | ✅ present (2000×2000) |
-| Lifestyle mood (photo formats only) | `Mikoya-Creative-OS/public/references/mikoya-lifestyle-iced-matcha.webp` | ✅ present (2000×2000) |
+| Pouch, front (current label) | `brand-references/mikoya/product/pouch-front.png.png` | ✅ active (4000×4000) |
+| Pouch, three-quarter view | `brand-references/mikoya/product/pouch-three-quarter.png.png` | ✅ active (1254×1254, below the 2000 px guideline; approved for use) |
+| Pouch, side | `brand-references/mikoya/product/pouch-side.png.png` | ✅ active (1254×1254, approved) |
+| Pouch, back | `brand-references/mikoya/product/pouch-back.png.png` | ✅ active (1254×1254, approved) |
+| Preparation set | `Mikoya-Creative-OS/public/references/mikoya-starter-set.webp` | ✅ active, for the set only. It shows the retired "JPN MATCHA" pouch. |
+| Lifestyle mood (photo formats only) | `Mikoya-Creative-OS/public/references/mikoya-lifestyle-iced-matcha.webp` | ✅ mood only. It shows the retired pouch. |
+| Old pouch front (`mikoya-jpn-matcha-pouch.webp`) | `Mikoya-Creative-OS/public/references/` | ⛔ retired packaging; kept for the app, never used as a reference |
 
-These three stay in `public/references/` because the app loads them from there. Don't move or rename them.
+The product photos keep their uploaded names, which end in `.png.png`. If you rename them on GitHub, tell Claude so the manifest can be updated.
 
 ## What you need to upload (real product photos)
 

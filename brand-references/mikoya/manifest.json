@@ -8,26 +8,28 @@
     "Prompts still repeat the subject's canonical descriptor word for word; references and descriptors work together.",
     "Never redraw, re-letter or restyle the real packaging. The cartoon pouch character keeps the exact label layout of the product photos.",
     "All reference images are supplied by the user. Never generate, edit or replace a reference image with any AI tool, and never change a reference file without the user's explicit approval.",
-    "When the user uploads a file listed under attach_when_available, check it on main and then move it to attach."
+    "When the user uploads a file listed under attach_when_available, check it on main and then move it to attach.",
+    "Reference file names are used exactly as uploaded (the product photos currently end in '.png.png'). Never rename them without the user's approval."
   ],
   "subjects": {
     "pouch": {
       "role": "Real Mikoya JPN Matcha packaging (product shots, product held by people)",
-      "descriptor": "A matte-black stand-up resealable matcha pouch with a zip top and small side tear notches, minimal white branding reading 'MIKOYA' between two short white lines, 'JPN MATCHA' in large white serif lettering, '100% Ceremonial' in small white sans-serif text, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines.",
+      "descriptor": "A matte-black stand-up resealable matcha pouch with a zip top and small side tear notches, white branding reading 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left.",
       "attach": [
-        "Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp"
+        "brand-references/mikoya/product/pouch-front.png.png",
+        "brand-references/mikoya/product/pouch-three-quarter.png.png",
+        "brand-references/mikoya/product/pouch-side.png.png",
+        "brand-references/mikoya/product/pouch-back.png.png"
       ],
-      "attach_when_available": [
-        "brand-references/mikoya/product/pouch-three-quarter.png",
-        "brand-references/mikoya/product/pouch-side.png",
-        "brand-references/mikoya/product/pouch-back.png"
-      ]
+      "attach_when_available": [],
+      "notes": "Current packaging (no 'JPN'). Attach front + three-quarter for every pouch shot; add side or back when that view is visible. The old 'JPN MATCHA' photos in Mikoya-Creative-OS/public/references show retired packaging and must not be used as pouch references."
     },
     "pouch_character": {
       "role": "Hero: the pouch brought to life (eyes, mouth, black stick limbs, white gloves, white sneakers)",
-      "descriptor": "A matte-black stand-up resealable matcha pouch with a zip top and small side tear notches, minimal white branding reading 'MIKOYA' between two short white lines, 'JPN MATCHA' in large white serif lettering, '100% Ceremonial' in small white sans-serif text, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines, brought to life as a cartoon character with two large round glossy cartoon eyes and a wide friendly mouth on the blank upper panel just below the zip seal, thin black stick arms ending in white four-finger cartoon gloves, and thin black stick legs ending in chunky white sneakers.",
+      "descriptor": "A matte-black stand-up resealable matcha pouch with a zip top and small side tear notches, white branding reading 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left, brought to life as a cartoon character with two large round glossy cartoon eyes and a wide friendly mouth on the blank upper panel just below the zip seal, thin black stick arms ending in white four-finger cartoon gloves, and thin black stick legs ending in chunky white sneakers.",
       "attach": [
-        "Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp"
+        "brand-references/mikoya/product/pouch-front.png.png",
+        "brand-references/mikoya/product/pouch-three-quarter.png.png"
       ],
       "attach_when_available": [
         "brand-references/mikoya/characters/pouch-character/sheet.png"
@@ -39,7 +41,8 @@
       "attach": [
         "Mikoya-Creative-OS/public/references/mikoya-starter-set.webp"
       ],
-      "attach_when_available": []
+      "attach_when_available": [],
+      "notes": "This photo still shows the retired 'JPN MATCHA' pouch. Use it only for the bowl, whisk, scoop and sieve. When the pouch is also in the shot, the pouch references and descriptor decide the label."
     },
     "bad_matcha": {
       "role": "Villain: personified oxidized low-grade matcha",
@@ -71,7 +74,8 @@
       "attach": [
         "Mikoya-Creative-OS/public/references/mikoya-lifestyle-iced-matcha.webp"
       ],
-      "attach_when_available": []
+      "attach_when_available": [],
+      "notes": "Shows the retired 'JPN MATCHA' pouch. Use only for photographic mood, never as a packaging reference."
     }
   }
 }
