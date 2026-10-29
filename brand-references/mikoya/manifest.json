@@ -25,8 +25,8 @@
       "notes": "Current packaging (no 'JPN'). Attach front + three-quarter for every pouch shot; add side or back when that view is visible. The old 'JPN MATCHA' photos in Mikoya-Creative-OS/public/references show retired packaging and must not be used as pouch references."
     },
     "pouch_character": {
-      "role": "Hero: the pouch brought to life (eyes, mouth, black stick limbs, white gloves, white sneakers)",
-      "descriptor": "A matte-black stand-up resealable matcha pouch with a zip top and small side tear notches, white branding reading 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left, brought to life as a cartoon character with two large round glossy cartoon eyes and a wide friendly mouth on the blank upper panel just below the zip seal, thin black stick arms ending in white four-finger cartoon gloves, and thin black stick legs ending in chunky white sneakers.",
+      "role": "Hero 'Good Matcha (Mikoya)': the black pouch heaped with vivid green powder, brought to life (per the concept board)",
+      "descriptor": "A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers.",
       "attach": [
         "brand-references/mikoya/product/pouch-front.png.png",
         "brand-references/mikoya/product/pouch-three-quarter.png.png"
@@ -45,8 +45,8 @@
       "notes": "This photo still shows the retired 'JPN MATCHA' pouch. Use it only for the bowl, whisk, scoop and sieve. When the pouch is also in the shot, the pouch references and descriptor decide the label."
     },
     "bad_matcha": {
-      "role": "Villain: personified oxidized low-grade matcha",
-      "descriptor": "A squat, lumpy cartoon mound of dull olive-brown oxidized matcha powder with a dry, clumpy, grainy surface, scattered rust-brown flecks, stubby grey-olive arms and legs, narrow yellowish eyes, heavy dark eyebrows, and a crooked yellowed toothy grin.",
+      "role": "Villain 'Böser Matcha': dirty beige-tan pouch heaped with dull brown powder (per the concept board)",
+      "descriptor": "A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers.",
       "attach": [],
       "attach_when_available": [
         "brand-references/mikoya/characters/bad-matcha/sheet.png"
@@ -54,7 +54,7 @@
     },
     "woman": {
       "role": "Recurring silent protagonist",
-      "descriptor": "A young adult woman in her late twenties with light-medium skin, long straight chestnut-brown hair in a loose low ponytail, hazel eyes, a soft heart-shaped face with light freckles across the nose, and a slim average build, wearing an oversized cream cable-knit sweater and light-blue jeans.",
+      "descriptor": "A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater.",
       "attach": [],
       "attach_when_available": [
         "brand-references/mikoya/characters/woman/sheet.png"
@@ -62,11 +62,34 @@
     },
     "style": {
       "role": "Global look for the animated hero-vs-villain format",
-      "descriptor": "Polished vertical feature-film-style 3D cartoon animation with soft rounded proportions, big expressive eyes, simplified but tactile food and tea textures, warm cinematic lighting, sickly olive-brown and purple-grey accents for the villain, vivid jade-green and golden energy glows for the hero, shallow depth of field, 9:16 composition.",
-      "attach": [],
+      "descriptor": "Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.",
+      "attach": [
+        "brand-references/mikoya/style/hero-villain-concept.webp"
+      ],
       "attach_when_available": [
         "brand-references/mikoya/style/style-frame.png"
-      ]
+      ],
+      "notes": "hero-villain-concept.webp is the owner's visual concept board: the primary style reference, including the stomach scenes, palette and character look. It is not a final character sheet. Character sheets stay pending until uploaded.",
+      "palette": {
+        "good_matcha": [
+          "#648B0E",
+          "#87AB16",
+          "#191B1D",
+          "#F9F4EA"
+        ],
+        "boeser_matcha": [
+          "#6C5632",
+          "#69593D",
+          "#B42521",
+          "#E2D1BE"
+        ],
+        "woman": [
+          "#613A1C",
+          "#A0724B",
+          "#E2B086",
+          "#F9F4EA"
+        ]
+      }
     },
     "lifestyle": {
       "role": "Photographic brand mood (real-photo and UGC formats only, not the cartoon format)",
