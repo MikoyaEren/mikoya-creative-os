@@ -11,7 +11,8 @@
     "When the user uploads a file listed under attach_when_available, check it on main and then move it to attach.",
     "Reference file names are used exactly as uploaded (the product photos currently end in '.png.png'). Never rename them without the user's approval.",
     "Reference paths can contain spaces and parentheses (for example 'sheet (3).png'). URL-encode the path when building the raw URL: space becomes %20, '(' becomes %28 and ')' becomes %29.",
-    "Files listed under 'on_hold' must never be attached, even though they exist on main."
+    "Files listed under 'on_hold' must never be attached, even though they exist on main.",
+    "For generate_omni_video, reuse each subject's omni_character_id (its voice is fixed on the character). Never register a duplicate character or voice without the user's approval."
   ],
   "subjects": {
     "pouch": {
@@ -34,7 +35,12 @@
         "brand-references/mikoya/product/pouch-three-quarter.png.png",
         "brand-references/mikoya/characters/pouch-character/sheet (3).png"
       ],
-      "attach_when_available": []
+      "attach_when_available": [],
+      "omni_character_id": "kv-d32c58f2",
+      "omni_voice": {
+        "voice_id": "kv-58f33998",
+        "base_voice": "laomedeia"
+      }
     },
     "prep_set": {
       "role": "Free preparation set (offer)",
@@ -51,7 +57,12 @@
       "attach": [
         "brand-references/mikoya/characters/bad-matcha/sheet (5).png"
       ],
-      "attach_when_available": []
+      "attach_when_available": [],
+      "omni_character_id": "kv-0e909075",
+      "omni_voice": {
+        "voice_id": "kv-0a08e0b5",
+        "base_voice": "sadachbia"
+      }
     },
     "woman": {
       "role": "Recurring silent protagonist",
