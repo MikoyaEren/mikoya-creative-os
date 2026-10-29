@@ -1,0 +1,75 @@
+{
+  "brand": "Mikoya",
+  "raw_base_url": "https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/",
+  "rules": [
+    "Every image or video generation that shows a subject below must attach that subject's 'attach' files as reference images.",
+    "Use the public raw URL (raw_base_url + path). Files only resolve once they are on the main branch; check with an HTTP request before generating.",
+    "If a subject's required references are missing, stop and tell the user which files to add instead of generating without them.",
+    "Prompts still repeat the subject's canonical descriptor word for word; references and descriptors work together.",
+    "Never redraw, re-letter or restyle the real packaging. The cartoon pouch character keeps the exact label layout of the product photos."
+  ],
+  "subjects": {
+    "pouch": {
+      "role": "Real Mikoya JPN Matcha packaging (product shots, product held by people)",
+      "descriptor": "A matte-black stand-up resealable matcha pouch with a zip top and small side tear notches, minimal white branding reading 'MIKOYA' between two short white lines, 'JPN MATCHA' in large white serif lettering, '100% Ceremonial' in small white sans-serif text, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines.",
+      "attach": [
+        "Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp"
+      ],
+      "attach_when_available": [
+        "brand-references/mikoya/product/pouch-three-quarter.png",
+        "brand-references/mikoya/product/pouch-side.png",
+        "brand-references/mikoya/product/pouch-back.png"
+      ]
+    },
+    "pouch_character": {
+      "role": "Hero: the pouch brought to life (eyes, mouth, black stick limbs, white gloves, white sneakers)",
+      "descriptor": "A matte-black stand-up resealable matcha pouch with a zip top and small side tear notches, minimal white branding reading 'MIKOYA' between two short white lines, 'JPN MATCHA' in large white serif lettering, '100% Ceremonial' in small white sans-serif text, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines, brought to life as a cartoon character with two large round glossy cartoon eyes and a wide friendly mouth on the blank upper panel just below the zip seal, thin black stick arms ending in white four-finger cartoon gloves, and thin black stick legs ending in chunky white sneakers.",
+      "attach": [
+        "Mikoya-Creative-OS/public/references/mikoya-jpn-matcha-pouch.webp"
+      ],
+      "attach_when_available": [
+        "brand-references/mikoya/characters/pouch-character/sheet.png"
+      ]
+    },
+    "prep_set": {
+      "role": "Free preparation set (offer)",
+      "descriptor": "A matcha preparation set: a pale sky-blue horizontally ribbed ceramic matcha bowl with a pouring spout, a natural bamboo matcha whisk on a pale sky-blue ceramic whisk holder, a curved bamboo matcha scoop resting on a small pale sky-blue ceramic rest, and a stainless-steel fine-mesh sieve with a long looped handle.",
+      "attach": [
+        "Mikoya-Creative-OS/public/references/mikoya-starter-set.webp"
+      ],
+      "attach_when_available": []
+    },
+    "bad_matcha": {
+      "role": "Villain: personified oxidized low-grade matcha",
+      "descriptor": "A squat, lumpy cartoon mound of dull olive-brown oxidized matcha powder with a dry, clumpy, grainy surface, scattered rust-brown flecks, stubby grey-olive arms and legs, narrow yellowish eyes, heavy dark eyebrows, and a crooked yellowed toothy grin.",
+      "attach": [],
+      "attach_when_available": [
+        "brand-references/mikoya/characters/bad-matcha/sheet.png"
+      ]
+    },
+    "woman": {
+      "role": "Recurring silent protagonist",
+      "descriptor": "A young adult woman in her late twenties with light-medium skin, long straight chestnut-brown hair in a loose low ponytail, hazel eyes, a soft heart-shaped face with light freckles across the nose, and a slim average build, wearing an oversized cream cable-knit sweater and light-blue jeans.",
+      "attach": [],
+      "attach_when_available": [
+        "brand-references/mikoya/characters/woman/sheet.png"
+      ]
+    },
+    "style": {
+      "role": "Global look for the animated hero-vs-villain format",
+      "descriptor": "Polished vertical feature-film-style 3D cartoon animation with soft rounded proportions, big expressive eyes, simplified but tactile food and tea textures, warm cinematic lighting, sickly olive-brown and purple-grey accents for the villain, vivid jade-green and golden energy glows for the hero, shallow depth of field, 9:16 composition.",
+      "attach": [],
+      "attach_when_available": [
+        "brand-references/mikoya/style/style-frame.png"
+      ]
+    },
+    "lifestyle": {
+      "role": "Photographic brand mood (real-photo and UGC formats only, not the cartoon format)",
+      "descriptor": "",
+      "attach": [
+        "Mikoya-Creative-OS/public/references/mikoya-lifestyle-iced-matcha.webp"
+      ],
+      "attach_when_available": []
+    }
+  }
+}

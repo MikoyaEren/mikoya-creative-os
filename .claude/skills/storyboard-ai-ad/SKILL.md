@@ -73,6 +73,8 @@ Create a speaker map before storyboarding. Assign every script section to exactl
 
 Also define a global sound lock: music-bed genre and intensity, ambient sound style, recurring character motifs, transition effects, and mix priority. Keep voice or dialogue clearly dominant over music and effects.
 
+When the repository has a brand reference manifest (for Mikoya: `brand-references/mikoya/manifest.json`), read it before writing the lock. Reuse its canonical descriptors word for word for any subject it defines, and map every subject in the lock to its reference files. If a required reference file is missing, list it under the assumptions as a file the user must add.
+
 Separate invariant identity traits from scene variables. Keep identity, facial structure, body proportions, core colors, and packaging fixed. Change pose, expression, location, action, lighting emphasis, damage state, or context-specific wardrobe only when the script requires it. If a recurring character changes wardrobe, retain the complete physical identity descriptor and describe only the wardrobe substitution.
 
 Treat every image-generation prompt as stateless. Repeat the complete canonical descriptor, using identical wording, in every text-to-image prompt containing that subject. Never rely on phrases such as “the same woman,” “the previous character,” “as before,” or a character label by itself. Repeat the full product descriptor in every product shot as well.
@@ -172,9 +174,14 @@ Self-contained action prompt that quotes the exact spoken line and specifies lip
 **Sound / voiceover direction**
 Speaker, locked voice description, dialogue mode, music, ambience, sound effects, and mix direction.
 
+**Reference images**
+Files to attach for this clip, from the brand reference manifest.
+
 **Estimated length**
 4.5 seconds
 ```
+
+Include **Reference images** only when a brand reference manifest exists. List the public URL or repository path of each file, following the manifest's priority order, and mark files that are not uploaded yet as pending.
 
 End with the estimated total runtime. Do not add shot-purpose, continuity, editing, or negative-prompt fields unless the user asks for them.
 
@@ -203,4 +210,5 @@ Before answering, verify all of the following:
 - Make the reference's pacing and visual grammar recognizable without copying proprietary elements.
 - Keep clip durations and total runtime internally consistent.
 - Preserve claims from the supplied script without strengthening them or inventing proof. For health, financial, or legal claims, use illustrative visuals rather than adding authoritative-looking evidence the script does not provide.
+- When a brand reference manifest exists, list every clip's reference images, and make sure every shot of the product or of a recurring character attaches its reference.
 - Complete the full storyboard; do not stop after representative clips.
