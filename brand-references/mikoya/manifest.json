@@ -9,7 +9,9 @@
     "Never redraw, re-letter or restyle the real packaging. The cartoon pouch character keeps the exact label layout of the product photos.",
     "All reference images are supplied by the user. Never generate, edit or replace a reference image with any AI tool, and never change a reference file without the user's explicit approval.",
     "When the user uploads a file listed under attach_when_available, check it on main and then move it to attach.",
-    "Reference file names are used exactly as uploaded (the product photos currently end in '.png.png'). Never rename them without the user's approval."
+    "Reference file names are used exactly as uploaded (the product photos currently end in '.png.png'). Never rename them without the user's approval.",
+    "Reference paths can contain spaces and parentheses (for example 'sheet (3).png'). URL-encode the path when building the raw URL: space becomes %20, '(' becomes %28 and ')' becomes %29.",
+    "Files listed under 'on_hold' must never be attached, even though they exist on main."
   ],
   "subjects": {
     "pouch": {
@@ -29,11 +31,10 @@
       "descriptor": "A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers.",
       "attach": [
         "brand-references/mikoya/product/pouch-front.png.png",
-        "brand-references/mikoya/product/pouch-three-quarter.png.png"
+        "brand-references/mikoya/product/pouch-three-quarter.png.png",
+        "brand-references/mikoya/characters/pouch-character/sheet (3).png"
       ],
-      "attach_when_available": [
-        "brand-references/mikoya/characters/pouch-character/sheet.png"
-      ]
+      "attach_when_available": []
     },
     "prep_set": {
       "role": "Free preparation set (offer)",
@@ -46,19 +47,20 @@
     },
     "bad_matcha": {
       "role": "Villain 'Böser Matcha': dirty beige-tan pouch heaped with dull brown powder (per the concept board)",
-      "descriptor": "A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers.",
-      "attach": [],
-      "attach_when_available": [
-        "brand-references/mikoya/characters/bad-matcha/sheet.png"
-      ]
+      "descriptor": "A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers.",
+      "attach": [
+        "brand-references/mikoya/characters/bad-matcha/sheet (5).png"
+      ],
+      "attach_when_available": []
     },
     "woman": {
       "role": "Recurring silent protagonist",
-      "descriptor": "A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater.",
-      "attach": [],
-      "attach_when_available": [
-        "brand-references/mikoya/characters/woman/sheet.png"
-      ]
+      "descriptor": "A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers.",
+      "attach": [
+        "brand-references/mikoya/characters/woman/sheet (4).png"
+      ],
+      "attach_when_available": [],
+      "notes": "Default outfit for every clip: oatmeal knit sweater and trousers. The sheet's laptop (white blouse) and gym (sports top) poses are wardrobe variants, only for scenes that call for them."
     },
     "style": {
       "role": "Global look for the animated hero-vs-villain format",
@@ -66,10 +68,8 @@
       "attach": [
         "brand-references/mikoya/style/hero-villain-concept.webp"
       ],
-      "attach_when_available": [
-        "brand-references/mikoya/style/style-frame.png"
-      ],
-      "notes": "hero-villain-concept.webp is the owner's visual concept board: the primary style reference, including the stomach scenes, palette and character look. It is not a final character sheet. Character sheets stay pending until uploaded.",
+      "attach_when_available": [],
+      "notes": "hero-villain-concept.webp is the owner's visual concept board and the active style reference. Final character sheets are attached per character. style-frame.png is on hold (see on_hold).",
       "palette": {
         "good_matcha": [
           "#648B0E",
@@ -89,7 +89,13 @@
           "#E2B086",
           "#F9F4EA"
         ]
-      }
+      },
+      "on_hold": [
+        {
+          "path": "brand-references/mikoya/style/style-frame.png",
+          "reason": "Shows Böser Matcha as a dark-brown pouch with beige lettering and a leaf icon, which conflicts with the approved Böser Matcha sheet (beige pouch, red panel, skull). Awaiting a corrected upload from the owner. Never attach."
+        }
+      ]
     },
     "lifestyle": {
       "role": "Photographic brand mood (real-photo and UGC formats only, not the cartoon format)",

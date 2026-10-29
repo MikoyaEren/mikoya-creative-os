@@ -9,7 +9,7 @@
 - **Voices** come from the calibration voice locks adapted to German, because the audio couldn't be listened to directly. The reference uses a villain voice that's separate from the warm female product voice, and this storyboard keeps that split.
 - **Language:** dialogue stays in German, word for word. Prompts are in English for the image and video models.
 - **Captions**, plus the "40€" and "30 Tage" text, are added in the edit, not generated.
-- **Visual concept:** the owner's Hero-vs-Villain concept board (`brand-references/mikoya/style/hero-villain-concept.webp`) is the primary style reference. It defines a cinematic 3D look, the realistic woman, the black Mikoya pouch with vivid green powder, the dirty beige "BÖSER MATCHA" pouch and the stomach scenes. It is a concept, not the final character sheets: those stay *pending* until the owner uploads them.
+- **Visual concept:** the owner's Hero-vs-Villain concept board (`brand-references/mikoya/style/hero-villain-concept.webp`) is the primary style reference. It defines a cinematic 3D look, the realistic woman, the black Mikoya pouch with vivid green powder, the dirty beige "BÖSER MATCHA" pouch and the stomach scenes. The owner's final character sheets are now attached in every clip where the character appears. The separate style frame is on hold until a corrected version is uploaded, so the concept board remains the style reference.
 - **Stomach scenes:** following the concept's "Szenenbeispiele im Magen", four clips now play inside the stomach:
   - Clip 01: the villain greets from the stomach as the murky matcha splashes in.
   - Clip 17: good matcha arrives.
@@ -18,7 +18,7 @@
 
   All other locations, actions, camera moves and dialogue are unchanged.
 - **Packaging:** the current pouch (product photos in `brand-references/mikoya/product/`) is the single source of truth. The label reads "MIKOYA" / "MATCHA" / "100% Ceremonial", with the green leaf and "30g". The preparation-set photo still shows the retired "JPN MATCHA" pouch, so in Clips 37–38 the pouch references are listed first and decide the label.
-- **Reference images:** every clip lists the files to attach, taken from `brand-references/mikoya/manifest.json`. The pouch and set photos are already available. The character sheets and style frame are marked *pending* until you upload them.
+- **Reference images:** every clip lists the files to attach, taken from `brand-references/mikoya/manifest.json`. The pouch and set photos are already available. All character sheets are active. The style frame is on hold.
 - **Claims:** the heavy-metal/lead line is shown only as an illustration (magnifying glass, cartoon x-ray), with no study documents or charts on screen. Check you can back it up before it runs in DE.
 - **Pacing:** the reference cuts every 1.75 s on average. This storyboard averages 2.4 s per clip so each one can be generated on its own. Trim heads and tails in the edit to get closer to the reference rhythm.
 
@@ -44,9 +44,9 @@
 
 | Subject | Canonical descriptor (text-to-image) | Identity anchor (image-to-video) |
 |---|---|---|
-| **Böser Matcha** (villain) | "A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers." | the dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace |
+| **Böser Matcha** (villain) | "A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers." | the dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace |
 | **Mikoya Matcha** (hero / product) | "A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers." | the matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers |
-| **The woman** (silent protagonist) | "A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater." | the realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater |
+| **The woman** (silent protagonist) | "A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers." | the realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater |
 | **Preparation set** (offer) | "A matcha preparation set: a pale sky-blue horizontally ribbed ceramic matcha bowl with a pouring spout, a natural bamboo matcha whisk on a pale sky-blue ceramic whisk holder, a curved bamboo matcha scoop resting on a small pale sky-blue ceramic rest, and a stainless-steel fine-mesh sieve with a long looped handle." | — |
 
 **Voices:**
@@ -79,7 +79,7 @@
 “Hi, ich bin Matcha.”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. Inside a cinematic human stomach with glossy warm red-pink folds and soft volumetric light, the villain pouch stands on a fold as a stream of murky brownish-green liquid splashes down behind it, one arm raised in a wave, medium close-up facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. Inside a cinematic human stomach with glossy warm red-pink folds and soft volumetric light, the villain pouch stands on a fold as a stream of murky brownish-green liquid splashes down behind it, one arm raised in a wave, medium close-up facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace steps forward out of the murky splash, waves smugly, looks straight into the camera, raises one eyebrow, and lip-syncs precisely while speaking: “Hi, ich bin Matcha.” Murky drops drip off its crumpled paper. Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Slow push-in.
@@ -88,9 +88,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Wet splash and a low stomach gurgle; villain bed starts. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -101,18 +100,17 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “Und ich hab dich gerade beim Trinken”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. She sits at a cosy kitchen table, eyes closed, taking a big unsuspecting gulp from a white mug of murky brownish-green matcha, medium close-up. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. She sits at a cosy kitchen table, eyes closed, taking a big unsuspecting gulp from a white mug of murky brownish-green matcha, medium close-up. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater tips the mug back and gulps, unaware; she stays silent and does not lip-sync while the Bad Matcha voice says off-screen: “Und ich hab dich gerade beim Trinken” Preserve her face, messy bun, sweater, and realistic look. Static camera.
+The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater tips the mug back and gulps, unaware; she stays silent and does not lip-sync while the Bad Matcha voice says off-screen: “Und ich hab dich gerade beim Trinken” Preserve her face, messy bun, sweater, and realistic look. Static camera.
 
 **Sound / voiceover direction**
 Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Visible characters do not lip-sync. Single loud gulp. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -123,18 +121,17 @@ Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult 
 “fast zum Kotzen gebracht.”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. Close-up of her at the kitchen table with cheeks puffed out, face tinged green, one hand clamped over her mouth, eyes wide in horror, mug held at arm's length. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. Close-up of her at the kitchen table with cheeks puffed out, face tinged green, one hand clamped over her mouth, eyes wide in horror, mug held at arm's length. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater freezes mid-swallow, cheeks bulge, her face flushes queasy green, and she slaps a hand over her mouth; she stays silent and does not lip-sync while the Bad Matcha voice says off-screen: “fast zum Kotzen gebracht.” Preserve her face, messy bun, sweater, and realistic look. Quick push-in.
+The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater freezes mid-swallow, cheeks bulge, her face flushes queasy green, and she slaps a hand over her mouth; she stays silent and does not lip-sync while the Bad Matcha voice says off-screen: “fast zum Kotzen gebracht.” Preserve her face, messy bun, sweater, and realistic look. Quick push-in.
 
 **Sound / voiceover direction**
 Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Visible characters do not lip-sync. Comedic gag “hrrk” (no words) and a cartoon bwomp. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -145,18 +142,17 @@ Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult 
 “Du denkst jetzt wahrscheinlich,”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. She sits at the kitchen table holding the white mug at a distance, staring into the murky brownish-green matcha with a suspicious frown, medium shot. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. She sits at the kitchen table holding the white mug at a distance, staring into the murky brownish-green matcha with a suspicious frown, medium shot. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater narrows her eyes at the mug and sniffs it warily, lips pressed together; she stays silent and does not lip-sync while the Bad Matcha voice says off-screen: “Du denkst jetzt wahrscheinlich,” Preserve her face, messy bun, sweater, and realistic look. Slow push-in.
+The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater narrows her eyes at the mug and sniffs it warily, lips pressed together; she stays silent and does not lip-sync while the Bad Matcha voice says off-screen: “Du denkst jetzt wahrscheinlich,” Preserve her face, messy bun, sweater, and realistic look. Slow push-in.
 
 **Sound / voiceover direction**
 Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Visible characters do not lip-sync. Faint suspicious sniff. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -167,18 +163,17 @@ Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult 
 “Matcha ist widerlich”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. She pushes the white mug of murky brownish-green matcha across the table with one finger, nose wrinkled and tongue out in disgust, medium shot. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. She pushes the white mug of murky brownish-green matcha across the table with one finger, nose wrinkled and tongue out in disgust, medium shot. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater shoves the mug away, shudders from head to toe, and sticks her tongue out; she stays silent and does not lip-sync while the Bad Matcha voice says off-screen: “Matcha ist widerlich” Preserve her face, messy bun, sweater, and realistic look. Static camera.
+The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater shoves the mug away, shudders from head to toe, and sticks her tongue out; she stays silent and does not lip-sync while the Bad Matcha voice says off-screen: “Matcha ist widerlich” Preserve her face, messy bun, sweater, and realistic look. Static camera.
 
 **Sound / voiceover direction**
 Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Visible characters do not lip-sync. Ceramic scrape and a shudder “brrr” effect (no words). Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -189,7 +184,7 @@ Off-screen character voice: Bad Matcha. Mid-low, gravelly, slightly nasal adult 
 “Aber in Wahrheit bin ich einfach schon oxidiert”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. Close-up of the villain pouch on a dim countertop watching a fresh brown stain spread across its paper as the powder heap on its top darkens, sickly purple-grey crackle flickering over it, glancing at camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. Close-up of the villain pouch on a dim countertop watching a fresh brown stain spread across its paper as the powder heap on its top darkens, sickly purple-grey crackle flickering over it, glancing at camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace shrugs at camera as brown stains spread across its crumpled paper and dull powder flakes drift off its heap, purple-grey crackle flickering, and it smirks and lip-syncs precisely while speaking: “Aber in Wahrheit bin ich einfach schon oxidiert” Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Slow push-in.
@@ -198,9 +193,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Dry crackle and a faint purple-grey energy fizz. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -211,7 +205,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “und gehör in den Müll.”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. The villain pouch sits inside an open grey kitchen trash bin among crumpled paper and a banana peel, arms folded, facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. The villain pouch sits inside an open grey kitchen trash bin among crumpled paper and a banana peel, arms folded, facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace settles into the trash bin, spreads its arms in a carefree shrug, looks at camera, and lip-syncs precisely while speaking: “und gehör in den Müll.” A fly circles lazily. Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Static camera.
@@ -220,9 +214,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Trash rustle and a faint fly buzz. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -233,7 +226,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “Ich stamme aus späteren Ernten”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. The villain pouch stands in a harsh sunlit tea field among large, tough, dark and yellowing late-season tea leaves, leaning on one oversized leaf, facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. The villain pouch stands in a harsh sunlit tea field among large, tough, dark and yellowing late-season tea leaves, leaning on one oversized leaf, facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace pats a tough yellowing leaf proudly, looks at camera, and lip-syncs precisely while speaking: “Ich stamme aus späteren Ernten” Dry leaves rustle in a hot breeze. Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Slow pan right.
@@ -242,9 +235,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Dry leaf rustle and cicada heat ambience. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -255,7 +247,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “und wurde möglichst schnell und günstig produziert.”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. The villain pouch rides a fast grey factory conveyor belt toward a clunky industrial grinder with bright red discount tags hanging off the machinery, three-quarter view. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. The villain pouch rides a fast grey factory conveyor belt toward a clunky industrial grinder with bright red discount tags hanging off the machinery, three-quarter view. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace speeds along the conveyor with hands up like on a roller coaster, turns to camera, and lip-syncs precisely while speaking: “und wurde möglichst schnell und günstig produziert.” Dust puffs off the belt. Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Fast tracking shot alongside.
@@ -264,9 +256,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Rattling conveyor and clanking grinder, kept low. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -277,7 +268,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “Ich trage so gut wie keine Antioxidantien”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. The villain pouch holds open a small glass jar that is empty except for one faint green sparkle at the bottom, on a plain dim background, facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. The villain pouch holds open a small glass jar that is empty except for one faint green sparkle at the bottom, on a plain dim background, facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace tips the nearly empty jar toward camera as the lone green sparkle fizzles out, then shrugs and lip-syncs precisely while speaking: “Ich trage so gut wie keine Antioxidantien” Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Slow push-in.
@@ -286,9 +277,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Hollow glass clink and a tiny fizzle-out. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -299,7 +289,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “und Studien zeigen sogar,”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. A giant brass magnifying glass hovers over the villain pouch on a dark countertop, its body enlarged and lit inside the lens, a nervous sweat drop on its brow. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. A giant brass magnifying glass hovers over the villain pouch on a dark countertop, its body enlarged and lit inside the lens, a nervous sweat drop on its brow. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace glances up at the magnifying glass sliding over it, tugs nervously at its crumpled top edge with a forced grin, and lip-syncs precisely while speaking: “und Studien zeigen sogar,” Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Static camera; the lens drifts slowly across.
@@ -308,9 +298,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Tense pizzicato pluck and a small gulp. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -321,7 +310,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “dass ich höhere Werte von Schwermetallen wie Blei beinhalte.”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. The villain pouch is shown semi-translucent like a cartoon x-ray, revealing small dull grey metal pellets mixed into its brown powder, while it pats its front on a dark background. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. The villain pouch is shown semi-translucent like a cartoon x-ray, revealing small dull grey metal pellets mixed into its brown powder, while it pats its front on a dark background. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace bounces once so the grey pellets inside it rattle, pats its front, looks at camera with a smug smirk, and lip-syncs precisely while speaking: “dass ich höhere Werte von Schwermetallen wie Blei beinhalte.” Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Static camera.
@@ -330,9 +319,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Dull metallic rattle on the bounce, low ominous drone. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 4 seconds
@@ -343,7 +331,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “Aber das ist mir egal”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. The villain pouch lounges in a tiny deck chair with small dark sunglasses pushed up on its brow, legs crossed, facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. The villain pouch lounges in a tiny deck chair with small dark sunglasses pushed up on its brow, legs crossed, facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace flicks one hand dismissively, rolls its eyes, and lip-syncs precisely while speaking: “Aber das ist mir egal” It drops the sunglasses onto its eyes. Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Static camera.
@@ -352,9 +340,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Deck-chair creak and a lazy whiff on the hand flick. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -365,7 +352,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “denn ich liefere meinem Hersteller”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. The villain pouch stands in front of a grey smoky factory building with a giant conveyor chute, jerking a thumb back toward the factory, facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. The villain pouch stands in front of a grey smoky factory building with a giant conveyor chute, jerking a thumb back toward the factory, facing camera. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace jerks its thumb at the factory behind it with a sly wink and lip-syncs precisely while speaking: “denn ich liefere meinem Hersteller” Grey smoke puffs from the chimneys. Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Slow push-in.
@@ -374,9 +361,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Low industrial hum and a steam hiss. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -387,7 +373,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “maximalen Profit.”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. The villain pouch stands on a large pile of gold coins as more coins rain down around it, rubbing its hands together greedily. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. The villain pouch stands on a large pile of gold coins as more coins rain down around it, rubbing its hands together greedily. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace rubs its hands together greedily as gold coins shower around it, grins at camera, and lip-syncs precisely while speaking: “maximalen Profit.” Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Slow low-angle push-in.
@@ -396,9 +382,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Coin shower clinks and a cash-register ka-ching on “Profit”. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -409,7 +394,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “Muhahahaha”
 
 **Text-to-image prompt**
-A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. Low-angle shot of the villain pouch on top of a coin pile against a stormy dark-grey sky, arms spread wide, mouth open mid-laugh, purple-grey crackle around it. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. Low-angle shot of the villain pouch on top of a coin pile against a stormy dark-grey sky, arms spread wide, mouth open mid-laugh, purple-grey crackle around it. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace throws its head back and laughs theatrically, body shaking and powder clumps puffing off, then looks down into the camera, lip-syncing precisely to: “Muhahahaha” Lightning flickers behind it. Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Slow low-angle push-in.
@@ -418,9 +403,8 @@ The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder,
 On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adult male-presenting cartoon voice speaking native standard German, brisk conversational pace with sly pauses, smug and mocking delivery, theatrical villain energy. Soft thunder rumble; villain bed peaks, then cuts to silence on the last “ha”. Villain bed: sneaky low pizzicato strings with muted tuba, low-medium intensity, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -431,7 +415,7 @@ On-camera dialogue: Bad Matcha lip-syncs. Mid-low, gravelly, slightly nasal adul
 “Guter Matcha kommt rein. [stage direction – not voiced]”
 
 **Text-to-image prompt**
-A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers. A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. Inside a cinematic human stomach with glossy warm red-pink folds and soft volumetric light, the pouch character slides down onto a fold amid a splash of vivid lime-green powder and light, while the villain pouch recoils in the background shielding its eyes. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers. A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. Inside a cinematic human stomach with glossy warm red-pink folds and soft volumetric light, the pouch character slides down onto a fold amid a splash of vivid lime-green powder and light, while the villain pouch recoils in the background shielding its eyes. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers slides down into the stomach and lands firmly, sending out a ring of lime-green light and powder, then plants its gloved hands on its hips and looks confidently at camera; it does not speak. the dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace flinches backward, shielding its eyes, silent. Preserve the exact Mikoya label layout and text, face, gloves, sneakers, colours, and cinematic 3D look. Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Quick push-in.
@@ -442,10 +426,9 @@ No dialogue; neither character speaks or lip-syncs. Bright whoosh, landing thump
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -467,9 +450,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -480,18 +462,17 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 “und zeige dir, wie guter Matcha eigentlich schmecken sollte!”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. She sits at a sunny kitchen table taking a first cautious sip from a glass of vivid lime-green iced matcha latte, eyebrows raised in surprise, medium close-up. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. She sits at a sunny kitchen table taking a first cautious sip from a glass of vivid lime-green iced matcha latte, eyebrows raised in surprise, medium close-up. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater sips the vivid green latte, pauses, and her surprised face melts into a delighted smile as she looks at the glass; she stays silent and does not lip-sync while the Mikoya Matcha voice says off-screen: “und zeige dir, wie guter Matcha eigentlich schmecken sollte!” Preserve her face, messy bun, sweater, and realistic look. Gentle push-in.
+The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater sips the vivid green latte, pauses, and her surprised face melts into a delighted smile as she looks at the glass; she stays silent and does not lip-sync while the Mikoya Matcha voice says off-screen: “und zeige dir, wie guter Matcha eigentlich schmecken sollte!” Preserve her face, messy bun, sweater, and realistic look. Gentle push-in.
 
 **Sound / voiceover direction**
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Soft ice clink and a small ascending chime on her smile. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3.5 seconds
@@ -502,7 +483,7 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 “Im Gegensatz zu dir”
 
 **Text-to-image prompt**
-A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers. A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. Inside a cinematic human stomach with glossy warm red-pink folds and soft volumetric light, the pouch character stands tall on the left in a haze of green powder, pointing a gloved finger at the villain pouch, which cowers on the right in a cloud of brown dust, two-shot. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers. A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. Inside a cinematic human stomach with glossy warm red-pink folds and soft volumetric light, the pouch character stands tall on the left in a haze of green powder, pointing a gloved finger at the villain pouch, which cowers on the right in a cloud of brown dust, two-shot. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers points firmly at the villain pouch with a confident raised brow and lip-syncs precisely while speaking: “Im Gegensatz zu dir” The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace shrinks back with a guilty grimace and stays silent. Preserve the exact Mikoya label layout and text, face, gloves, sneakers, colours, and cinematic 3D look. Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Static camera.
@@ -513,10 +494,9 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -538,9 +518,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -561,7 +540,6 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -583,9 +561,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -606,7 +583,6 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -627,7 +603,6 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -649,9 +624,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -662,18 +636,17 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 “schmecke angenehm mild”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. She sits by a sunny window holding a pale sky-blue ribbed ceramic bowl of creamy lime-green matcha in both hands, mid-sip with eyes softly closed, medium close-up. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. She sits by a sunny window holding a pale sky-blue ribbed ceramic bowl of creamy lime-green matcha in both hands, mid-sip with eyes softly closed, medium close-up. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater sips slowly, eyes closed, and her shoulders relax into a contented smile; she stays silent and does not lip-sync while the Mikoya Matcha voice says off-screen: “schmecke angenehm mild” Preserve her face, messy bun, sweater, and realistic look. Static camera.
+The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater sips slowly, eyes closed, and her shoulders relax into a contented smile; she stays silent and does not lip-sync while the Mikoya Matcha voice says off-screen: “schmecke angenehm mild” Preserve her face, messy bun, sweater, and realistic look. Static camera.
 
 **Sound / voiceover direction**
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Soft contented exhale (no words), quiet morning room tone. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -684,18 +657,17 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 “und leicht nussig”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. She sits by a sunny window lowering a pale sky-blue ribbed ceramic bowl of creamy lime-green matcha from her lips, eyebrows raised in pleasant surprise, medium close-up. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. She sits by a sunny window lowering a pale sky-blue ribbed ceramic bowl of creamy lime-green matcha from her lips, eyebrows raised in pleasant surprise, medium close-up. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater lowers the bowl, raises her eyebrows approvingly, and gives a small chef's-kiss gesture with her free hand; she stays silent and does not lip-sync while the Mikoya Matcha voice says off-screen: “und leicht nussig” Preserve her face, messy bun, sweater, and realistic look. Static camera.
+The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater lowers the bowl, raises her eyebrows approvingly, and gives a small chef's-kiss gesture with her free hand; she stays silent and does not lip-sync while the Mikoya Matcha voice says off-screen: “und leicht nussig” Preserve her face, messy bun, sweater, and realistic look. Static camera.
 
 **Sound / voiceover direction**
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Light playful pluck on the chef's kiss. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 1.5 seconds
@@ -706,18 +678,17 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 “und rieche auch noch unglaublich gut.”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. Close-up of her leaning over a pale sky-blue ribbed ceramic bowl of frothy lime-green matcha, eyes closed, faint soft-green aroma wisps curling up toward her nose. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. Close-up of her leaning over a pale sky-blue ribbed ceramic bowl of frothy lime-green matcha, eyes closed, faint soft-green aroma wisps curling up toward her nose. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater inhales the rising green aroma wisps slowly with a blissful smile; she stays silent and does not lip-sync while the Mikoya Matcha voice says off-screen: “und rieche auch noch unglaublich gut.” Preserve her face, messy bun, sweater, and realistic look. Slow push-in.
+The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater inhales the rising green aroma wisps slowly with a blissful smile; she stays silent and does not lip-sync while the Mikoya Matcha voice says off-screen: “und rieche auch noch unglaublich gut.” Preserve her face, messy bun, sweater, and realistic look. Slow push-in.
 
 **Sound / voiceover direction**
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Airy swirl effect on the aroma wisps. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 1.5 seconds
@@ -739,9 +710,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -752,7 +722,7 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 “vor einem weiteren Matcha-Trauma zu retten”
 
 **Text-to-image prompt**
-A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers. A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in dirty brown four-finger cartoon gloves, and black legs ending in worn, dirt-covered tan sneakers. Inside a cinematic human stomach with glossy warm red-pink folds and soft volumetric light, the pouch character thrusts out a glowing lime-green energy wave while the villain pouch, mid-air, is blasted backward in a burst of brown dust. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers. A crumpled, grimy stand-up paper pouch in dirty beige-tan covered with dark stains, scuffs and small tears, open at the top and heaped with dull olive-brown matcha powder, with a rough red brush-paint panel on the front carrying 'BÖSER MATCHA' in black graffiti letters and a small red skull and '30g' on a black smudge below it, brought to life as a cartoon character with amber-yellow eyes under heavy furrowed brown eyebrows, a wide grimace of crooked yellowed teeth, black arms ending in grimy off-white four-finger cartoon gloves, and black legs ending in worn, dirt-covered beige sneakers. Inside a cinematic human stomach with glossy warm red-pink folds and soft volumetric light, the pouch character thrusts out a glowing lime-green energy wave while the villain pouch, mid-air, is blasted backward in a burst of brown dust. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
 The matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers pushes the green energy wave forward, blasting the villain pouch away, then turns to camera with a determined smile and lip-syncs precisely while speaking: “vor einem weiteren Matcha-Trauma zu retten” The dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace tumbles away into the stomach folds with a shocked face and stays silent. Preserve the exact Mikoya label layout and text, face, gloves, sneakers, colours, and cinematic 3D look. Preserve its face, crumpled pouch shape, red BÖSER MATCHA panel, colours, and cinematic 3D look. Static camera.
@@ -763,10 +733,9 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/bad-matcha/sheet%20%285%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -777,10 +746,10 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 “und deinem Morgenritual das zu geben,”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers. In a bright kitchen at sunrise, the woman stands at the counter whisking matcha in a pale sky-blue ribbed bowl, smiling, with the pouch character standing beside the bowl. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers. In a bright kitchen at sunrise, the woman stands at the counter whisking matcha in a pale sky-blue ribbed bowl, smiling, with the pouch character standing beside the bowl. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater whisks the matcha in relaxed strokes, glancing at the sunrise with a peaceful smile; she stays silent. the matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers looks up at her contentedly and stays silent, without lip-sync, while the Mikoya Matcha voice says off-screen: “und deinem Morgenritual das zu geben,” Warm sunlight spreads across the counter. Preserve her face, messy bun, sweater, and realistic look. Preserve the exact Mikoya label layout and text, face, gloves, sneakers, colours, and cinematic 3D look. Slow dolly in.
+The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater whisks the matcha in relaxed strokes, glancing at the sunrise with a peaceful smile; she stays silent. the matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers looks up at her contentedly and stays silent, without lip-sync, while the Mikoya Matcha voice says off-screen: “und deinem Morgenritual das zu geben,” Warm sunlight spreads across the counter. Preserve her face, messy bun, sweater, and realistic look. Preserve the exact Mikoya label layout and text, face, gloves, sneakers, colours, and cinematic 3D look. Slow dolly in.
 
 **Sound / voiceover direction**
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Soft rhythmic whisking and faint morning birdsong; hero bed swells slightly. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
@@ -788,10 +757,9 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -802,18 +770,17 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 “was es so lange gesucht hat!”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. She sits on a sunlit window seat in the morning, cradling a pale sky-blue ribbed bowl of lime-green matcha, a soft lime-green glow outlining her body, eyes closed with a serene smile. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. She sits on a sunlit window seat in the morning, cradling a pale sky-blue ribbed bowl of lime-green matcha, a soft lime-green glow outlining her body, eyes closed with a serene smile. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater takes a calm breath as the lime-green glow around her brightens gently, and she opens her eyes with a happy, relieved smile; she stays silent and does not lip-sync while the Mikoya Matcha voice says off-screen: “was es so lange gesucht hat!” Preserve her face, messy bun, sweater, and realistic look. Slow push-in.
+The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater takes a calm breath as the lime-green glow around her brightens gently, and she opens her eyes with a happy, relieved smile; she stays silent and does not lip-sync while the Mikoya Matcha voice says off-screen: “was es so lange gesucht hat!” Preserve her face, messy bun, sweater, and realistic look. Slow push-in.
 
 **Sound / voiceover direction**
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Warm swelling chord and a soft golden shimmer. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -824,18 +791,17 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 “Und damit du mich perfekt lecker”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. Overhead close-up of her hands holding a stainless-steel fine-mesh sieve over a pale sky-blue ribbed ceramic bowl, vivid lime-green matcha powder sifting through, oatmeal sweater cuffs visible. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. Overhead close-up of her hands holding a stainless-steel fine-mesh sieve over a pale sky-blue ribbed ceramic bowl, vivid lime-green matcha powder sifting through, oatmeal sweater cuffs visible. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The hands of the realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater tap the sieve so fine green powder snows evenly into the bowl; no one speaks on screen while the Mikoya Matcha voice says off-screen: “Und damit du mich perfekt lecker” Preserve her face, messy bun, sweater, and realistic look. Static overhead camera.
+The hands of the realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater tap the sieve so fine green powder snows evenly into the bowl; no one speaks on screen while the Mikoya Matcha voice says off-screen: “Und damit du mich perfekt lecker” Preserve her face, messy bun, sweater, and realistic look. Static overhead camera.
 
 **Sound / voiceover direction**
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Soft sieve tapping and a powdery hush. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -846,18 +812,17 @@ Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting v
 “und cremig zubereiten kannst”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. Overhead close-up of her hands holding a natural bamboo matcha whisk in a pale sky-blue ribbed ceramic bowl, thick creamy lime-green foam forming, oatmeal sweater cuffs visible. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. Overhead close-up of her hands holding a natural bamboo matcha whisk in a pale sky-blue ribbed ceramic bowl, thick creamy lime-green foam forming, oatmeal sweater cuffs visible. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The hands of the realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater whisk briskly in a zig-zag motion until a thick velvety lime-green foam rises; no one speaks on screen while the Mikoya Matcha voice says off-screen: “und cremig zubereiten kannst” Preserve her face, messy bun, sweater, and realistic look. Static overhead camera.
+The hands of the realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater whisk briskly in a zig-zag motion until a thick velvety lime-green foam rises; no one speaks on screen while the Mikoya Matcha voice says off-screen: “und cremig zubereiten kannst” Preserve her face, messy bun, sweater, and realistic look. Static overhead camera.
 
 **Sound / voiceover direction**
 Off-screen character voice: Mikoya Matcha. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Visible characters do not lip-sync. Crisp bamboo whisking and a soft foamy fizz. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
 
 **Reference images**
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -879,9 +844,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2 seconds
@@ -903,10 +867,9 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-starter-set.webp
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -928,10 +891,9 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/Mikoya-Creative-OS/public/references/mikoya-starter-set.webp
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 1.5 seconds
@@ -942,10 +904,10 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 “Und keine Sorge –”
 
 **Text-to-image prompt**
-A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, grey-green eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, and a slim, healthy build, wearing an oatmeal-beige chunky crew-neck knit sweater. A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers. In a bright kitchen, the woman holds the pouch character up in both hands at chest height with a slightly unsure look, while the pouch faces camera with a reassuring smile and one gloved hand raised. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
+A realistic young adult woman in her late twenties with fair, warm-toned skin, wavy medium-brown hair pulled up in a loose messy high bun with soft face-framing strands, green-hazel eyes, full natural brown eyebrows, a soft oval face with a warm gentle smile and light natural makeup, a thin gold necklace with a small pendant and a small gold clip in her bun, and a slim, healthy build, wearing a loose oatmeal-beige knit sweater with matching loose oatmeal knit trousers and light sneakers. A matte-black stand-up Mikoya matcha pouch with a zip seal, open at the top and heaped with vibrant lime-green matcha powder spilling over the rim, carrying the current label below its face: 'MIKOYA' in small widely spaced serif capitals between two thin white lines, 'MATCHA' in large bold white sans-serif capitals, '100% Ceremonial' in small white sans-serif text below it, a thin-line green tea-leaf sprig illustration, '30g' near the bottom, and thin white corner-bracket lines at the top right and bottom left; brought to life as a friendly cartoon character with two large round white eyes with green irises and arched brown eyebrows on the upper front panel above the label, a wide open smile, black arms ending in white four-finger cartoon gloves, and black legs ending in chunky off-white sneakers. In a bright kitchen, the woman holds the pouch character up in both hands at chest height with a slightly unsure look, while the pouch faces camera with a reassuring smile and one gloved hand raised. Cinematic high-end 3D animated commercial look with photorealistic materials and lighting: a realistic human woman in softly lit natural real-world interiors, and stylized pouch characters with realistic foil, paper and powder textures; vivid lime-green powder and energy for the good matcha, dull brown dust, grime and red accents for the bad matcha, warm soft key light, shallow depth of field, 9:16 vertical composition.
 
 **Image-to-video prompt**
-The matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers raises a calming gloved hand and lip-syncs precisely while speaking: “Und keine Sorge –” The realistic young woman with a messy brown high bun, grey-green eyes and an oatmeal knit sweater watches it, her unsure look softening; she stays silent. Preserve her face, messy bun, sweater, and realistic look. Preserve the exact Mikoya label layout and text, face, gloves, sneakers, colours, and cinematic 3D look. Static camera.
+The matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers raises a calming gloved hand and lip-syncs precisely while speaking: “Und keine Sorge –” The realistic young woman with a messy brown high bun, green-hazel eyes and an oatmeal knit sweater watches it, her unsure look softening; she stays silent. Preserve her face, messy bun, sweater, and realistic look. Preserve the exact Mikoya label layout and text, face, gloves, sneakers, colours, and cinematic 3D look. Static camera.
 
 **Sound / voiceover direction**
 On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting voice speaking native standard German, medium conversational pace, bright and confident with reassuring warmth, friendly direct-response delivery. Other visible characters stay silent. Soft reassuring chime. Hero bed: warm light acoustic pop with soft koto plucks, ducked about 18 dB under the voice. Voice clearly dominant.
@@ -953,10 +915,9 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/woman/sheet%20%284%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 1.5 seconds
@@ -978,9 +939,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
@@ -1002,9 +962,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 2.5 seconds
@@ -1026,9 +985,8 @@ On-camera dialogue: Mikoya Matcha lip-syncs. Warm, clear adult female-presenting
 **Reference images**
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-front.png.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/product/pouch-three-quarter.png.png
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet.png *(pending: upload by you)*
+- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/characters/pouch-character/sheet%20%283%29.png
 - https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/hero-villain-concept.webp
-- https://raw.githubusercontent.com/MikoyaEren/mikoya-creative-os/main/brand-references/mikoya/style/style-frame.png *(pending: upload by you)*
 
 **Estimated length**
 3 seconds
