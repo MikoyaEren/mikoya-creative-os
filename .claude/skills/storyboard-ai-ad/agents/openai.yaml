@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Ad Storyboard"
+  short_description: "Consistent-character ad storyboards with voice"
+  default_prompt: "Use $storyboard-ai-ad to storyboard my script with locked characters, exact dialogue actions, consistent voices, and sound direction."
