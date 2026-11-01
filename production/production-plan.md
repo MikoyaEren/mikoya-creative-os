@@ -64,6 +64,32 @@ This audio is needed before the matching Kling clips can be cut. Same method as 
 | A3 | Good Matcha | 29: „und rieche auch noch unglaublich gut." ⏸ 32: „und deinem Morgenritual das zu geben," ⏸ 33: „was es so lange gesucht hat!" | 10 s | 150 |
 | A4 | Good Matcha | 34: „Und damit du mich perfekt lecker" ⏸ 35: „und cremig zubereiten kannst" | 8 s | 140 |
 
+### Batch A: exact prompts
+All renders use model `omni`, 1080p, 9:16 and the registered character only (no images, no new registrations). The video is discarded; only the audio is kept.
+
+**A1**: character kv-0e909075 (Böser Matcha, Sadachbia), 10 s, 150 credits, lines 02, 03, 04, 05
+> Böser Matcha, the dirty beige-tan BÖSER MATCHA pouch character heaped with dull brown powder, with amber-yellow eyes, heavy furrowed brows and a crooked yellowed grimace, stands still in a plain, quiet, softly lit studio and looks at camera. It speaks in clear, native standard German with its smug, sarcastic, theatrical villain voice, brisk and expressive with sly timing, with a clear pause of about half a second of silence between each line, saying exactly: "Und ich hab dich gerade beim Trinken" (pause) "fast zum Kotzen gebracht." (pause) "Du denkst jetzt wahrscheinlich," (pause) "Matcha ist widerlich". No music, no sound effects, no ambience, no background noise; only the voice. Static camera.
+
+**A2**: character kv-d32c58f2 (Good Matcha, Laomedeia), 10 s, 150 credits, lines 19, 27, 28
+> Good Matcha, the matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers, stands still in a plain, quiet, softly lit studio and looks at camera. It speaks in clear, natural, native standard German with its warm, bright, confident voice, lively and expressive like a friendly ad host, at a medium conversational pace, with a clear pause of about half a second of silence between each line, saying exactly: "und zeige dir, wie guter Matcha eigentlich schmecken sollte!" (pause) "schmecke angenehm mild" (pause) "und leicht nussig". No music, no sound effects, no ambience, no background noise; only the voice. Static camera.
+
+**A3**: character kv-d32c58f2 (Good Matcha, Laomedeia), 10 s, 150 credits, lines 29, 32, 33
+> Good Matcha, the matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers, stands still in a plain, quiet, softly lit studio and looks at camera. It speaks in clear, natural, native standard German with its warm, bright, confident voice, lively and expressive like a friendly ad host, at a medium conversational pace, with a clear pause of about half a second of silence between each line, saying exactly: "und rieche auch noch unglaublich gut." (pause) "und deinem Morgenritual das zu geben," (pause) "was es so lange gesucht hat!". No music, no sound effects, no ambience, no background noise; only the voice. Static camera.
+
+**A4**: character kv-d32c58f2 (Good Matcha, Laomedeia), 8 s, 140 credits, lines 34, 35
+> Good Matcha, the matte-black MIKOYA MATCHA pouch character heaped with vibrant green powder, with big green-irised eyes, white cartoon gloves and off-white sneakers, stands still in a plain, quiet, softly lit studio and looks at camera. It speaks in clear, natural, native standard German with its warm, bright, confident voice, lively and expressive like a friendly ad host, at a medium conversational pace, with a clear pause of about half a second of silence between each line, saying exactly: "Und damit du mich perfekt lecker" (pause) "und cremig zubereiten kannst". No music, no sound effects, no ambience, no background noise; only the voice. Static camera.
+
+Changes from the validated test prompt:
+- **Pause** shortened from ~1 s to ~0.5 s, so 3–4 lines fit in 10 s; the test showed even 0.3 s gaps cut cleanly.
+- **"lively and expressive like a friendly ad host"** added, because the test delivery was a bit flatter than Clip 20.
+- **Villain voice wording** taken from the voice lock.
+
+**QC per render (free):**
+- transcribe and compare word for word with the storyboard
+- check pitch and brightness against the character's reference clip (Clip 20 / Clip 01)
+- split into one WAV per line and run a loudness check
+- fail → report; one re-render from the reserve only with approval
+
 Already done: Lines 22, 24 and 25 (voice test). **Batch A budget: 590 credits** (+ reserve 150 for one re-render if a take fails the transcript check) = **740**.
 
 
